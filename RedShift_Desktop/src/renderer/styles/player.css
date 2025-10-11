@@ -1,0 +1,299 @@
+/* Music Player Styles */
+
+/* Enhanced Header with Music Player Integration */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    background: rgba(255, 255, 255, 0.95);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-app-region: drag; /* Make header draggable */
+    min-height: 60px;
+}
+
+.header-left, .header-center, .header-right {
+    -webkit-app-region: no-drag; /* Make child elements not draggable */
+}
+
+.header-left {
+    flex: 0 0 200px;
+}
+
+.header-center {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.header-right {
+    flex: 0 0 auto;
+}
+
+/* Music Player Header */
+.music-player-header {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: 650px;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 12px;
+    padding: 8px 12px;
+    backdrop-filter: blur(10px);
+}
+
+/* Player Layout Rows */
+.player-top-row {
+    display: grid;
+    grid-template-columns: 260px 1fr auto; /* fixed left column, fluid middle, compact right */
+    align-items: center;
+    gap: 16px;
+}
+
+.player-bottom-row {
+    width: 100%;
+}
+
+.track-info-compact {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 160px;
+    flex: 0 0 260px; /* fixed left column width */
+}
+
+.album-art-mini {
+    width: 32px;
+    height: 32px;
+    background: #f7fafc;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.album-art-mini img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.track-details-mini {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden; /* clip marquee strictly within text area, not over album art */
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.track-title-mini {
+    font-size: 13px;
+    font-weight: 500;
+    color: #2d3748;
+    white-space: nowrap;
+    overflow: visible;
+    display: inline-block; /* enable marquee transform within wrapper */
+}
+
+.track-title-mini:not(.marquee-active) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.track-artist-mini {
+    font-size: 11px;
+    color: #718096;
+    white-space: nowrap;
+    overflow: visible;
+    display: inline-block;
+}
+
+.track-artist-mini:not(.marquee-active) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Optional marquee for long titles/artists. Apply class .marquee-active via JS while playing */
+.marquee-active {
+    animation: marquee-scroll 14s linear infinite;
+    will-change: transform;
+}
+
+@keyframes marquee-scroll {
+    0% { transform: translateX(0); }
+    10% { transform: translateX(0); }
+    90% { transform: translateX(calc(-100% + 10px)); }
+    100% { transform: translateX(calc(-100% + 10px)); }
+}
+
+.playback-controls-compact {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+    justify-self: center; /* keep controls centered regardless of title width */
+}
+
+.control-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: #4a5568;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.control-btn:hover {
+    background: rgba(0, 0, 0, 0.1);
+    color: #2d3748;
+}
+
+/* Shuffle active state - purple icon */
+.control-btn.active {
+    color: #5a67d8;
+}
+
+.control-btn.active svg {
+    stroke-width: 3.0;
+}
+
+/* Repeat button states - purple icon when active */
+.control-btn.repeat-all,
+.control-btn.repeat-one {
+    color: #5a67d8;
+    position: relative;
+}
+
+.control-btn.repeat-all svg,
+.control-btn.repeat-one svg {
+    stroke-width: 3.0;
+}
+
+/* Repeat one indicator - small "1" badge */
+.control-btn.repeat-one::after {
+    content: '1';
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    font-size: 9px;
+    font-weight: 600;
+    color: #5a67d8;
+    background: white;
+    border-radius: 50%;
+    width: 12px;
+    height: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.play-pause-btn {
+    width: 36px;
+    height: 36px;
+    background: #5a67d8;
+    color: white;
+    border-radius: 8px;
+}
+
+.play-pause-btn:hover {
+    background: #4c51bf;
+    color: white;
+}
+
+/* Full-Width Progress Bar (Bottom Row) */
+.progress-full {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+.time-compact {
+    font-size: 11px;
+    color: #718096;
+    min-width: 35px;
+    text-align: center;
+    flex: 0 0 auto;
+}
+
+.progress-bar-container-full {
+    flex: 1;
+    height: 6px;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.progress-bar-full {
+    height: 100%;
+    background: #5a67d8;
+    border-radius: 3px;
+    transition: width 0.1s;
+    pointer-events: none;
+}
+
+.progress-slider-full {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.volume-compact {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+    justify-self: end; /* pin volume to the right edge of the player */
+}
+
+.volume-btn {
+    width: 24px;
+    height: 24px;
+}
+
+.volume-slider-compact {
+    width: 70px;
+    height: 4px;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.volume-slider-compact::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    background: #5a67d8;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.volume-slider-compact::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    background: #5a67d8;
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+}

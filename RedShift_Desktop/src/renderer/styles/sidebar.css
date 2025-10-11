@@ -1,0 +1,70 @@
+/* Sidebar Styles */
+
+.sidebar {
+    width: 280px;
+    background: rgba(255, 255, 255, 0.9);
+    border-right: 1px solid rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    margin-bottom: 30px;
+    margin-top: 10px;
+}
+
+.logo h1 {
+    color: #5a67d8;
+    font-size: 18px;
+    margin-left: 10px;
+}
+
+.connection-status {
+    background: #f7fafc;
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 20px;
+    border: 1px solid #e2e8f0;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 8px;
+}
+
+.status-dot.connected { background: #48bb78; }
+.status-dot.disconnected { background: #f56565; }
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+    margin-bottom: 5px;
+}
+
+.nav-item:hover {
+    background: rgba(90, 103, 216, 0.1);
+}
+
+.nav-item.active {
+    background: rgba(90, 103, 216, 0.15);
+    color: #5a67d8;
+}
+
+.nav-item svg {
+    margin-right: 12px;
+}

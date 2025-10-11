@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redshift</title>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="logo">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#5a67d8" stroke-width="2">
+                    <path d="M9 18V5l12-2v13"></path>
+                    <circle cx="6" cy="18" r="3"></circle>
+                    <circle cx="18" cy="16" r="3"></circle>
+                </svg>
+                <h1>Redshift</h1>
+            </div>
+            
+            <div class="connection-status">
+                <div class="status-indicator">
+                    <div class="status-dot" id="phoneStatus"></div>
+                    <span id="phoneStatusText">Checking...</span>
+                </div>
+                <div style="font-size: 12px; color: #718096; margin-top: 5px;">
+                    <span id="libraryPath">~/Music/RedshiftMaster</span>
+                </div>
+            </div>
+            
+            <nav>
+                <div class="nav-item active" data-tab="dashboard">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="14" width="7" height="7"></rect>
+                        <rect x="3" y="14" width="7" height="7"></rect>
+                    </svg>
+                    Dashboard
+                </div>
+                
+                <div class="nav-item" data-tab="music">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 18V5l12-2v13"></path>
+                        <circle cx="6" cy="18" r="3"></circle>
+                        <circle cx="18" cy="16" r="3"></circle>
+                    </svg>
+                    Music
+                </div>
+                
+                <div class="nav-item" data-tab="sync">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M1 4v6h6"></path>
+                        <path d="M23 20v-6h-6"></path>
+                        <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10"></path>
+                        <path d="M3.51 15a9 9 0 0 0 14.85 4.36L23 14"></path>
+                    </svg>
+                    Doppler Sync
+                </div>
+                
+                <div class="nav-item" data-tab="history">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12,6 12,12 16,14"></polyline>
+                    </svg>
+                    History
+                </div>
+                
+                <div class="nav-item" data-tab="settings">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M12 2v3m0 14v3m10-10h-3M5 12H2m15.364-6.364l-2.121 2.121M8.757 15.243l-2.121 2.121m12.728 0l-2.121-2.121M8.757 8.757L6.636 6.636"></path>
+                    </svg>
+                    Settings
+                </div>
+            </nav>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="header" id="titleBar">
+                <!-- Left: Page Title -->
+                <div class="header-left">
+                <h2 id="pageTitle">Dashboard</h2>
+                </div>
+                
+                <!-- Center: Music Player Controls (visible on all tabs) -->
+                <div class="header-center music-player-header">
+                    <!-- Top Row: Track Info + Controls + Volume -->
+                    <div class="player-top-row">
+                        <!-- Track Info -->
+                        <div class="track-info-compact">
+                            <div class="album-art-mini" id="albumArtMini">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                                    <path d="M9 18V5l12-2v13"></path>
+                                    <circle cx="6" cy="18" r="3"></circle>
+                                    <circle cx="18" cy="16" r="3"></circle>
+                                </svg>
+                            </div>
+                            <div class="track-details-mini">
+                                <div class="track-title-mini" id="trackTitleMini">No track loaded</div>
+                                <div class="track-artist-mini" id="trackArtistMini">Select a track to start playing</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Playback Controls -->
+                        <div class="playback-controls-compact">
+                            <button class="control-btn" id="shuffleBtn" title="Shuffle Off">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="16,3 21,3 21,8"></polyline>
+                                    <path d="M4 20L21 3"></path>
+                                    <polyline points="21,16 21,21 16,21"></polyline>
+                                    <path d="M15 15l6 6"></path>
+                                    <path d="M4 4l5 5"></path>
+                                </svg>
+                            </button>
+                            <button class="control-btn" id="prevBtn" title="Previous">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polygon points="19,20 9,12 19,4"></polygon>
+                                    <line x1="5" y1="19" x2="5" y2="5"></line>
+                                </svg>
+                            </button>
+                            <button class="control-btn play-pause-btn" id="playPauseBtn" title="Play">
+                                <svg id="playIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polygon points="5,3 19,12 5,21"></polygon>
+                                </svg>
+                                <svg id="pauseIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+                                    <rect x="6" y="4" width="4" height="16"></rect>
+                                    <rect x="14" y="4" width="4" height="16"></rect>
+                                </svg>
+                            </button>
+                            <button class="control-btn" id="nextBtn" title="Next">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polygon points="5,4 15,12 5,20"></polygon>
+                                    <line x1="19" y1="5" x2="19" y2="19"></line>
+                                </svg>
+                            </button>
+                            <button class="control-btn" id="repeatBtn" title="Repeat Off">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="17,1 21,5 17,9"></polyline>
+                                    <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+                                    <polyline points="7,23 3,19 7,15"></polyline>
+                                    <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        
+                        <!-- Volume Controls -->
+                        <div class="volume-compact">
+                            <button class="control-btn volume-btn" id="muteBtn" title="Mute">
+                                <svg id="volumeIcon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polygon points="11,5 6,9 2,9 2,15 6,15 11,19"></polygon>
+                                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                                </svg>
+                                <svg id="muteIcon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+                                    <polygon points="11,5 6,9 2,9 2,15 6,15 11,19"></polygon>
+                                    <line x1="23" y1="9" x2="17" y2="15"></line>
+                                    <line x1="17" y1="9" x2="23" y2="15"></line>
+                                </svg>
+                            </button>
+                            <input type="range" class="volume-slider-compact" id="volumeSlider" min="0" max="100" value="100">
+                        </div>
+                    </div>
+                    
+                    <!-- Bottom Row: Full-Width Progress Bar -->
+                    <div class="player-bottom-row">
+                        <div class="progress-full">
+                            <span class="time-compact" id="currentTime">0:00</span>
+                            <div class="progress-bar-container-full">
+                                <div class="progress-bar-full" id="progressBar"></div>
+                                <input type="range" class="progress-slider-full" id="progressSlider" min="0" max="100" value="0">
+                            </div>
+                            <span class="time-compact" id="totalTime">0:00</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Right: Tab-specific Actions -->
+                <div class="header-right">
+                    <div id="dashboardActions" class="header-actions">
+                    <button class="btn btn-secondary" id="scanBtn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M1 4v6h6"></path>
+                            <path d="M23 20v-6h-6"></path>
+                            <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"></path>
+                        </svg>
+                        Scan Library
+                    </button>
+                    
+                    <button class="btn btn-primary" id="syncBtn" disabled>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <polyline points="22,4 12,14.01 9,11.01"></polyline>
+                        </svg>
+                        Start Sync
+                    </button>
+                    </div>
+                    <div id="musicActions" class="header-actions" style="display: none;">
+                        <button class="btn btn-secondary" id="scanMusicBtn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M1 4v6h6"></path>
+                                <path d="M23 20v-6h-6"></path>
+                                <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"></path>
+                            </svg>
+                            Refresh Library
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="content-area">
+                <!-- Dashboard Tab -->
+                <div id="dashboardTab" class="tab-content">
+                    <div class="sync-dashboard">
+                        <div class="stat-card">
+                            <div class="stat-value" id="newFilesCount">0</div>
+                            <div class="stat-label">New Files</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-value" id="modifiedFilesCount">0</div>
+                            <div class="stat-label">Modified Files</div>
+                        </div>
+                    </div>
+                    
+                    <div class="file-list">
+                        <div class="file-list-header">
+                            <h3>Files to Sync</h3>
+                            <span id="totalSize">0 MB</span>
+                        </div>
+                        
+                        <div id="filesList">
+                            <div class="empty-state">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M9 18V5l12-2v13"></path>
+                                    <circle cx="6" cy="18" r="3"></circle>
+                                    <circle cx="18" cy="16" r="3"></circle>
+                                </svg>
+                                <h3>No files to sync</h3>
+                                <p>Click "Scan Library" to check for new or modified files</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="log-area" id="logArea">
+                        <div class="log-entry">
+                            <span class="log-time">10:30:45</span>
+                            <span class="log-type log-info">[INFO]</span>
+                            <span>Application started</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Music Tab -->
+                <div id="musicTab" class="tab-content" style="display: none;">
+                    <!-- Music Subtabs -->
+                    <div class="subtabs">
+                        <div class="subtab-item active" data-subtab="library">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M9 18V5l12-2v13"></path>
+                                <circle cx="6" cy="18" r="3"></circle>
+                                <circle cx="18" cy="16" r="3"></circle>
+                            </svg>
+                            Library
+                        </div>
+                        <div class="subtab-item" data-subtab="playlists">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 12h18M3 6h18M3 18h18"></path>
+                            </svg>
+                            Playlists
+                        </div>
+                    </div>
+                    
+                    <!-- Library Subtab -->
+                    <div id="librarySubtab" class="subtab-content" style="display: block;">
+                    <!-- Music Library -->
+                    <div class="music-library">
+                        <div class="library-header">
+                            <h3>Music Library</h3>
+                            <div class="library-stats">
+                                <span id="trackCount">0 tracks</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Scan Progress Bar (hidden by default) -->
+                        <div id="scanProgressBar" class="scan-progress-bar" style="display: none;">
+                            <div class="scan-progress-content">
+                                <div class="scan-progress-text">
+                                    <span id="scanProgressMessage">Scanning library...</span>
+                                    <span id="scanProgressCount">0/0</span>
+                                </div>
+                                <div class="scan-progress-track">
+                                    <div id="scanProgressFill" class="scan-progress-fill" style="width: 0%;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Global Search -->
+                        <div class="global-search">
+                            <input type="text" id="globalFilter" placeholder="Search all tracks..." class="search-input">
+                            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <path d="m21 21-4.35-4.35"></path>
+                            </svg>
+                        </div>
+                        
+                        <!-- Three-Column Browser (Apple Music Style) -->
+                        <div class="music-browser">
+                            <!-- Genres Column -->
+                            <div class="browser-column">
+                                <div class="column-header">
+                                    <span>All Genres</span>
+                                </div>
+                                <div class="column-list" id="genresList">
+                                    <div class="list-item selected" data-value="">All Genres</div>
+                                </div>
+                            </div>
+                            
+                            <!-- Artists Column -->
+                            <div class="browser-column">
+                                <div class="column-header">
+                                    <span id="artistsHeader">All Artists</span>
+                                </div>
+                                <div class="column-list" id="artistsList">
+                                    <div class="list-item selected" data-value="">All Artists</div>
+                                </div>
+                            </div>
+                            
+                            <!-- Albums Column -->
+                            <div class="browser-column">
+                                <div class="column-header">
+                                    <span id="albumsHeader">All Albums</span>
+                                </div>
+                                <div class="column-list" id="albumsList">
+                                    <div class="list-item selected" data-value="">All Albums</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Music Table -->
+                        <div class="music-table-container">
+                            <table class="music-table" id="musicTable">
+                                <thead>
+                                    <tr>
+                                        <th class="col-track">
+                                            <div class="column-header">
+                                                <span>Track</span>
+                                                <input type="text" class="column-filter" placeholder="Filter tracks..." data-column="track">
+                                            </div>
+                                        </th>
+                                        <th class="col-artist">
+                                            <div class="column-header">
+                                                <span>Artist</span>
+                                                <input type="text" class="column-filter" placeholder="Filter artists..." data-column="artist">
+                                            </div>
+                                        </th>
+                                        <th class="col-album">
+                                            <div class="column-header">
+                                                <span>Album</span>
+                                                <input type="text" class="column-filter" placeholder="Filter albums..." data-column="album">
+                                            </div>
+                                        </th>
+                                        <th class="col-duration">
+                                            <div class="column-header">
+                                                <span>Duration</span>
+                                                <input type="text" class="column-filter" style="visibility: hidden;" disabled aria-hidden="true">
+                                            </div>
+                                        </th>
+                                        <th class="col-playcount">
+                                            <div class="column-header">
+                                                <span>Plays</span>
+                                                <input type="text" class="column-filter" style="visibility: hidden;" disabled aria-hidden="true">
+                                            </div>
+                                        </th>
+                                        <th class="col-favourite">
+                                            <div class="column-header">
+                                                <span>Favorite</span>
+                                                <button id="favoriteFilterBtn" class="fav-filter-btn" aria-pressed="false" title="Show favorites only">
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5">
+                                                        <path d="M22 9.24l-7.19-.62L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24z"/>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </th>
+                                        <th class="col-rating">
+                                            <div class="column-header">
+                                                <span>Rating</span>
+                                                <select id="ratingFilter" class="rating-filter" data-column="rating" title="Filter by rating">
+                                                    <option value="">All</option>
+                                                    <option value="1">1</option>
+                                                    <option value="2">2</option>
+                                                    <option value="3">3</option>
+                                                    <option value="4">4</option>
+                                                    <option value="5">5</option>
+                                                </select>
+                                            </div>
+                                        </th>
+                                        <th class="col-actions">
+                                            <div class="column-header">
+                                                <span>Actions</span>
+                                                <input type="text" class="column-filter" style="visibility: hidden;" disabled aria-hidden="true">
+                                            </div>
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody id="musicTableBody">
+                                    <tr class="empty-state-row">
+                                        <td colspan="8">
+                                            <div class="empty-state">
+                                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M9 18V5l12-2v13"></path>
+                                                    <circle cx="6" cy="18" r="3"></circle>
+                                                    <circle cx="18" cy="16" r="3"></circle>
+                                                </svg>
+                                                <h3>No music library set</h3>
+                                                <p>Go to Settings to select your music library folder</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Queue -->
+                    <div class="queue-area">
+                        <div class="queue-header">
+                            <h3>Up Next</h3>
+                            <button class="btn btn-secondary btn-sm" id="clearQueueBtn">Clear</button>
+                        </div>
+                        <div id="queueList" class="music-list">
+                            <div class="empty-state small">
+                                <p>No tracks in queue</p>
+                            </div>
+                        </div>
+                    </div>
+                    </div>
+                    
+                    <!-- Playlists Subtab -->
+                    <div id="playlistsSubtab" class="subtab-content" style="display: none;">
+                        <div class="playlists-layout">
+                            <!-- Playlists Sidebar -->
+                            <div class="playlists-sidebar">
+                                <div class="playlists-header">
+                                    <h3>Playlists</h3>
+                                    <div class="playlists-actions">
+                                        <button id="createPlaylistBtn" class="btn btn-primary" title="Create Playlist">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                                            </svg>
+                                            Create
+                                        </button>
+                                        <button id="importPlaylistBtn" class="btn btn-secondary" title="Import M3U">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                                <polyline points="14,2 14,8 20,8"></polyline>
+                                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                                <polyline points="10,9 9,9 8,9"></polyline>
+                                            </svg>
+                                            Import
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="playlists-list" id="playlistsList">
+                                    <div class="empty-state">
+                                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M9 18V5l12-2v13"></path>
+                                            <circle cx="6" cy="18" r="3"></circle>
+                                            <circle cx="18" cy="16" r="3"></circle>
+                                        </svg>
+                                        <h3>No playlists yet</h3>
+                                        <p>Create your first playlist to get started</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Playlist Content Area -->
+                            <div class="playlist-content">
+                                <div class="playlist-details" id="playlistDetails">
+                                    <p>Select a playlist to view details</p>
+                                </div>
+                                
+                                <div class="playlist-tracks" id="playlistTracks">
+                                    <div class="empty-state">
+                                        <p>No tracks in this playlist</p>
+                                        <p>Drag tracks from your music library to add them</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Doppler Sync Tab -->
+                <div id="syncTab" class="tab-content" style="display: none;">
+                    <div class="sync-dashboard">
+                        <!-- Sync Status Overview -->
+                        <div class="sync-status-grid">
+                            <div class="sync-stat-card">
+                                <h3>Sync Health</h3>
+                                <div class="sync-health-display">
+                                    <div id="syncHealthIndicator" class="sync-health excellent">--%</div>
+                                    <p class="sync-health-label">Overall sync quality</p>
+                                </div>
+                            </div>
+                            
+                            <div class="sync-stat-card">
+                                <h3>Library Overview</h3>
+                                <div class="sync-stats">
+                                    <div class="stat-row">
+                                        <span>Local Files:</span>
+                                        <span id="localFilesCount">-</span>
+                                    </div>
+                                    <div class="stat-row">
+                                        <span>Synced Files:</span>
+                                        <span id="transferredFilesCount">-</span>
+                                    </div>
+                                    <div class="stat-row">
+                                        <span>New Files:</span>
+                                        <span id="newFilesCount" class="stat-highlight">-</span>
+                                    </div>
+                                    <div class="stat-row">
+                                        <span>Orphaned:</span>
+                                        <span id="orphanedFilesCount" class="stat-warning">-</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="sync-stat-card">
+                                <h3>Sync Info</h3>
+                                <div class="sync-stats">
+                                    <div class="stat-row">
+                                        <span>Last Sync:</span>
+                                        <span id="lastSyncDate">Never</span>
+                                    </div>
+                                    <div class="stat-row">
+                                        <span>New Size:</span>
+                                        <span id="newFilesSize">0 MB</span>
+                                    </div>
+                                    <div class="stat-row">
+                                        <span>Total Synced:</span>
+                                        <span id="totalTransferredCount">-</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Sync Controls -->
+                        <div class="sync-controls">
+                            <div class="sync-actions">
+                                <button id="getSyncStatusBtn" class="btn btn-secondary">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M1 4v6h6"></path>
+                                        <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10"></path>
+                                    </svg>
+                                    Refresh Status
+                                </button>
+                                
+                                <button id="startSyncBtn" class="btn btn-primary" disabled>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M1 4v6h6"></path>
+                                        <path d="M23 20v-6h-6"></path>
+                                        <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10"></path>
+                                        <path d="M3.51 15a9 9 0 0 0 14.85 4.36L23 14"></path>
+                                    </svg>
+                                    Start Sync (USB)
+                                </button>
+
+                                <select id="transferMethodSelect" class="form-select" style="min-width: 220px;">
+                                    <option value="direct_libimobile" selected>Direct (USB - libimobiledevice)</option>
+                                    <option value="direct_pymobile">Direct (pymobiledevice3)</option>
+                                    <option value="itunes_protocol">iTunes File Sharing Protocol</option>
+                                    <option value="simulator">Simulator (iOS Simulator)</option>
+                                    <option value="files_app">iOS Files App (manual)</option>
+                                </select>
+                                
+                                <button id="startWebSocketSyncBtn" class="btn btn-success">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
+                                        <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
+                                        <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+                                        <circle cx="12" cy="20" r="1"></circle>
+                                    </svg>
+                                    Sync via Wi-Fi
+                                </button>
+                                
+                                <button id="refreshDbBtn" class="btn btn-secondary">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
+                                        <path d="M8 21v-4a2 2 0 012-2h4a2 2 0 012 2v4"></path>
+                                    </svg>
+                                    Refresh DB
+                                </button>
+                                
+                                <button id="viewStatsBtn" class="btn btn-secondary">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M3 3v18h18"></path>
+                                        <path d="M8 12l4 4 6-6"></path>
+                                    </svg>
+                                    Statistics
+                                </button>
+
+                                <button id="preindexDeviceBtn" class="btn btn-secondary">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M3 12l2-2 4 4 10-10"></path>
+                                    </svg>
+                                    Scan Device
+                                </button>
+                            </div>
+                            
+                            <!-- Progress Bar -->
+                            <div class="sync-progress">
+                                <div class="progress-info">
+                                    <span>Sync Progress</span>
+                                    <span id="syncProgressText">0/0</span>
+                                </div>
+                                <div class="progress-bar-container">
+                                    <div id="syncProgressBar" class="progress-bar" style="width: 0%;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- File Lists -->
+                        <div class="sync-file-lists">
+                            <div class="file-list-section">
+                                <h4>New Files to Sync</h4>
+                                <div id="newFilesList" class="sync-file-list">
+                                    <p class="empty-list">No new files</p>
+                                </div>
+                            </div>
+                            
+                            <div class="file-list-section">
+                                <h4>Orphaned Files</h4>
+                                <div id="orphanedFilesList" class="sync-file-list">
+                                    <p class="empty-list">No orphaned files</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Statistics Display -->
+                        <div class="sync-statistics" style="display: none;">
+                            <div class="stats-section">
+                                <h4>Transfer Methods</h4>
+                                <div id="methodStats" class="method-stats">
+                                    <!-- Method statistics will be populated here -->
+                                </div>
+                            </div>
+                            
+                            <div class="stats-section">
+                                <h4>Recent Sessions</h4>
+                                <div id="recentSessions" class="session-history">
+                                    <!-- Recent sessions will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- History Tab -->
+                <div id="historyTab" class="tab-content" style="display: none;">
+                    <div class="file-list">
+                        <div class="file-list-header">
+                            <h3>Transfer History</h3>
+                        </div>
+                        <div id="historyList">
+                            <!-- History items will be populated here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Settings Tab -->
+                <div id="settingsTab" class="tab-content" style="display: none;">
+                    <div class="stat-card">
+                        <h3 style="margin-bottom: 20px;">Library Settings</h3>
+                        
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: 500;">Music Library Path:</label>
+                            <div style="display: flex; gap: 10px;">
+                                <input type="text" id="musicLibraryPathInput" style="flex: 1; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 4px;" readonly>
+                                <button class="btn btn-secondary" id="browseMusicBtn">Browse</button>
+                            </div>
+                            <small style="color: #666; margin-top: 5px; display: block;">This folder will be used for both music playback and device syncing</small>
+                        </div>
+                        
+                        <!-- Advanced Settings (collapsed by default) -->
+                        <div style="margin-bottom: 15px;">
+                            <button type="button" id="advancedToggle" style="background: none; border: none; color: #5a67d8; cursor: pointer; padding: 0; font-size: 14px;">
+                                ▶ Advanced Settings
+                            </button>
+                            <div id="advancedSettings" style="display: none; margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                                <div style="margin-bottom: 15px;">
+                                    <label style="display: block; margin-bottom: 5px; font-weight: 500;">Separate Sync Library Path (optional):</label>
+                                    <div style="display: flex; gap: 10px;">
+                                        <input type="text" id="syncLibraryPathInput" style="flex: 1; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 4px;" readonly placeholder="Uses main library path if empty">
+                                        <button class="btn btn-secondary" id="browseSyncBtn">Browse</button>
+                                    </div>
+                                    <small style="color: #666; margin-top: 5px; display: block;">Leave empty to use the main music library for syncing</small>
+                                </div>
+                                
+                                <div style="margin-bottom: 15px;">
+                                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">Music Library Cache:</label>
+                                    <div id="cacheStats" style="background: white; padding: 10px; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 13px; margin-bottom: 8px;">
+                                        <p style="margin: 0;">Loading cache information...</p>
+                                    </div>
+                                    <button class="btn btn-secondary" id="clearCacheBtn">Clear Cache</button>
+                                    <small style="color: #666; margin-top: 5px; display: block;">Cache stores metadata to speed up library loading. Clear if you notice issues.</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: 500;">Default Transfer Method:</label>
+                            <select id="transferMethodSelect" style="width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 4px;">
+                                <option value="direct_libimobile">Direct Transfer (libimobiledevice)</option>
+                                <option value="direct_pymobile">Direct Transfer (pymobiledevice3)</option>
+                                <option value="itunes_protocol">iTunes File Sharing Protocol</option>
+                                <option value="files_app">iOS Files App (Manual)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Transfer Modal -->
+    <div id="transferModal" class="transfer-modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#5a67d8" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14,2 14,8 20,8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10,9 9,9 8,9"></polyline>
+                </svg>
+                <h3>Transfer Files</h3>
+            </div>
+            
+            <p>Choose how you'd like to transfer <span id="transferFileCount">0</span> files to your iPhone:</p>
+            
+            <div class="transfer-options">
+                <div class="option-card selected" data-method="direct_libimobile">
+                    <div class="option-title">🚀 Direct Transfer (libimobiledevice)</div>
+                    <div class="option-description">Direct filesystem access to Doppler app (Fastest & Recommended)</div>
+                </div>
+                
+                <div class="option-card" data-method="direct_pymobile">
+                    <div class="option-title">🐍 Direct Transfer (pymobiledevice3)</div>
+                    <div class="option-description">Modern Python-based direct transfer (iOS 17+ optimized)</div>
+                </div>
+                
+                <div class="option-card" data-method="itunes_protocol">
+                    <div class="option-title">📱 iTunes File Sharing Protocol</div>
+                    <div class="option-description">Uses the same protocol as iTunes for file sharing</div>
+                </div>
+                
+                <div class="option-card" data-method="files_app">
+                    <div class="option-title">📁 iOS Files App</div>
+                    <div class="option-description">Prepares files for manual import via the iOS Files app</div>
+                </div>
+            </div>
+            
+            <div id="transferProgress" style="display: none;">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                </div>
+                <div style="text-align: center; margin-top: 10px;">
+                    <span id="progressText">Preparing transfer...</span>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 30px;">
+                <button class="btn btn-secondary" id="cancelTransferBtn">Cancel</button>
+                <button class="btn btn-primary" id="startTransferBtn">Start Transfer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Playlist Modal -->
+    <div id="createPlaylistModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Create New Playlist</h3>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="playlistNameInput">Playlist Name:</label>
+                    <input type="text" id="playlistNameInput" class="form-input" placeholder="Enter playlist name..." maxlength="100">
+                </div>
+                <div class="form-group">
+                    <label for="playlistDescInput">Description (optional):</label>
+                    <textarea id="playlistDescInput" class="form-input" placeholder="Enter description..." rows="3" maxlength="255"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelCreatePlaylist" class="btn btn-secondary">Cancel</button>
+                <button id="confirmCreatePlaylist" class="btn btn-primary">Create Playlist</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Component Scripts -->
+    <script src="components/AudioPlayer.js"></script>
+    <script src="components/MusicLibrary.js"></script>
+    <script src="components/SyncManager.js"></script>
+    <script src="components/SettingsManager.js"></script>
+    <script src="components/PlaylistManager.js"></script>
+    <script src="components/DopplerSync.js"></script>
+    
+    <!-- Main UI Manager -->
+    <script src="renderer.js"></script>
+</body>
+</html>

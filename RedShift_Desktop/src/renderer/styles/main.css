@@ -1,0 +1,13 @@
+/* src/renderer/styles/main.css - Main stylesheet with component imports */
+
+/* Import base styles first */
+@import 'base.css';
+
+/* Import component stylesheets */
+@import 'sidebar.css';
+@import 'music-library.css';
+@import 'player.css';
+@import 'playlists.css';
+@import 'doppler-sync.css';
+@import 'modals.css';
+@import 'shared.css';
