@@ -25,17 +25,31 @@ struct NowPlayingView: View {
                     if let track = audioPlayer.currentTrack {
                         // Album art
                         VStack {
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(Color.purple.opacity(0.5))
-                                .aspectRatio(1, contentMode: .fit)
-                                .overlay {
-                                    Image(systemName: "music.note")
-                                        .font(.system(size: 80))
-                                        .foregroundColor(.white.opacity(0.8))
+                            Group {
+                                if let albumArtData = track.albumArtData,
+                                   let uiImage = UIImage(data: albumArtData) {
+                                    Image(uiImage: uiImage)
+                                        .resizable()
+                                        .scaledToFit()
+                                        .aspectRatio(1, contentMode: .fit)
+                                        .cornerRadius(12)
+                                        .shadow(radius: 20)
+                                        .padding(.horizontal, 40)
+                                        .padding(.top, 40)
+                                } else {
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color.purple.opacity(0.5))
+                                        .aspectRatio(1, contentMode: .fit)
+                                        .overlay {
+                                            Image(systemName: "music.note")
+                                                .font(.system(size: 80))
+                                                .foregroundColor(.white.opacity(0.8))
+                                        }
+                                        .shadow(radius: 20)
+                                        .padding(.horizontal, 40)
+                                        .padding(.top, 40)
                                 }
-                                .shadow(radius: 20)
-                                .padding(.horizontal, 40)
-                                .padding(.top, 40)
+                            }
                         }
                         .frame(maxHeight: .infinity)
                         

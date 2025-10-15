@@ -1238,10 +1238,26 @@ class MusicLibrary {
     setTimeout(() => document.addEventListener('click', closeMenu), 0);
   }
   
-  confirmDelete(track, index) {
-    if (confirm(`Delete "${track.name}" from library?\n\nThis will remove the file from your music library.`)) {
-      this.ui.logBoth('info', `Delete: ${track.name}`);
-      // TODO: Implement delete functionality
+  async confirmDelete(track, index) {
+    if (confirm(`Delete "${track.name}" from library?\n\nThis will permanently delete the file from your computer. This action cannot be undone.`)) {
+      try {
+        this.ui.logBoth('info', `Deleting: ${track.name}`);
+        const result = await window.electronAPI.invoke('library-delete-track', track.path);
+        
+        if (result.success) {
+          this.ui.logBoth('success', `Deleted: ${track.name}`);
+          
+          // Remove from local array
+          this.musicLibrary = this.musicLibrary.filter(t => t.path !== track.path);
+          
+          // Refresh the music library view
+          this.updateMusicLibraryUI();
+        } else {
+          this.ui.logBoth('error', `Failed to delete: ${result.message}`);
+        }
+      } catch (error) {
+        this.ui.logBoth('error', `Error deleting track: ${error.message}`);
+      }
     }
   }
 }

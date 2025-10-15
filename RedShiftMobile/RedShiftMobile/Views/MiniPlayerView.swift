@@ -7,25 +7,37 @@ struct MiniPlayerView: View {
     @EnvironmentObject var audioPlayer: AudioPlayerService
     
     var body: some View {
-        if audioPlayer.currentTrack != nil {
+        if let currentTrack = audioPlayer.currentTrack {
             HStack(spacing: 12) {
-                // Album Art Thumbnail (placeholder for now)
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(Color.purple.opacity(0.2))
-                    .frame(width: 48, height: 48)
-                    .overlay(
-                        Image(systemName: "music.note")
-                            .foregroundColor(.purple)
-                    )
+                // Album Art Thumbnail
+                Group {
+                    if let albumArtData = currentTrack.albumArtData,
+                       let uiImage = UIImage(data: albumArtData) {
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 48, height: 48)
+                            .clipped()
+                            .cornerRadius(6)
+                    } else {
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color.purple.opacity(0.2))
+                            .frame(width: 48, height: 48)
+                            .overlay(
+                                Image(systemName: "music.note")
+                                    .foregroundColor(.purple)
+                            )
+                    }
+                }
                 
                 // Track Info
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(audioPlayer.currentTrack?.displayTitle ?? "Unknown")
+                    Text(currentTrack.displayTitle)
                         .font(.subheadline)
                         .fontWeight(.medium)
                         .lineLimit(1)
                     
-                    Text(audioPlayer.currentTrack?.displayArtist ?? "Unknown Artist")
+                    Text(currentTrack.displayArtist)
                         .font(.caption)
                         .foregroundColor(.gray)
                         .lineLimit(1)

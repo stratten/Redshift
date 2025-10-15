@@ -195,14 +195,36 @@ struct TrackRow: View {
     
     var body: some View {
         HStack(spacing: 10) {
-            // Album art placeholder
-            RoundedRectangle(cornerRadius: 4)
-                .fill(Color.purple.opacity(0.3))
-                .frame(width: 48, height: 48)
-                .overlay {
-                    Image(systemName: "music.note")
-                        .foregroundColor(.purple)
+            // Album art
+            if let albumArtData = track.albumArtData {
+                if let uiImage = UIImage(data: albumArtData) {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 48, height: 48)
+                        .clipped()
+                        .cornerRadius(4)
+                } else {
+                    // Data exists but UIImage can't decode it - show gray with warning
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.gray.opacity(0.5))
+                        .frame(width: 48, height: 48)
+                        .overlay {
+                            Image(systemName: "exclamationmark.triangle")
+                                .font(.caption)
+                                .foregroundColor(.white)
+                        }
                 }
+            } else {
+                // No album art data
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(Color.purple.opacity(0.3))
+                    .frame(width: 48, height: 48)
+                    .overlay {
+                        Image(systemName: "music.note")
+                            .foregroundColor(.purple)
+                    }
+            }
             
             // Track info - takes up all available space
             VStack(alignment: .leading, spacing: 3) {

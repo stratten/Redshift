@@ -17,6 +17,7 @@ struct Track: Identifiable, Codable, Hashable {
     var trackNumber: Int?
     var genre: String?
     var duration: TimeInterval
+    var albumArtData: Data?
     
     // User data
     var playCount: Int
@@ -59,6 +60,7 @@ struct Track: Identifiable, Codable, Hashable {
         trackNumber: Int? = nil,
         genre: String? = nil,
         duration: TimeInterval = 0,
+        albumArtData: Data? = nil,
         playCount: Int = 0,
         lastPlayed: Date? = nil,
         isFavorite: Bool = false,
@@ -78,6 +80,7 @@ struct Track: Identifiable, Codable, Hashable {
         self.trackNumber = trackNumber
         self.genre = genre
         self.duration = duration
+        self.albumArtData = albumArtData
         self.playCount = playCount
         self.lastPlayed = lastPlayed
         self.isFavorite = isFavorite

@@ -11,6 +11,7 @@ struct ID3Tag {
     let genre: String?
     let year: String?
     let comment: String?
+    let albumArt: Data?
 }
 
 final class ID3TagReader {
@@ -55,6 +56,7 @@ final class ID3TagReader {
         var genre: String?
         var year: String?
         var comment: String?
+        var albumArt: Data?
 
         if header.versionMajor == 2 {
             // ID3v2.2: frames have 3-byte IDs and 3-byte sizes, no flags
@@ -102,6 +104,11 @@ final class ID3TagReader {
                     if let commText = decodeCommentFrame(frameData) {
                         print("ID3 v2.2 COM: \(commText)")
                         if comment == nil || (comment?.isEmpty ?? true) { comment = commText }
+                    }
+                } else if frameId == "PIC" { // Picture frame (v2.2)
+                    if albumArt == nil, let artData = decodePICFrame(frameData) {
+                        print("ID3 v2.2 PIC: Found album art (\(artData.count) bytes)")
+                        albumArt = artData
                     }
                 }
             }
@@ -154,15 +161,20 @@ final class ID3TagReader {
                         print("ID3 v2.\(header.versionMajor) COMM: \(commText)")
                         if comment == nil || (comment?.isEmpty ?? true) { comment = commText }
                     }
+                } else if frameId == "APIC" { // Attached picture (v2.3/2.4)
+                    if albumArt == nil, let artData = decodeAPICFrame(frameData) {
+                        print("ID3 v2.\(header.versionMajor) APIC: Found album art (\(artData.count) bytes)")
+                        albumArt = artData
+                    }
                 }
             }
         }
 
-        if title == nil && artist == nil && album == nil && albumArtist == nil && genre == nil && year == nil && comment == nil {
+        if title == nil && artist == nil && album == nil && albumArtist == nil && genre == nil && year == nil && comment == nil && albumArt == nil {
             return nil
         }
 
-        return ID3Tag(title: title, artist: artist, album: album, albumArtist: albumArtist, genre: genre, year: year, comment: comment)
+        return ID3Tag(title: title, artist: artist, album: album, albumArtist: albumArtist, genre: genre, year: year, comment: comment, albumArt: albumArt)
     }
 
     // MARK: - Parsing Helpers
@@ -332,6 +344,139 @@ final class ID3TagReader {
             i = data.index(after: i)
         }
         return output
+    }
+    
+    // MARK: - Picture Frame Decoding
+    
+    // Decode APIC frame (ID3v2.3/2.4): [encoding][MIME type][0][picture type][description][0/00][image data]
+    private static func decodeAPICFrame(_ data: Data) -> Data? {
+        guard data.count > 10 else { return nil }  // Need at least encoding + MIME + type + some image data
+        
+        // Remove unsynchronization first, then work with clean data
+        let frameData = removeUnsynchronization(data)
+        guard frameData.count > 10 else { return nil }
+        
+        let encoding = frameData[0]
+        var cursor = 1
+        
+        // Skip MIME type (null-terminated, always ISO-8859-1)
+        while cursor < frameData.count && frameData[cursor] != 0x00 {
+            cursor += 1
+        }
+        if cursor < frameData.count { cursor += 1 } // Skip null byte
+        
+        // Skip picture type (1 byte)
+        if cursor < frameData.count { cursor += 1 }
+        
+        // Skip description (null-terminated, encoding-dependent)
+        if encoding == 0x01 || encoding == 0x02 { // UTF-16
+            // UTF-16 can have BOM (FF FE or FE FF), skip it if present
+            if cursor + 1 < frameData.count {
+                if (frameData[cursor] == 0xFF && frameData[cursor + 1] == 0xFE) ||
+                   (frameData[cursor] == 0xFE && frameData[cursor + 1] == 0xFF) {
+                    cursor += 2
+                }
+            }
+            // Look for double null (0x00 0x00) at even byte boundaries
+            while cursor + 1 < frameData.count {
+                if frameData[cursor] == 0x00 && frameData[cursor + 1] == 0x00 {
+                    cursor += 2
+                    break
+                }
+                cursor += 2  // Skip two bytes at a time for UTF-16
+            }
+        } else { // ISO-8859-1 or UTF-8
+            // Look for single null
+            while cursor < frameData.count && frameData[cursor] != 0x00 {
+                cursor += 1
+            }
+            if cursor < frameData.count { cursor += 1 } // Skip null byte
+        }
+        
+        // Remaining data is the image
+        guard cursor < frameData.count else { return nil }
+        let imageData = Data(frameData[cursor..<frameData.count])
+        
+        // Validate that we actually have image data (check for common image headers)
+        guard imageData.count > 4 else { return nil }
+        let header = imageData.prefix(4)
+        let isValidImage = (
+            (header[0] == 0xFF && header[1] == 0xD8) ||  // JPEG
+            (header[0] == 0x89 && header[1] == 0x50) ||  // PNG
+            (header[0] == 0x47 && header[1] == 0x49) ||  // GIF
+            (header[0] == 0x42 && header[1] == 0x4D)     // BMP
+        )
+        
+        guard isValidImage else {
+            print("⚠️ APIC frame decoded but data doesn't start with valid image header: \(header.prefix(8).map { String(format: "%02X", $0) }.joined())")
+            return nil
+        }
+        
+        return imageData
+    }
+    
+    // Decode PIC frame (ID3v2.2): [encoding][image format (3 chars)][picture type][description][0/00][image data]
+    private static func decodePICFrame(_ data: Data) -> Data? {
+        guard data.count >= 5 else { return nil }
+        
+        // Remove unsynchronization first, then work with clean data
+        let frameData = removeUnsynchronization(data)
+        guard frameData.count >= 5 else { return nil }
+        
+        let encoding = frameData[0]
+        var cursor = 1
+        
+        // Skip image format (3 bytes)
+        cursor += 3
+        
+        // Skip picture type (1 byte)
+        if cursor < frameData.count { cursor += 1 }
+        
+        // Skip description (null-terminated, encoding-dependent)
+        if encoding == 0x01 || encoding == 0x02 { // UTF-16
+            // UTF-16 can have BOM (FF FE or FE FF), skip it if present
+            if cursor + 1 < frameData.count {
+                if (frameData[cursor] == 0xFF && frameData[cursor + 1] == 0xFE) ||
+                   (frameData[cursor] == 0xFE && frameData[cursor + 1] == 0xFF) {
+                    cursor += 2
+                }
+            }
+            // Look for double null (0x00 0x00) at even byte boundaries
+            while cursor + 1 < frameData.count {
+                if frameData[cursor] == 0x00 && frameData[cursor + 1] == 0x00 {
+                    cursor += 2
+                    break
+                }
+                cursor += 2  // Skip two bytes at a time for UTF-16
+            }
+        } else { // ISO-8859-1 or UTF-8
+            // Look for single null
+            while cursor < frameData.count && frameData[cursor] != 0x00 {
+                cursor += 1
+            }
+            if cursor < frameData.count { cursor += 1 } // Skip null byte
+        }
+        
+        // Remaining data is the image
+        guard cursor < frameData.count else { return nil }
+        let imageData = Data(frameData[cursor..<frameData.count])
+        
+        // Validate that we actually have image data (check for common image headers)
+        guard imageData.count > 4 else { return nil }
+        let header = imageData.prefix(4)
+        let isValidImage = (
+            (header[0] == 0xFF && header[1] == 0xD8) ||  // JPEG
+            (header[0] == 0x89 && header[1] == 0x50) ||  // PNG
+            (header[0] == 0x47 && header[1] == 0x49) ||  // GIF
+            (header[0] == 0x42 && header[1] == 0x4D)     // BMP
+        )
+        
+        guard isValidImage else {
+            print("⚠️ PIC frame decoded but data doesn't start with valid image header: \(header.prefix(8).map { String(format: "%02X", $0) }.joined())")
+            return nil
+        }
+        
+        return imageData
     }
 }
 

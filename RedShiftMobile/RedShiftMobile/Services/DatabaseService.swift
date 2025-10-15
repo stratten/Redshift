@@ -42,6 +42,7 @@ actor DatabaseService {
             track_number INTEGER,
             genre TEXT,
             duration REAL,
+            album_art BLOB,
             play_count INTEGER DEFAULT 0,
             last_played INTEGER,
             is_favorite INTEGER DEFAULT 0,
@@ -107,8 +108,8 @@ actor DatabaseService {
         let sql = """
         INSERT OR REPLACE INTO tracks 
         (id, file_path, file_name, title, artist, album, album_artist, year, track_number, genre, 
-         duration, play_count, last_played, is_favorite, rating, file_size, added_date, modified_date)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+         duration, album_art, play_count, last_played, is_favorite, rating, file_size, added_date, modified_date)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         """
         
         var statement: OpaquePointer?
@@ -124,13 +125,23 @@ actor DatabaseService {
             sqlite3_bind_int(statement, 9, Int32(track.trackNumber ?? 0))
             bind(statement, 10, track.genre)
             sqlite3_bind_double(statement, 11, track.duration)
-            sqlite3_bind_int(statement, 12, Int32(track.playCount))
-            sqlite3_bind_int64(statement, 13, track.lastPlayed != nil ? Int64(track.lastPlayed!.timeIntervalSince1970) : 0)
-            sqlite3_bind_int(statement, 14, track.isFavorite ? 1 : 0)
-            sqlite3_bind_int(statement, 15, Int32(track.rating))
-            sqlite3_bind_int64(statement, 16, track.fileSize)
-            sqlite3_bind_int64(statement, 17, Int64(track.addedDate.timeIntervalSince1970))
-            sqlite3_bind_int64(statement, 18, Int64(track.modifiedDate.timeIntervalSince1970))
+            
+            // Bind album art BLOB
+            if let albumArtData = track.albumArtData {
+                albumArtData.withUnsafeBytes { bytes in
+                    sqlite3_bind_blob(statement, 12, bytes.baseAddress, Int32(albumArtData.count), unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+                }
+            } else {
+                sqlite3_bind_null(statement, 12)
+            }
+            
+            sqlite3_bind_int(statement, 13, Int32(track.playCount))
+            sqlite3_bind_int64(statement, 14, track.lastPlayed != nil ? Int64(track.lastPlayed!.timeIntervalSince1970) : 0)
+            sqlite3_bind_int(statement, 15, track.isFavorite ? 1 : 0)
+            sqlite3_bind_int(statement, 16, Int32(track.rating))
+            sqlite3_bind_int64(statement, 17, track.fileSize)
+            sqlite3_bind_int64(statement, 18, Int64(track.addedDate.timeIntervalSince1970))
+            sqlite3_bind_int64(statement, 19, Int64(track.modifiedDate.timeIntervalSince1970))
             
             if sqlite3_step(statement) != SQLITE_DONE {
                 let error = String(cString: sqlite3_errmsg(db)!)
@@ -209,14 +220,24 @@ actor DatabaseService {
         let trackNumber = Int(sqlite3_column_int(statement, 8))
         let genre = sqlite3_column_text(statement, 9) != nil ? String(cString: sqlite3_column_text(statement, 9)) : nil
         let duration = sqlite3_column_double(statement, 10)
-        let playCount = Int(sqlite3_column_int(statement, 11))
-        let lastPlayedTimestamp = sqlite3_column_int64(statement, 12)
+        
+        // Read album art BLOB
+        var albumArtData: Data?
+        if let blob = sqlite3_column_blob(statement, 11) {
+            let blobSize = sqlite3_column_bytes(statement, 11)
+            if blobSize > 0 {
+                albumArtData = Data(bytes: blob, count: Int(blobSize))
+            }
+        }
+        
+        let playCount = Int(sqlite3_column_int(statement, 12))
+        let lastPlayedTimestamp = sqlite3_column_int64(statement, 13)
         let lastPlayed = lastPlayedTimestamp > 0 ? Date(timeIntervalSince1970: TimeInterval(lastPlayedTimestamp)) : nil
-        let isFavorite = sqlite3_column_int(statement, 13) == 1
-        let rating = Int(sqlite3_column_int(statement, 14))
-        let fileSize = sqlite3_column_int64(statement, 15)
-        let addedDate = Date(timeIntervalSince1970: TimeInterval(sqlite3_column_int64(statement, 16)))
-        let modifiedDate = Date(timeIntervalSince1970: TimeInterval(sqlite3_column_int64(statement, 17)))
+        let isFavorite = sqlite3_column_int(statement, 14) == 1
+        let rating = Int(sqlite3_column_int(statement, 15))
+        let fileSize = sqlite3_column_int64(statement, 16)
+        let addedDate = Date(timeIntervalSince1970: TimeInterval(sqlite3_column_int64(statement, 17)))
+        let modifiedDate = Date(timeIntervalSince1970: TimeInterval(sqlite3_column_int64(statement, 18)))
         
         return Track(
             id: id,
@@ -230,6 +251,7 @@ actor DatabaseService {
             trackNumber: trackNumber > 0 ? trackNumber : nil,
             genre: genre,
             duration: duration,
+            albumArtData: albumArtData,
             playCount: playCount,
             lastPlayed: lastPlayed,
             isFavorite: isFavorite,

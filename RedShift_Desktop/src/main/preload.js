@@ -40,6 +40,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
         'audio-clear-queue',
         'get-cache-stats',
         'clear-music-cache',
+        'library-delete-track',
         // Playlist management
         'playlist-create',
         'playlist-get-all',

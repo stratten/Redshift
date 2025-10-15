@@ -86,14 +86,31 @@ struct AlbumDetailView: View {
             // Album Header
             Section {
                 VStack(spacing: 16) {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.purple.opacity(0.3))
-                        .frame(width: 200, height: 200)
-                        .overlay(
-                            Image(systemName: "music.note")
-                                .font(.system(size: 60))
-                                .foregroundColor(.purple)
-                        )
+                    // Album art
+                    let albumArtData = tracks.first?.albumArtData
+                    
+                    Group {
+                        if let artData = albumArtData,
+                           let uiImage = UIImage(data: artData) {
+                            Image(uiImage: uiImage)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 200, height: 200)
+                                .clipped()
+                                .cornerRadius(12)
+                                .shadow(radius: 20)
+                        } else {
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color.purple.opacity(0.3))
+                                .frame(width: 200, height: 200)
+                                .overlay(
+                                    Image(systemName: "music.note")
+                                        .font(.system(size: 60))
+                                        .foregroundColor(.purple)
+                                )
+                                .shadow(radius: 20)
+                        }
+                    }
                     
                     VStack(spacing: 4) {
                         Text(album)

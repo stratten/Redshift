@@ -392,7 +392,13 @@ class AudioPlayer {
       // Update compact album art
       if (albumArtMini) {
         if (track.metadata.albumArt && track.metadata.albumArt.thumbnail) {
-          albumArtMini.innerHTML = `<img src="${track.metadata.albumArt.thumbnail}" alt="Album Art">`;
+          albumArtMini.innerHTML = `<img src="${track.metadata.albumArt.thumbnail}" alt="Album Art" class="clickable-album-art">`;
+          // Add click handler to show enlarged album art
+          const artImg = albumArtMini.querySelector('img');
+          if (artImg) {
+            artImg.style.cursor = 'pointer';
+            artImg.onclick = () => this.showAlbumArtModal(track);
+          }
         } else {
           // Reset to default icon
           albumArtMini.innerHTML = `
@@ -420,6 +426,52 @@ class AudioPlayer {
           </svg>
         `;
       }
+    }
+  }
+  
+  showAlbumArtModal(track) {
+    const modal = document.getElementById('albumArtModal');
+    const modalImage = document.getElementById('albumArtModalImage');
+    const modalTitle = document.getElementById('albumArtModalTitle');
+    const modalArtist = document.getElementById('albumArtModalArtist');
+    const modalAlbum = document.getElementById('albumArtModalAlbum');
+    const closeBtn = document.getElementById('closeAlbumArtModal');
+    
+    if (!modal || !track) return;
+    
+    // Use full-size album art if available, otherwise use thumbnail
+    const artSrc = track.metadata.albumArt?.fullSize || track.metadata.albumArt?.thumbnail;
+    
+    if (artSrc) {
+      modalImage.src = artSrc;
+      modalTitle.textContent = track.metadata.common?.title || track.filename || 'Unknown Track';
+      modalArtist.textContent = track.metadata.common?.artist || 'Unknown Artist';
+      modalAlbum.textContent = track.metadata.common?.album || 'Unknown Album';
+      
+      modal.style.display = 'flex';
+      
+      // Close on button click
+      closeBtn.onclick = () => {
+        modal.style.display = 'none';
+      };
+      
+      // Close on outside click
+      modal.onclick = (e) => {
+        if (e.target === modal) {
+          modal.style.display = 'none';
+        }
+      };
+      
+      // Close on Escape key
+      const escapeHandler = (e) => {
+        if (e.key === 'Escape') {
+          modal.style.display = 'none';
+          document.removeEventListener('keydown', escapeHandler);
+        }
+      };
+      document.addEventListener('keydown', escapeHandler);
+      
+      this.ui.logBoth('info', 'Album art modal opened');
     }
   }
   

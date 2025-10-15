@@ -189,6 +189,28 @@ function registerIpc(ipcMain, manager) {
   // Cache
   ipcMain.handle('get-cache-stats', h(async () => manager.musicLibraryCache.getCacheStats()));
   ipcMain.handle('clear-music-cache', async () => { await manager.musicLibraryCache.clearCache(); return true; });
+  ipcMain.handle('library-delete-track', async (event, filePath) => {
+    try {
+      const fs = require('fs-extra');
+      const path = require('path');
+      
+      // Remove from cache/database
+      await manager.musicLibraryCache.removeCachedFile(filePath);
+      
+      // Delete the actual file
+      if (await fs.pathExists(filePath)) {
+        await fs.remove(filePath);
+        console.log(`🗑️ Deleted file: ${filePath}`);
+        return { success: true, message: 'Track deleted successfully' };
+      } else {
+        console.log(`⚠️ File not found: ${filePath}`);
+        return { success: false, message: 'File not found' };
+      }
+    } catch (error) {
+      console.error('Error deleting track:', error);
+      return { success: false, message: error.message };
+    }
+  });
 
   // Playlists
   ipcMain.handle('playlist-create', async (event, name, description, syncToDoppler) => manager.playlistService.createPlaylist(name, description, syncToDoppler));

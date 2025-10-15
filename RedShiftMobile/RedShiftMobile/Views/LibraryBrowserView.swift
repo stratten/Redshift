@@ -158,13 +158,29 @@ struct AlbumsListView: View {
             ForEach(albums, id: \.self) { album in
                 NavigationLink(destination: AlbumDetailView(album: album)) {
                     HStack {
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.purple.opacity(0.3))
-                            .frame(width: 60, height: 60)
-                            .overlay(
-                                Image(systemName: "music.note")
-                                    .foregroundColor(.purple)
-                            )
+                        // Album art
+                        let tracks = libraryManager.tracks.filter { $0.album == album }
+                        let albumArtData = tracks.first?.albumArtData
+                        
+                        Group {
+                            if let artData = albumArtData,
+                               let uiImage = UIImage(data: artData) {
+                                Image(uiImage: uiImage)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 60, height: 60)
+                                    .clipped()
+                                    .cornerRadius(8)
+                            } else {
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color.purple.opacity(0.3))
+                                    .frame(width: 60, height: 60)
+                                    .overlay(
+                                        Image(systemName: "music.note")
+                                            .foregroundColor(.purple)
+                                    )
+                            }
+                        }
                         
                         VStack(alignment: .leading, spacing: 4) {
                             Text(album)

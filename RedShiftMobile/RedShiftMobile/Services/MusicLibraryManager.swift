@@ -171,6 +171,7 @@ class MusicLibraryManager: ObservableObject {
             var year: Int?
             var trackNumber: Int?
             var genre: String?
+            var albumArtData: Data?
             
             // Extract metadata from common metadata
             var comm: String? // Comment field (may contain album info)
@@ -186,6 +187,9 @@ class MusicLibraryManager: ObservableObject {
                         album = try? await item.load(.stringValue)
                     case .commonKeyType:
                         genre = try? await item.load(.stringValue)
+                    case .commonKeyArtwork:
+                        // Extract album art using AVFoundation (reliable!)
+                        albumArtData = try? await item.load(.dataValue)
                     default:
                         break
                     }
@@ -234,8 +238,8 @@ class MusicLibraryManager: ObservableObject {
                 }
             }
             
-            // MARK: - ID3 Fallback (reads TALB/TIT2/TPE1/TPE2/TCON/TYER/TDRC/COMM)
-            if title == nil || artist == nil || album == nil || albumArtist == nil || genre == nil || year == nil {
+            // MARK: - ID3 Fallback (reads TALB/TIT2/TPE1/TPE2/TCON/TYER/TDRC/COMM/APIC)
+            if title == nil || artist == nil || album == nil || albumArtist == nil || genre == nil || year == nil || albumArtData == nil {
                 if let id3 = ID3TagReader.read(from: fileURL) {
                     
                     if title == nil { title = id3.title }
@@ -243,6 +247,7 @@ class MusicLibraryManager: ObservableObject {
                     if album == nil { album = id3.album }
                     if albumArtist == nil { albumArtist = id3.albumArtist }
                     if genre == nil { genre = id3.genre }
+                    if albumArtData == nil { albumArtData = id3.albumArt }
                     if year == nil {
                         if let y = id3.year {
                             let digits = y.trimmingCharacters(in: CharacterSet(charactersIn: "0123456789").inverted)
@@ -282,6 +287,7 @@ class MusicLibraryManager: ObservableObject {
                 trackNumber: trackNumber,
                 genre: genre,
                 duration: durationSeconds,
+                albumArtData: albumArtData,
                 fileSize: fileSize,
                 modifiedDate: modifiedDate
             )
