@@ -275,7 +275,7 @@ class RedshiftSyncManager extends EventEmitter {
       this.windowManager.settings = this.settings; // keep in sync
     }
     this.mainWindow = this.windowManager.createMainWindow({
-      indexPath: path.join(__dirname, '../renderer/index.html'),
+      indexPath: path.join(__dirname, '../renderer/index.built.html'),
       preloadPath: path.join(__dirname, 'preload.js'),
       minWidth: 800,
       minHeight: 600,

@@ -230,3 +230,262 @@
     font-size: 15px;
     color: rgba(255, 255, 255, 0.65);
 }
+
+/* Queue Modal Styles */
+.queue-modal-content {
+    max-width: 600px;
+    width: 90%;
+    max-height: 85vh;
+    padding: 0;
+    overflow: hidden;
+}
+
+.queue-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px 30px;
+    border-bottom: 1px solid #e2e8f0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.queue-modal-header h2 {
+    color: white;
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0;
+}
+
+.queue-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.queue-action-btn {
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.queue-action-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+}
+
+.close-button {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    font-size: 28px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    transition: all 0.2s ease;
+}
+
+.close-button:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: rotate(90deg);
+}
+
+.queue-modal-body {
+    padding: 24px 30px;
+    overflow-y: auto;
+    max-height: calc(85vh - 100px);
+}
+
+.queue-now-playing {
+    margin-bottom: 30px;
+}
+
+.queue-now-playing h3,
+.queue-up-next h3 {
+    font-size: 14px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #718096;
+    margin-bottom: 12px;
+}
+
+.queue-count {
+    color: #a0aec0;
+    font-weight: 400;
+}
+
+.queue-current-track {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 8px;
+}
+
+.queue-track-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.queue-track-art {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.queue-track-art img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.queue-track-art svg {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.queue-track-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.queue-current-track .queue-track-title {
+    color: white;
+    font-weight: 600;
+    font-size: 15px;
+}
+
+.queue-current-track .queue-track-artist {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 13px;
+}
+
+.queue-track-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: #2d3748;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 2px;
+}
+
+.queue-track-artist {
+    font-size: 13px;
+    color: #718096;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.queue-track-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.queue-track-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: #f7fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    cursor: grab;
+    transition: all 0.2s ease;
+}
+
+.queue-track-item:hover {
+    background: #edf2f7;
+    border-color: #cbd5e0;
+    transform: translateX(4px);
+}
+
+.queue-track-item.dragging {
+    opacity: 0.5;
+    cursor: grabbing;
+}
+
+.queue-track-item.drag-over {
+    border-color: #667eea;
+    background: rgba(102, 126, 234, 0.1);
+}
+
+.queue-track-number {
+    font-size: 13px;
+    font-weight: 600;
+    color: #a0aec0;
+    width: 24px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.queue-track-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.queue-track-item:hover .queue-track-actions {
+    opacity: 1;
+}
+
+.queue-track-btn {
+    background: none;
+    border: none;
+    padding: 6px;
+    cursor: pointer;
+    border-radius: 6px;
+    color: #718096;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.queue-track-btn:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: #e53e3e;
+}
+
+.queue-empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #a0aec0;
+}
+
+.queue-empty-state svg {
+    margin-bottom: 16px;
+}
+
+.queue-empty-state p:first-of-type {
+    font-size: 16px;
+    font-weight: 600;
+    color: #718096;
+    margin-bottom: 8px;
+}
+
+.queue-empty-hint {
+    font-size: 13px;
+    color: #cbd5e0;
+}

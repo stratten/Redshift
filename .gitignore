@@ -18,6 +18,9 @@ build/
 *.ipa
 *.xcarchive
 
+# Generated HTML files
+RedShift_Desktop/src/renderer/index.built.html
+
 # Xcode
 *.pbxuser
 *.mode1v3
@@ -80,4 +83,14 @@ RedShift_Desktop/resources/python-deps/
 # Xcode build logs
 RedShiftMobile/build_log.txt
 RedShiftMobile/build/
+
+# iOS certificates and keys (SECURITY: Never commit!)
+RedShiftMobile/certificates/
+*.p12
+*.cer
+*.csr
+*.certSigningRequest
+*.mobileprovision
+*.key
+*.pem
 

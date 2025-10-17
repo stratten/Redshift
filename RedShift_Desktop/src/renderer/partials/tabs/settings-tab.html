@@ -1,0 +1,52 @@
+<!-- Settings Tab -->
+<div id="settingsTab" class="tab-content" style="display: none;">
+    <div class="stat-card">
+        <h3 style="margin-bottom: 20px;">Library Settings</h3>
+        
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 5px; font-weight: 500;">Music Library Path:</label>
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="musicLibraryPathInput" style="flex: 1; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 4px;" readonly>
+                <button class="btn btn-secondary" id="browseMusicBtn">Browse</button>
+            </div>
+            <small style="color: #666; margin-top: 5px; display: block;">This folder will be used for both music playback and device syncing</small>
+        </div>
+        
+        <!-- Advanced Settings (collapsed by default) -->
+        <div style="margin-bottom: 15px;">
+            <button type="button" id="advancedToggle" style="background: none; border: none; color: #5a67d8; cursor: pointer; padding: 0; font-size: 14px;">
+                ▶ Advanced Settings
+            </button>
+            <div id="advancedSettings" style="display: none; margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 500;">Separate Sync Library Path (optional):</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="syncLibraryPathInput" style="flex: 1; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 4px;" readonly placeholder="Uses main library path if empty">
+                        <button class="btn btn-secondary" id="browseSyncBtn">Browse</button>
+                    </div>
+                    <small style="color: #666; margin-top: 5px; display: block;">Leave empty to use the main music library for syncing</small>
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">Music Library Cache:</label>
+                    <div id="cacheStats" style="background: white; padding: 10px; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 13px; margin-bottom: 8px;">
+                        <p style="margin: 0;">Loading cache information...</p>
+                    </div>
+                    <button class="btn btn-secondary" id="clearCacheBtn">Clear Cache</button>
+                    <small style="color: #666; margin-top: 5px; display: block;">Cache stores metadata to speed up library loading. Clear if you notice issues.</small>
+                </div>
+            </div>
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 5px; font-weight: 500;">Default Transfer Method:</label>
+            <select id="transferMethodSelect" style="width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 4px;">
+                <option value="direct_libimobile">Direct Transfer (libimobiledevice)</option>
+                <option value="direct_pymobile">Direct Transfer (pymobiledevice3)</option>
+                <option value="itunes_protocol">iTunes File Sharing Protocol</option>
+                <option value="files_app">iOS Files App (Manual)</option>
+            </select>
+        </div>
+    </div>
+</div>
+

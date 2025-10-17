@@ -41,6 +41,16 @@
     margin-right: 6px;
 }
 
+.btn-sm {
+    padding: 5px 10px;
+    font-size: 12px;
+    border-radius: 6px;
+}
+
+.btn-sm svg {
+    margin-right: 4px;
+}
+
 /* Header Actions */
 .header-actions {
     display: flex;

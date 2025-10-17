@@ -5,9 +5,10 @@
     "main": "src/main/main.js",
     "scripts": {
         "start": "electron .",
-        "dev": "electron . --dev",
-        "build": "electron-builder",
-        "pack": "electron-builder --dir"
+        "dev": "node build-html.js && electron . --dev",
+        "build": "node build-html.js && electron-builder",
+        "pack": "node build-html.js && electron-builder --dir",
+        "build:renderer": "node build-html.js"
     },
     "dependencies": {
         "chokidar": "^3.5.3",

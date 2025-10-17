@@ -277,33 +277,25 @@ class PlaylistManager {
         return;
       }
       
-      // Set the first track to play
-      const firstTrack = tracks[0];
+      // Map playlist tracks to full track objects from music library
       const musicLibrary = this.ui.musicLibrary.musicLibrary;
-      const track = musicLibrary.find(t => t.path === firstTrack.file_path);
+      const playlistTracks = tracks
+        .map(playlistTrack => musicLibrary.find(t => t.path === playlistTrack.file_path))
+        .filter(track => track !== undefined); // Remove tracks not found in library
       
-      if (track) {
-        // Load and play the first track
-        this.ui.audioPlayer.audioElement.src = `file://${track.path}`;
-        this.ui.audioPlayer.audioPlayerState.currentTrack = track;
-        
-        this.ui.audioPlayer.updateTrackInfo({
-          filename: track.name,
-          metadata: track.metadata || { 
-            common: {
-              title: track.name.replace(/\.\w+$/, ''),
-              artist: 'Unknown Artist'
-            }
-          }
-        });
-        
-        await this.ui.audioPlayer.audioElement.play();
-        this.ui.logBoth('success', `Playing playlist: "${playlist.name}"`);
-        
-        // TODO: Set up playlist queue for continuous playback
-      } else {
-        this.ui.logBoth('warning', `Track not found in library: ${firstTrack.file_path}`);
+      if (playlistTracks.length === 0) {
+        this.ui.logBoth('warning', `No tracks from playlist "${playlist.name}" found in library`);
+        return;
       }
+      
+      // Set up playback context for continuous playback
+      this.ui.audioPlayer.setPlaybackContext(`playlist:${playlistId}`, playlistTracks, 0);
+      
+      // Play the first track
+      const firstTrack = playlistTracks[0];
+      await this.ui.audioPlayer.playTrack(firstTrack.path, firstTrack);
+      
+      this.ui.logBoth('success', `Playing playlist: "${playlist.name}" (${playlistTracks.length} tracks)`);
       
     } catch (error) {
       this.ui.logBoth('error', `Failed to play playlist: ${error.message}`);
@@ -812,29 +804,30 @@ class PlaylistManager {
       const musicLibrary = this.ui.musicLibrary.musicLibrary;
       const track = musicLibrary.find(t => t.path === filePath);
       
-      if (track) {
-        // Load track via AudioPlayerService for state management
-        await window.electronAPI.invoke('audio-load-track', filePath);
+      if (track && this.currentPlaylist) {
+        // Map all playlist tracks to full track objects
+        const playlistTracks = this.currentPlaylistTracks
+          .map(playlistTrack => musicLibrary.find(t => t.path === playlistTrack.file_path))
+          .filter(t => t !== undefined);
         
-        // Set up local audio element
-        this.ui.audioPlayer.audioElement.src = `file://${track.path}`;
-        this.ui.audioPlayer.audioPlayerState.currentTrack = track;
+        // Find the index of the clicked track
+        const trackIndex = playlistTracks.findIndex(t => t.path === filePath);
         
-        this.ui.audioPlayer.updateTrackInfo({
-          filename: track.name,
-          metadata: track.metadata || { 
-            common: {
-              title: track.name.replace(/\.\w+$/, ''),
-              artist: 'Unknown Artist'
-            }
-          }
-        });
-        
-        // Play via IPC (for state management) and local element
-        await window.electronAPI.invoke('audio-play');
-        await this.ui.audioPlayer.audioElement.play();
-        
-        this.ui.logBoth('info', `Playing: ${track.name}`);
+        if (trackIndex !== -1) {
+          // Set up playback context for continuous playback from this track
+          this.ui.audioPlayer.setPlaybackContext(
+            `playlist:${this.currentPlaylist.id}`, 
+            playlistTracks, 
+            trackIndex
+          );
+          
+          // Play the selected track
+          await this.ui.audioPlayer.playTrack(track.path, track);
+          
+          this.ui.logBoth('info', `Playing: ${track.name} from playlist "${this.currentPlaylist.name}"`);
+        } else {
+          this.ui.logBoth('warning', `Track not found in playlist: ${filePath}`);
+        }
       } else {
         this.ui.logBoth('warning', `Track not found: ${filePath}`);
       }

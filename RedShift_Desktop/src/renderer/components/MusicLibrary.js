@@ -379,10 +379,7 @@ class MusicLibrary {
             this.ui.logBoth('error', `🎵 Error stack: ${error.stack}`);
           }
         } else if (button.classList.contains('add-to-queue-btn')) {
-        this.ui.logBoth('info', `🎵 Add to queue clicked: ${track.name}`);
-        
-        // TODO: Implement queue functionality
-        this.ui.logBoth('info', `🎵 Added "${track.name}" to queue (queue not implemented yet)`);
+        this.ui.audioPlayer.addToQueue(track);
       } else if (button.classList.contains('add-to-playlist-btn')) {
         // Show inline playlist picker near the button
         try {
@@ -1191,6 +1188,9 @@ class MusicLibrary {
     `;
     
     const menuItems = [
+      { label: 'Play', action: () => this.playTrackFromMenu(track) },
+      { label: 'Add to Queue', action: () => this.ui.audioPlayer.addToQueue(track) },
+      { separator: true },
       { label: 'Get Info', action: () => this.ui.getFileInfo(track.path) },
       { label: 'Show in Finder', action: () => this.ui.showInFinder(track.path) },
       { separator: true },
@@ -1236,6 +1236,27 @@ class MusicLibrary {
       }
     };
     setTimeout(() => document.addEventListener('click', closeMenu), 0);
+  }
+  
+  async playTrackFromMenu(track) {
+    try {
+      this.ui.logBoth('info', `🎵 Context menu: Playing track: ${track.name}`);
+      
+      // Determine current context and set playback context
+      const currentTrackIndex = this.filteredTracks.findIndex(t => t.path === track.path);
+      this.ui.logBoth('info', `🎵 Found track at filtered index: ${currentTrackIndex}`);
+      
+      const context = this.getPlaybackContext();
+      this.ui.logBoth('info', `🎵 Setting playback context: ${context} with ${this.filteredTracks.length} tracks`);
+      this.ui.audioPlayer.setPlaybackContext(context, this.filteredTracks, currentTrackIndex);
+      
+      // Play the track
+      await this.ui.audioPlayer.playTrack(track.path, track);
+      
+      this.ui.logBoth('success', `🎵 Context menu track loaded and playing: ${track.name}`);
+    } catch (error) {
+      this.ui.logBoth('error', `🎵 Error playing track from context menu: ${error.message}`);
+    }
   }
   
   async confirmDelete(track, index) {

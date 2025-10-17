@@ -441,15 +441,17 @@ class AudioPlayerService {
         return this.albumArtCache.get(cacheKey);
       }
       
-      // Create thumbnail using Jimp
+      // Create thumbnail using Jimp (resized for mini player)
       const image = await Jimp.read(pictureData.data);
       const thumbnail = await image.resize(150, 150).getBufferAsync(Jimp.MIME_JPEG);
-      const fullSize = await image.resize(500, 500).getBufferAsync(Jimp.MIME_JPEG);
+      
+      // Use original image data for fullSize to preserve quality in modal
+      const fullSizeData = pictureData.data;
       
       const albumArt = {
         format: pictureData.format,
         thumbnail: `data:image/jpeg;base64,${thumbnail.toString('base64')}`,
-        fullSize: `data:image/jpeg;base64,${fullSize.toString('base64')}`,
+        fullSize: `data:${pictureData.format};base64,${fullSizeData.toString('base64')}`,
         originalSize: pictureData.data.length
       };
       

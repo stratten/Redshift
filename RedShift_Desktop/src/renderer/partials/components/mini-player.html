@@ -1,0 +1,91 @@
+<!-- Center: Music Player Controls (visible on all tabs) -->
+<div class="header-center music-player-header">
+    <!-- Top Row: Track Info + Controls + Volume -->
+    <div class="player-top-row">
+        <!-- Track Info -->
+        <div class="track-info-compact">
+            <div class="album-art-mini" id="albumArtMini">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                    <path d="M9 18V5l12-2v13"></path>
+                    <circle cx="6" cy="18" r="3"></circle>
+                    <circle cx="18" cy="16" r="3"></circle>
+                </svg>
+            </div>
+            <div class="track-details-mini">
+                <div class="track-title-mini" id="trackTitleMini">No track loaded</div>
+                <div class="track-artist-mini" id="trackArtistMini">Select a track to start playing</div>
+            </div>
+        </div>
+        
+        <!-- Playback Controls -->
+        <div class="playback-controls-compact">
+            <button class="control-btn" id="shuffleBtn" title="Shuffle Off">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="16,3 21,3 21,8"></polyline>
+                    <path d="M4 20L21 3"></path>
+                    <polyline points="21,16 21,21 16,21"></polyline>
+                    <path d="M15 15l6 6"></path>
+                    <path d="M4 4l5 5"></path>
+                </svg>
+            </button>
+            <button class="control-btn" id="prevBtn" title="Previous">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="19,20 9,12 19,4"></polygon>
+                    <line x1="5" y1="19" x2="5" y2="5"></line>
+                </svg>
+            </button>
+            <button class="control-btn play-pause-btn" id="playPauseBtn" title="Play">
+                <svg id="playIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="5,3 19,12 5,21"></polygon>
+                </svg>
+                <svg id="pauseIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+                    <rect x="6" y="4" width="4" height="16"></rect>
+                    <rect x="14" y="4" width="4" height="16"></rect>
+                </svg>
+            </button>
+            <button class="control-btn" id="nextBtn" title="Next">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="5,4 15,12 5,20"></polygon>
+                    <line x1="19" y1="5" x2="19" y2="19"></line>
+                </svg>
+            </button>
+            <button class="control-btn" id="repeatBtn" title="Repeat Off">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="17,1 21,5 17,9"></polyline>
+                    <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+                    <polyline points="7,23 3,19 7,15"></polyline>
+                    <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+                </svg>
+            </button>
+        </div>
+        
+        <!-- Volume Controls -->
+        <div class="volume-compact">
+            <button class="control-btn volume-btn" id="muteBtn" title="Mute">
+                <svg id="volumeIcon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="11,5 6,9 2,9 2,15 6,15 11,19"></polygon>
+                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                </svg>
+                <svg id="muteIcon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+                    <polygon points="11,5 6,9 2,9 2,15 6,15 11,19"></polygon>
+                    <line x1="23" y1="9" x2="17" y2="15"></line>
+                    <line x1="17" y1="9" x2="23" y2="15"></line>
+                </svg>
+            </button>
+            <input type="range" class="volume-slider-compact" id="volumeSlider" min="0" max="100" value="100">
+        </div>
+    </div>
+    
+    <!-- Bottom Row: Full-Width Progress Bar -->
+    <div class="player-bottom-row">
+        <div class="progress-full">
+            <span class="time-compact" id="currentTime">0:00</span>
+            <div class="progress-bar-container-full">
+                <div class="progress-bar-full" id="progressBar"></div>
+                <input type="range" class="progress-slider-full" id="progressSlider" min="0" max="100" value="0">
+            </div>
+            <span class="time-compact" id="totalTime">0:00</span>
+        </div>
+    </div>
+</div>
+

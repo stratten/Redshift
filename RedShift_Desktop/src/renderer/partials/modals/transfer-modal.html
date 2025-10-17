@@ -1,0 +1,54 @@
+<!-- Transfer Modal -->
+<div id="transferModal" class="transfer-modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#5a67d8" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14,2 14,8 20,8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10,9 9,9 8,9"></polyline>
+            </svg>
+            <h3>Transfer Files</h3>
+        </div>
+        
+        <p>Choose how you'd like to transfer <span id="transferFileCount">0</span> files to your iPhone:</p>
+        
+        <div class="transfer-options">
+            <div class="option-card selected" data-method="direct_libimobile">
+                <div class="option-title">🚀 Direct Transfer (libimobiledevice)</div>
+                <div class="option-description">Direct filesystem access to Doppler app (Fastest & Recommended)</div>
+            </div>
+            
+            <div class="option-card" data-method="direct_pymobile">
+                <div class="option-title">🐍 Direct Transfer (pymobiledevice3)</div>
+                <div class="option-description">Modern Python-based direct transfer (iOS 17+ optimized)</div>
+            </div>
+            
+            <div class="option-card" data-method="itunes_protocol">
+                <div class="option-title">📱 iTunes File Sharing Protocol</div>
+                <div class="option-description">Uses the same protocol as iTunes for file sharing</div>
+            </div>
+            
+            <div class="option-card" data-method="files_app">
+                <div class="option-title">📁 iOS Files App</div>
+                <div class="option-description">Prepares files for manual import via the iOS Files app</div>
+            </div>
+        </div>
+        
+        <div id="transferProgress" style="display: none;">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+            </div>
+            <div style="text-align: center; margin-top: 10px;">
+                <span id="progressText">Preparing transfer...</span>
+            </div>
+        </div>
+        
+        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 30px;">
+            <button class="btn btn-secondary" id="cancelTransferBtn">Cancel</button>
+            <button class="btn btn-primary" id="startTransferBtn">Start Transfer</button>
+        </div>
+    </div>
+</div>
+

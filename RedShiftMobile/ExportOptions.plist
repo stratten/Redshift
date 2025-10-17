@@ -6,10 +6,9 @@
     <string>app-store-connect</string>
     <key>teamID</key>
     <string>D4X8TSBQJC</string>
-    <key>uploadSymbols</key>
-    <true/>
     <key>uploadBitcode</key>
     <false/>
+    <key>uploadSymbols</key>
+    <true/>
 </dict>
 </plist>
-

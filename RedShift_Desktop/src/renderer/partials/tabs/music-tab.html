@@ -1,0 +1,230 @@
+<!-- Music Tab -->
+<div id="musicTab" class="tab-content" style="display: none;">
+    <!-- Music Subtabs -->
+    <div class="subtabs">
+        <div class="subtab-item active" data-subtab="library">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 18V5l12-2v13"></path>
+                <circle cx="6" cy="18" r="3"></circle>
+                <circle cx="18" cy="16" r="3"></circle>
+            </svg>
+            Library
+        </div>
+        <div class="subtab-item" data-subtab="playlists">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 12h18M3 6h18M3 18h18"></path>
+            </svg>
+            Playlists
+        </div>
+    </div>
+    
+    <!-- Library Subtab -->
+    <div id="librarySubtab" class="subtab-content" style="display: block;">
+    <!-- Music Library -->
+    <div class="music-library">
+        <div class="library-header">
+            <h3>Music Library</h3>
+            <div class="library-stats">
+                <span id="trackCount">0 tracks</span>
+            </div>
+        </div>
+        
+        <!-- Scan Progress Bar (hidden by default) -->
+        <div id="scanProgressBar" class="scan-progress-bar" style="display: none;">
+            <div class="scan-progress-content">
+                <div class="scan-progress-text">
+                    <span id="scanProgressMessage">Scanning library...</span>
+                    <span id="scanProgressCount">0/0</span>
+                </div>
+                <div class="scan-progress-track">
+                    <div id="scanProgressFill" class="scan-progress-fill" style="width: 0%;"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Global Search -->
+        <div class="global-search">
+            <input type="text" id="globalFilter" placeholder="Search all tracks..." class="search-input">
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+            </svg>
+        </div>
+        
+        <!-- Three-Column Browser (Apple Music Style) -->
+        <div class="music-browser">
+            <!-- Genres Column -->
+            <div class="browser-column">
+                <div class="column-header">
+                    <span>All Genres</span>
+                </div>
+                <div class="column-list" id="genresList">
+                    <div class="list-item selected" data-value="">All Genres</div>
+                </div>
+            </div>
+            
+            <!-- Artists Column -->
+            <div class="browser-column">
+                <div class="column-header">
+                    <span id="artistsHeader">All Artists</span>
+                </div>
+                <div class="column-list" id="artistsList">
+                    <div class="list-item selected" data-value="">All Artists</div>
+                </div>
+            </div>
+            
+            <!-- Albums Column -->
+            <div class="browser-column">
+                <div class="column-header">
+                    <span id="albumsHeader">All Albums</span>
+                </div>
+                <div class="column-list" id="albumsList">
+                    <div class="list-item selected" data-value="">All Albums</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Music Table -->
+        <div class="music-table-container">
+            <table class="music-table" id="musicTable">
+                <thead>
+                    <tr>
+                        <th class="col-track">
+                            <div class="column-header">
+                                <span>Track</span>
+                                <input type="text" class="column-filter" placeholder="Filter tracks..." data-column="track">
+                            </div>
+                        </th>
+                        <th class="col-artist">
+                            <div class="column-header">
+                                <span>Artist</span>
+                                <input type="text" class="column-filter" placeholder="Filter artists..." data-column="artist">
+                            </div>
+                        </th>
+                        <th class="col-album">
+                            <div class="column-header">
+                                <span>Album</span>
+                                <input type="text" class="column-filter" placeholder="Filter albums..." data-column="album">
+                            </div>
+                        </th>
+                        <th class="col-duration">
+                            <div class="column-header">
+                                <span>Duration</span>
+                                <input type="text" class="column-filter" style="visibility: hidden;" disabled aria-hidden="true">
+                            </div>
+                        </th>
+                        <th class="col-playcount">
+                            <div class="column-header">
+                                <span>Plays</span>
+                                <input type="text" class="column-filter" style="visibility: hidden;" disabled aria-hidden="true">
+                            </div>
+                        </th>
+                        <th class="col-favourite">
+                            <div class="column-header">
+                                <span>Favorite</span>
+                                <button id="favoriteFilterBtn" class="fav-filter-btn" aria-pressed="false" title="Show favorites only">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5">
+                                        <path d="M22 9.24l-7.19-.62L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24z"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </th>
+                        <th class="col-rating">
+                            <div class="column-header">
+                                <span>Rating</span>
+                                <select id="ratingFilter" class="rating-filter" data-column="rating" title="Filter by rating">
+                                    <option value="">All</option>
+                                    <option value="1">1</option>
+                                    <option value="2">2</option>
+                                    <option value="3">3</option>
+                                    <option value="4">4</option>
+                                    <option value="5">5</option>
+                                </select>
+                            </div>
+                        </th>
+                        <th class="col-actions">
+                            <div class="column-header">
+                                <span>Actions</span>
+                                <input type="text" class="column-filter" style="visibility: hidden;" disabled aria-hidden="true">
+                            </div>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody id="musicTableBody">
+                    <tr class="empty-state-row">
+                        <td colspan="8">
+                            <div class="empty-state">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M9 18V5l12-2v13"></path>
+                                    <circle cx="6" cy="18" r="3"></circle>
+                                    <circle cx="18" cy="16" r="3"></circle>
+                                </svg>
+                                <h3>No music library set</h3>
+                                <p>Go to Settings to select your music library folder</p>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    </div>
+    
+    <!-- Playlists Subtab -->
+    <div id="playlistsSubtab" class="subtab-content" style="display: none;">
+        <div class="playlists-layout">
+            <!-- Playlists Sidebar -->
+            <div class="playlists-sidebar">
+                <div class="playlists-header">
+                    <h3>Playlists</h3>
+                    <div class="playlists-actions">
+                        <button id="createPlaylistBtn" class="btn btn-primary" title="Create Playlist">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                            Create
+                        </button>
+                        <button id="importPlaylistBtn" class="btn btn-secondary" title="Import M3U">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14,2 14,8 20,8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                <polyline points="10,9 9,9 8,9"></polyline>
+                            </svg>
+                            Import
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="playlists-list" id="playlistsList">
+                    <div class="empty-state">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 18V5l12-2v13"></path>
+                            <circle cx="6" cy="18" r="3"></circle>
+                            <circle cx="18" cy="16" r="3"></circle>
+                        </svg>
+                        <h3>No playlists yet</h3>
+                        <p>Create your first playlist to get started</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Playlist Content Area -->
+            <div class="playlist-content">
+                <div class="playlist-details" id="playlistDetails">
+                    <p>Select a playlist to view details</p>
+                </div>
+                
+                <div class="playlist-tracks" id="playlistTracks">
+                    <div class="empty-state">
+                        <p>No tracks in this playlist</p>
+                        <p>Drag tracks from your music library to add them</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+

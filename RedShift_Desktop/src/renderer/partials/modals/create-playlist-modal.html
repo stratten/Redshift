@@ -1,0 +1,23 @@
+<!-- Create Playlist Modal -->
+<div id="createPlaylistModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Create New Playlist</h3>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="playlistNameInput">Playlist Name:</label>
+                <input type="text" id="playlistNameInput" class="form-input" placeholder="Enter playlist name..." maxlength="100">
+            </div>
+            <div class="form-group">
+                <label for="playlistDescInput">Description (optional):</label>
+                <textarea id="playlistDescInput" class="form-input" placeholder="Enter description..." rows="3" maxlength="255"></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button id="cancelCreatePlaylist" class="btn btn-secondary">Cancel</button>
+            <button id="confirmCreatePlaylist" class="btn btn-primary">Create Playlist</button>
+        </div>
+    </div>
+</div>
+

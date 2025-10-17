@@ -1,0 +1,165 @@
+<!-- Doppler Sync Tab -->
+<div id="syncTab" class="tab-content" style="display: none;">
+    <div class="sync-dashboard">
+        <!-- Sync Status Overview -->
+        <div class="sync-status-grid">
+            <div class="sync-stat-card">
+                <h3>Sync Health</h3>
+                <div class="sync-health-display">
+                    <div id="syncHealthIndicator" class="sync-health excellent">--%</div>
+                    <p class="sync-health-label">Overall sync quality</p>
+                </div>
+            </div>
+            
+            <div class="sync-stat-card">
+                <h3>Library Overview</h3>
+                <div class="sync-stats">
+                    <div class="stat-row">
+                        <span>Local Files:</span>
+                        <span id="localFilesCount">-</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>Synced Files:</span>
+                        <span id="transferredFilesCount">-</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>New Files:</span>
+                        <span id="newFilesCount" class="stat-highlight">-</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>Orphaned:</span>
+                        <span id="orphanedFilesCount" class="stat-warning">-</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="sync-stat-card">
+                <h3>Sync Info</h3>
+                <div class="sync-stats">
+                    <div class="stat-row">
+                        <span>Last Sync:</span>
+                        <span id="lastSyncDate">Never</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>New Size:</span>
+                        <span id="newFilesSize">0 MB</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>Total Synced:</span>
+                        <span id="totalTransferredCount">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sync Controls -->
+        <div class="sync-controls">
+            <div class="sync-actions">
+                <button id="getSyncStatusBtn" class="btn btn-secondary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M1 4v6h6"></path>
+                        <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10"></path>
+                    </svg>
+                    Refresh Status
+                </button>
+                
+                <button id="startSyncBtn" class="btn btn-primary" disabled>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M1 4v6h6"></path>
+                        <path d="M23 20v-6h-6"></path>
+                        <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10"></path>
+                        <path d="M3.51 15a9 9 0 0 0 14.85 4.36L23 14"></path>
+                    </svg>
+                    Start Sync (USB)
+                </button>
+
+                <select id="transferMethodSelect" class="form-select" style="min-width: 220px;">
+                    <option value="direct_libimobile" selected>Direct (USB - libimobiledevice)</option>
+                    <option value="direct_pymobile">Direct (pymobiledevice3)</option>
+                    <option value="itunes_protocol">iTunes File Sharing Protocol</option>
+                    <option value="simulator">Simulator (iOS Simulator)</option>
+                    <option value="files_app">iOS Files App (manual)</option>
+                </select>
+                
+                <button id="startWebSocketSyncBtn" class="btn btn-success">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
+                        <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
+                        <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+                        <circle cx="12" cy="20" r="1"></circle>
+                    </svg>
+                    Sync via Wi-Fi
+                </button>
+                
+                <button id="refreshDbBtn" class="btn btn-secondary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
+                        <path d="M8 21v-4a2 2 0 012-2h4a2 2 0 012 2v4"></path>
+                    </svg>
+                    Refresh DB
+                </button>
+                
+                <button id="viewStatsBtn" class="btn btn-secondary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 3v18h18"></path>
+                        <path d="M8 12l4 4 6-6"></path>
+                    </svg>
+                    Statistics
+                </button>
+
+                <button id="preindexDeviceBtn" class="btn btn-secondary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 12l2-2 4 4 10-10"></path>
+                    </svg>
+                    Scan Device
+                </button>
+            </div>
+            
+            <!-- Progress Bar -->
+            <div class="sync-progress">
+                <div class="progress-info">
+                    <span>Sync Progress</span>
+                    <span id="syncProgressText">0/0</span>
+                </div>
+                <div class="progress-bar-container">
+                    <div id="syncProgressBar" class="progress-bar" style="width: 0%;"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- File Lists -->
+        <div class="sync-file-lists">
+            <div class="file-list-section">
+                <h4>New Files to Sync</h4>
+                <div id="newFilesList" class="sync-file-list">
+                    <p class="empty-list">No new files</p>
+                </div>
+            </div>
+            
+            <div class="file-list-section">
+                <h4>Orphaned Files</h4>
+                <div id="orphanedFilesList" class="sync-file-list">
+                    <p class="empty-list">No orphaned files</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Statistics Display -->
+        <div class="sync-statistics" style="display: none;">
+            <div class="stats-section">
+                <h4>Transfer Methods</h4>
+                <div id="methodStats" class="method-stats">
+                    <!-- Method statistics will be populated here -->
+                </div>
+            </div>
+            
+            <div class="stats-section">
+                <h4>Recent Sessions</h4>
+                <div id="recentSessions" class="session-history">
+                    <!-- Recent sessions will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
