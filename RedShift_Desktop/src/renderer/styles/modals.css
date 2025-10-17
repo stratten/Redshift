@@ -489,3 +489,126 @@
     font-size: 13px;
     color: #cbd5e0;
 }
+
+/* ===============================================
+   Equalizer Modal Styles
+   =============================================== */
+
+.equalizer-modal-content {
+    max-width: 800px;
+    width: 90%;
+}
+
+.equalizer-modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding: 0;
+}
+
+.eq-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.eq-preset-btn {
+    padding: 6px 14px;
+    background: rgba(90, 103, 216, 0.1);
+    color: #5a67d8;
+    border: 1px solid #5a67d8;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.eq-preset-btn:hover {
+    background: #5a67d8;
+    color: white;
+}
+
+.eq-bands {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 12px;
+    padding: 20px 0;
+}
+
+.eq-band {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+}
+
+.eq-slider-container {
+    height: 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.eq-slider {
+    -webkit-appearance: slider-vertical;
+    appearance: slider-vertical;
+    writing-mode: bt-lr; /* IE */
+    width: 6px;
+    height: 180px;
+    background: linear-gradient(to top, #5a67d8 0%, #e2e8f0 50%, #5a67d8 100%);
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+}
+
+.eq-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    background: white;
+    border: 2px solid #5a67d8;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.eq-slider::-webkit-slider-thumb:hover {
+    background: #5a67d8;
+    transform: scale(1.1);
+}
+
+.eq-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    background: white;
+    border: 2px solid #5a67d8;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.eq-slider::-moz-range-thumb:hover {
+    background: #5a67d8;
+    transform: scale(1.1);
+}
+
+.eq-value {
+    font-size: 11px;
+    font-weight: 600;
+    color: #5a67d8;
+    min-width: 32px;
+    text-align: center;
+}
+
+.eq-frequency {
+    font-size: 11px;
+    color: #718096;
+    font-weight: 500;
+}

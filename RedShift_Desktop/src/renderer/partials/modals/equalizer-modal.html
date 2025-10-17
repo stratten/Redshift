@@ -1,0 +1,107 @@
+<!-- Equalizer Modal -->
+<div id="equalizerModal" class="modal" style="display: none;">
+    <div class="modal-content equalizer-modal-content">
+        <div class="modal-header">
+            <h2>Equalizer</h2>
+            <button class="close-button" id="closeEqualizer">&times;</button>
+        </div>
+        
+        <div class="modal-body equalizer-modal-body">
+            <!-- Preset Buttons -->
+            <div class="eq-presets">
+                <button class="eq-preset-btn" data-preset="flat">Flat</button>
+                <button class="eq-preset-btn" data-preset="rock">Rock</button>
+                <button class="eq-preset-btn" data-preset="pop">Pop</button>
+                <button class="eq-preset-btn" data-preset="jazz">Jazz</button>
+                <button class="eq-preset-btn" data-preset="classical">Classical</button>
+                <button class="eq-preset-btn" data-preset="bass">Bass Boost</button>
+                <button class="eq-preset-btn" data-preset="treble">Treble Boost</button>
+                <button class="eq-preset-btn" data-preset="vocal">Vocal</button>
+            </div>
+            
+            <!-- Equalizer Bands -->
+            <div class="eq-bands">
+                <div class="eq-band" data-band="0">
+                    <div class="eq-slider-container">
+                        <input type="range" class="eq-slider" id="eq-band-0" min="-12" max="12" step="0.5" value="0" orient="vertical">
+                    </div>
+                    <div class="eq-value" id="eq-value-0">0</div>
+                    <div class="eq-frequency">32Hz</div>
+                </div>
+                
+                <div class="eq-band" data-band="1">
+                    <div class="eq-slider-container">
+                        <input type="range" class="eq-slider" id="eq-band-1" min="-12" max="12" step="0.5" value="0" orient="vertical">
+                    </div>
+                    <div class="eq-value" id="eq-value-1">0</div>
+                    <div class="eq-frequency">64Hz</div>
+                </div>
+                
+                <div class="eq-band" data-band="2">
+                    <div class="eq-slider-container">
+                        <input type="range" class="eq-slider" id="eq-band-2" min="-12" max="12" step="0.5" value="0" orient="vertical">
+                    </div>
+                    <div class="eq-value" id="eq-value-2">0</div>
+                    <div class="eq-frequency">125Hz</div>
+                </div>
+                
+                <div class="eq-band" data-band="3">
+                    <div class="eq-slider-container">
+                        <input type="range" class="eq-slider" id="eq-band-3" min="-12" max="12" step="0.5" value="0" orient="vertical">
+                    </div>
+                    <div class="eq-value" id="eq-value-3">0</div>
+                    <div class="eq-frequency">250Hz</div>
+                </div>
+                
+                <div class="eq-band" data-band="4">
+                    <div class="eq-slider-container">
+                        <input type="range" class="eq-slider" id="eq-band-4" min="-12" max="12" step="0.5" value="0" orient="vertical">
+                    </div>
+                    <div class="eq-value" id="eq-value-4">0</div>
+                    <div class="eq-frequency">500Hz</div>
+                </div>
+                
+                <div class="eq-band" data-band="5">
+                    <div class="eq-slider-container">
+                        <input type="range" class="eq-slider" id="eq-band-5" min="-12" max="12" step="0.5" value="0" orient="vertical">
+                    </div>
+                    <div class="eq-value" id="eq-value-5">0</div>
+                    <div class="eq-frequency">1kHz</div>
+                </div>
+                
+                <div class="eq-band" data-band="6">
+                    <div class="eq-slider-container">
+                        <input type="range" class="eq-slider" id="eq-band-6" min="-12" max="12" step="0.5" value="0" orient="vertical">
+                    </div>
+                    <div class="eq-value" id="eq-value-6">0</div>
+                    <div class="eq-frequency">2kHz</div>
+                </div>
+                
+                <div class="eq-band" data-band="7">
+                    <div class="eq-slider-container">
+                        <input type="range" class="eq-slider" id="eq-band-7" min="-12" max="12" step="0.5" value="0" orient="vertical">
+                    </div>
+                    <div class="eq-value" id="eq-value-7">0</div>
+                    <div class="eq-frequency">4kHz</div>
+                </div>
+                
+                <div class="eq-band" data-band="8">
+                    <div class="eq-slider-container">
+                        <input type="range" class="eq-slider" id="eq-band-8" min="-12" max="12" step="0.5" value="0" orient="vertical">
+                    </div>
+                    <div class="eq-value" id="eq-value-8">0</div>
+                    <div class="eq-frequency">8kHz</div>
+                </div>
+                
+                <div class="eq-band" data-band="9">
+                    <div class="eq-slider-container">
+                        <input type="range" class="eq-slider" id="eq-band-9" min="-12" max="12" step="0.5" value="0" orient="vertical">
+                    </div>
+                    <div class="eq-value" id="eq-value-9">0</div>
+                    <div class="eq-frequency">16kHz</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+

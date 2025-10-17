@@ -74,7 +74,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'songs-toggle-favorite',
       'songs-set-rating',
       'songs-get-favorites',
+      'songs-get-recently-played',
       'songs-get-top-played',
+      'audio-track-ended-notify',
       'songs-update-metadata',
       'show-in-finder',
       'get-file-info'
@@ -135,6 +137,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'audio-shuffle-changed',
       'audio-repeat-changed',
       'library-scan-progress',
+      'media-key-press',
       // Doppler sync events
       'doppler-sync-started',
       'doppler-sync-completed',

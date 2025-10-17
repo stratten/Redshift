@@ -18,6 +18,7 @@ const AudioPlayerService = require('./services/AudioPlayerService');
 const MusicLibraryCache = require('./services/MusicLibraryCache');
 const PlaylistService = require('./services/PlaylistService');
 const WindowManager = require('./services/WindowManager');
+const MediaKeysService = require('./services/MediaKeysService');
 const { registerIpc, attachEventForwarders } = require('./services/AppBridge');
 const { initializeDatabase } = require('./services/Database');
 const FileWatcher = require('./services/FileWatcher');
@@ -43,6 +44,7 @@ class RedshiftSyncManager extends EventEmitter {
     this.audioPlayerService = null;
     this.musicLibraryCache = null;
     this.playlistService = null;
+    this.mediaKeysService = null;
     this.ipcHandlersSetup = false;
     
     // Paths
@@ -155,6 +157,9 @@ class RedshiftSyncManager extends EventEmitter {
     
     // Initialize playlist service
     this.playlistService = new PlaylistService(this.db, this.settings, this);
+    
+    // Initialize media keys service
+    this.mediaKeysService = new MediaKeysService(this);
     
     // Set up event listeners for services via consolidated bridge
     attachEventForwarders(this);
@@ -303,6 +308,11 @@ app.whenReady().then(async () => {
   }
   syncManager.createWindow();
   
+  // Register media keys
+  if (syncManager.mediaKeysService) {
+    syncManager.mediaKeysService.register();
+  }
+  
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       syncManager.createWindow();
@@ -317,6 +327,9 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  if (syncManager.mediaKeysService) {
+    syncManager.mediaKeysService.unregister();
+  }
   if (syncManager.fileWatcher) {
     syncManager.fileWatcher.stop();
   }

@@ -386,6 +386,12 @@
     text-align: center;
 }
 
+.col-last-played {
+    width: 100px;
+    min-width: 100px;
+    text-align: center;
+}
+
 .col-actions {
     width: 70px;
     text-align: center;

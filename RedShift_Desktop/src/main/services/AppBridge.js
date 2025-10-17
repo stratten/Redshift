@@ -269,7 +269,7 @@ function registerIpc(ipcMain, manager) {
   }));
 
   ipcMain.handle('songs-get-all-metadata', h(async () => {
-    const rows = await allSql(manager.db, `SELECT file_path, is_favorite, rating, play_count FROM songs`);
+    const rows = await allSql(manager.db, `SELECT file_path, is_favorite, rating, play_count, last_played FROM songs`);
     return rows;
   }));
 
@@ -278,10 +278,44 @@ function registerIpc(ipcMain, manager) {
     return rows;
   }));
 
+  ipcMain.handle('songs-get-recently-played', h(async (event, limitArg) => {
+    const limit = Math.max(1, Math.min(500, parseInt(limitArg, 10) || 50));
+    const rows = await allSql(manager.db, `SELECT * FROM songs WHERE last_played IS NOT NULL ORDER BY last_played DESC LIMIT ?`, [limit]);
+    return rows;
+  }));
+
   ipcMain.handle('songs-get-top-played', h(async (event, limitArg) => {
     const limit = Math.max(1, Math.min(500, parseInt(limitArg, 10) || 50));
     const rows = await allSql(manager.db, `SELECT * FROM songs ORDER BY play_count DESC, last_played DESC NULLS LAST LIMIT ?`, [limit]);
     return rows;
+  }));
+  
+  ipcMain.handle('audio-track-ended-notify', h(async (event, filePath) => {
+    // Called from renderer when a track actually finishes playing
+    try {
+      console.log(`[Songs] 📥 Received track-ended notification from renderer`);
+      console.log(`[Songs]    File: ${filePath}`);
+      
+      if (filePath && typeof filePath === 'string') {
+        const trackName = path.basename(filePath);
+        console.log(`[Songs] 🎵 Processing track ended: ${trackName}`);
+        manager.sendToRenderer('log', { type: 'info', message: `🎵 Processing track completion: ${trackName}` });
+        
+        await incrementPlayCount(manager, filePath);
+        
+        // Send event to renderer to trigger Recently Played refresh
+        manager.sendToRenderer('audio-track-ended', { track: { filePath } });
+        console.log(`[Songs] ✅ Track ended processing complete for: ${trackName}`);
+        return true;
+      } else {
+        console.warn(`[Songs] ⚠️ Invalid file path received: ${filePath}`);
+        return false;
+      }
+    } catch (error) {
+      console.error(`[Songs] ❌ Error handling track ended: ${error.message}`);
+      manager.sendToRenderer('log', { type: 'error', message: `❌ Error updating play count: ${error.message}` });
+      return false;
+    }
   }));
 
   ipcMain.handle('songs-update-metadata', h(async (event, filePathArg, fieldType, newValue) => {
@@ -652,6 +686,9 @@ async function upsertSongFromTrack(manager, track) {
 }
 
 async function incrementPlayCount(manager, filePath) {
+  const beforeRows = await allSql(manager.db, `SELECT play_count, last_played FROM songs WHERE file_path = ?`, [filePath]);
+  const before = beforeRows && beforeRows[0] ? beforeRows[0] : null;
+  
   await runSql(manager.db, `
     UPDATE songs
     SET play_count = COALESCE(play_count, 0) + 1,
@@ -659,5 +696,12 @@ async function incrementPlayCount(manager, filePath) {
         modified_date = strftime('%s','now')
     WHERE file_path = ?
   `, [filePath]);
+  
+  const afterRows = await allSql(manager.db, `SELECT play_count, last_played FROM songs WHERE file_path = ?`, [filePath]);
+  const after = afterRows && afterRows[0] ? afterRows[0] : null;
+  
+  const msg = `[Songs] ✅ Play count updated for ${path.basename(filePath)}: ${before?.play_count || 0} → ${after?.play_count || 0}, last_played: ${after?.last_played}`;
+  console.log(msg);
+  manager.sendToRenderer('log', { type: 'success', message: msg });
 }
 

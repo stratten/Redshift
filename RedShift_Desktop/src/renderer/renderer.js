@@ -109,6 +109,8 @@ class RedshiftSyncUI {
           // Load subtab-specific data
           if (subtabId === 'playlists') {
             // Playlists are automatically loaded by PlaylistManager
+          } else if (subtabId === 'recentlyPlayed') {
+            this.musicLibrary.loadRecentlyPlayed();
           }
         });
       });

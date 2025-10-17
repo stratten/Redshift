@@ -63,9 +63,9 @@
 /* Player Layout Rows */
 .player-top-row {
     display: grid;
-    grid-template-columns: 260px 1fr auto; /* fixed left column, fluid middle, compact right */
+    grid-template-columns: minmax(180px, 220px) 1fr auto; /* flexible left column, fluid middle, compact right */
     align-items: center;
-    gap: 16px;
+    gap: 12px;
 }
 
 .player-bottom-row {
@@ -149,7 +149,7 @@
 .playback-controls-compact {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 0;
     flex: 0 0 auto;
     justify-self: center; /* keep controls centered regardless of title width */
 }
@@ -171,6 +171,20 @@
 .control-btn:hover {
     background: rgba(0, 0, 0, 0.1);
     color: #2d3748;
+}
+
+/* Speed button - text-based display */
+.speed-btn {
+    width: 40px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #4a5568;
+    user-select: none;
+}
+
+.speed-btn:hover {
+    color: #2563eb;
+    background: rgba(37, 99, 235, 0.1);
 }
 
 /* Shuffle active state - purple icon */

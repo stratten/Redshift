@@ -32,6 +32,84 @@ class MusicLibrary {
     
     this.setupEventListeners();
     this.setupScanProgressListener();
+    this.setupPlaybackListeners();
+  }
+  
+  setupPlaybackListeners() {
+    // Listen for track ended event to refresh Recently Played
+    window.electronAPI.on('audio-track-ended', async (data) => {
+      this.ui.logBoth('success', '🔄 Track ended event received - triggering UI refresh');
+      this.ui.logBoth('info', `   Track: ${data?.track?.filePath || 'unknown'}`);
+      
+      // Reload metadata to get updated play counts and last_played timestamps
+      this.ui.logBoth('info', '📊 Reloading song metadata from database...');
+      await this.loadSongMetadata();
+      this.ui.logBoth('success', '✅ Song metadata reloaded');
+      
+      // Check which subtab is currently visible and refresh it
+      const librarySubtab = document.getElementById('librarySubtab');
+      const recentlyPlayedTab = document.getElementById('recentlyPlayedSubtab');
+      
+      const libraryVisible = librarySubtab && librarySubtab.style.display !== 'none';
+      const recentlyPlayedVisible = recentlyPlayedTab && recentlyPlayedTab.style.display !== 'none';
+      
+      this.ui.logBoth('info', `   Library tab visible: ${libraryVisible ? 'YES' : 'NO'}`);
+      this.ui.logBoth('info', `   Recently Played tab visible: ${recentlyPlayedVisible ? 'YES' : 'NO'}`);
+      
+      if (libraryVisible && data?.track?.filePath) {
+        this.ui.logBoth('info', '🔄 Updating play count for track in library view...');
+        this.updateTrackPlayCountInUI(data.track.filePath);
+        this.ui.logBoth('success', '✅ Play count updated in library view');
+      }
+      
+      if (recentlyPlayedVisible) {
+        this.ui.logBoth('info', '🔄 Refreshing Recently Played view...');
+        await this.loadRecentlyPlayed();
+        this.ui.logBoth('success', '✅ Recently Played view refreshed');
+      }
+    });
+    
+    this.ui.logBoth('success', '✅ Playback listeners initialized for auto-refresh');
+  }
+  
+  updateTrackPlayCountInUI(filePath) {
+    // Get the updated play count from the Map (not from track object)
+    const playCount = this.playCountByPath.get(filePath) || 0;
+    
+    this.ui.logBoth('info', `   Retrieved play count from Map: ${playCount}`);
+    
+    // Find the track's index in the music library
+    const trackIndex = this.musicLibrary.findIndex(t => t.path === filePath);
+    if (trackIndex === -1) {
+      this.ui.logBoth('warning', `   Track not found in musicLibrary for path: ${filePath}`);
+      return;
+    }
+    
+    this.ui.logBoth('info', `   Track found at index ${trackIndex} in musicLibrary`);
+    
+    // Find the row in the DOM using data-index attribute
+    const tableBody = document.getElementById('musicTableBody');
+    if (!tableBody) {
+      this.ui.logBoth('warning', `   Table body not found`);
+      return;
+    }
+    
+    const row = tableBody.querySelector(`tr[data-index="${trackIndex}"]`);
+    if (row) {
+      this.ui.logBoth('info', `   ✓ Found matching row in DOM`);
+      
+      // Update the play count cell
+      const playCountCell = row.querySelector('.col-playcount .play-count');
+      if (playCountCell) {
+        const oldValue = playCountCell.textContent;
+        playCountCell.textContent = playCount;
+        this.ui.logBoth('success', `   ✅ Updated play count: ${oldValue} → ${playCount}`);
+      } else {
+        this.ui.logBoth('warning', `   Play count cell not found in row`);
+      }
+    } else {
+      this.ui.logBoth('warning', `   ⚠️ No row found with data-index="${trackIndex}"`);
+    }
   }
   
   setupScanProgressListener() {
@@ -1280,5 +1358,172 @@ class MusicLibrary {
         this.ui.logBoth('error', `Error deleting track: ${error.message}`);
       }
     }
+  }
+  
+  async loadRecentlyPlayed(limit = 50) {
+    try {
+      this.ui.logBoth('info', 'Loading recently played tracks...');
+      
+      const recentlyPlayedData = await window.electronAPI.invoke('songs-get-recently-played', limit);
+      
+      if (!recentlyPlayedData || recentlyPlayedData.length === 0) {
+        this.ui.logBoth('info', 'No recently played tracks found');
+        this.renderRecentlyPlayed([]);
+        return;
+      }
+      
+      // Map the database rows to track objects by matching with the music library
+      const recentTracks = recentlyPlayedData.map(row => {
+        const track = this.musicLibrary.find(t => t.path === row.file_path);
+        if (track) {
+          return {
+            ...track,
+            lastPlayed: row.last_played,
+            playCount: row.play_count || 0
+          };
+        }
+        return null;
+      }).filter(t => t !== null);
+      
+      this.ui.logBoth('success', `Loaded ${recentTracks.length} recently played tracks`);
+      this.renderRecentlyPlayed(recentTracks);
+      
+    } catch (error) {
+      this.ui.logBoth('error', `Failed to load recently played: ${error.message}`);
+      this.renderRecentlyPlayed([]);
+    }
+  }
+  
+  renderRecentlyPlayed(tracks) {
+    const tableBody = document.getElementById('recentlyPlayedTableBody');
+    const countElement = document.getElementById('recentlyPlayedCount');
+    
+    if (!tableBody) {
+      this.ui.logBoth('error', 'Recently played table body not found');
+      return;
+    }
+    
+    // Update count
+    if (countElement) {
+      countElement.textContent = `${tracks.length} ${tracks.length === 1 ? 'track' : 'tracks'}`;
+    }
+    
+    if (tracks.length === 0) {
+      tableBody.innerHTML = `
+        <tr>
+          <td colspan="7">
+            <div class="empty-state">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.3">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+              <h3>No recently played tracks</h3>
+              <p>Tracks you play will appear here</p>
+            </div>
+          </td>
+        </tr>
+      `;
+      return;
+    }
+    
+    // Render tracks
+    const tracksHTML = tracks.map((track, index) => {
+      let trackName = track.metadata?.common?.title || track.name || 'Unknown Track';
+      trackName = trackName.replace(/\.\w+$/, '');
+      trackName = trackName.replace(/^(\d{1,3}\.?\s*[-–—]?\s*)/, '');
+      
+      const artist = track.metadata?.common?.artist || 'Unknown Artist';
+      const album = track.metadata?.common?.album || 'Unknown Album';
+      const duration = track.metadata?.format?.duration ? this.formatTime(track.metadata.format.duration) : '--:--';
+      const playCount = track.playCount || 0;
+      
+      // Format last played time
+      let lastPlayedText = 'Never';
+      if (track.lastPlayed) {
+        const lastPlayedDate = new Date(track.lastPlayed * 1000);
+        const now = new Date();
+        const diffMs = now - lastPlayedDate;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+        
+        if (diffMins < 1) {
+          lastPlayedText = 'Just now';
+        } else if (diffMins < 60) {
+          lastPlayedText = `${diffMins}m ago`;
+        } else if (diffHours < 24) {
+          lastPlayedText = `${diffHours}h ago`;
+        } else if (diffDays < 7) {
+          lastPlayedText = `${diffDays}d ago`;
+        } else {
+          lastPlayedText = lastPlayedDate.toLocaleDateString();
+        }
+      }
+      
+      return `
+        <tr class="music-row" data-index="${index}">
+          <td><div class="track-name" title="${trackName}">${trackName}</div></td>
+          <td><div class="artist-name" title="${artist}">${artist}</div></td>
+          <td><div class="album-name" title="${album}">${album}</div></td>
+          <td class="col-duration"><div class="duration">${duration}</div></td>
+          <td class="col-last-played"><div class="last-played">${lastPlayedText}</div></td>
+          <td class="col-playcount"><div class="play-count">${playCount}</div></td>
+          <td>
+            <div class="track-actions">
+              <button class="action-btn primary play-recently-played-btn" data-index="${index}" title="Play Track">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                  <polygon points="5,3 19,12 5,21"></polygon>
+                </svg>
+              </button>
+              <button class="action-btn secondary add-to-queue-recently-played-btn" data-index="${index}" title="Add to Queue">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+    
+    tableBody.innerHTML = tracksHTML;
+    
+    // Add event listeners for play and add to queue buttons
+    this.setupRecentlyPlayedListeners(tracks);
+  }
+  
+  setupRecentlyPlayedListeners(tracks) {
+    const playButtons = document.querySelectorAll('.play-recently-played-btn');
+    const queueButtons = document.querySelectorAll('.add-to-queue-recently-played-btn');
+    
+    playButtons.forEach(button => {
+      button.addEventListener('click', async () => {
+        const index = parseInt(button.dataset.index);
+        const track = tracks[index];
+        if (track) {
+          // Set playback context for continuous playback
+          this.ui.audioPlayer.setPlaybackContext('recently-played', tracks, index);
+          await this.ui.audioPlayer.playTrack(track.path, track);
+        }
+      });
+    });
+    
+    queueButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const index = parseInt(button.dataset.index);
+        const track = tracks[index];
+        if (track) {
+          this.ui.audioPlayer.addToQueue(track);
+        }
+      });
+    });
+  }
+  
+  formatTime(seconds) {
+    if (!seconds || isNaN(seconds)) return '--:--';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   }
 }

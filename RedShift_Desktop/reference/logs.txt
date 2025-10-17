@@ -1,80 +1,63 @@
-## REDSHIFT MOBILE - TESTFLIGHT UPLOAD STATUS
-
-### What We've Accomplished:
-1. ✅ Created app record in App Store Connect (Bundle ID: `com.redshiftplayer.mobile`)
-2. ✅ Set up proper signing certificates and provisioning profiles (Team ID: `D4X8TSBQJC`)
-3. ✅ Successfully built and archived the iOS app
-4. ✅ Successfully exported the `.ipa` file
-5. ✅ Created all required app icon sizes (120x120, 180x180, 152x152, 167x167, 1024x1024)
-6. ✅ Updated `Info.plist` at `RedShiftMobile/Resources/Info.plist` with `CFBundleIconName` and icon configuration
-
-### The Problem:
-**The app icons are NOT being included in the final archive/bundle**, even though:
-- The PNG files exist at: `RedShiftMobile/RedShiftMobile/Assets.xcassets/AppIcon.appiconset/`
-- The `Contents.json` is correctly configured
-- The `Info.plist` has `CFBundleIconName` set to `AppIcon`
-
-### Validation Errors (Repeating):
-```
-1. Missing 120x120 icon for iPhone
-2. Missing 152x152 icon for iPad  
-3. Missing 1024x1024 App Store icon
-```
-
-### Root Cause (Likely):
-The `Assets.xcassets` folder may not be properly added to the Xcode target's "Copy Bundle Resources" build phase, OR the asset catalog isn't being compiled into the bundle.
-
-### Remaining Steps to Fix:
-
-1. **Open Xcode Project:**
-   ```bash
-   open /Users/strattenwaldt/Desktop/Projects/Personal\ Projects/Redshift/RedShiftMobile/RedShiftMobile.xcodeproj
-   ```
-
-2. **In Xcode - Verify Asset Catalog:**
-   - Click on the project in the navigator
-   - Select the **RedShiftMobile** target
-   - Go to **General** tab
-   - Under "App Icons and Launch Images", verify **App Icons Source** is set to `AppIcon`
-
-3. **Verify Build Phases:**
-   - Go to **Build Phases** tab
-   - Expand **"Copy Bundle Resources"**
-   - Ensure `Assets.xcassets` is listed there
-   - If not, click **+** and add it
-
-4. **Alternative: Check Asset Catalog in Project Settings:**
-   - Select **Build Settings** tab
-   - Search for `ASSETCATALOG_COMPILER_APPICON_NAME`
-   - Verify it's set to `AppIcon`
-
-5. **Clean and Rebuild:**
-   ```bash
-   cd /Users/strattenwaldt/Desktop/Projects/Personal\ Projects/Redshift/RedShiftMobile
-   xcodebuild clean -scheme RedShiftMobile
-   xcodebuild archive -scheme RedShiftMobile -configuration Release -archivePath ~/Desktop/RedShiftMobile.xcarchive -destination 'generic/platform=iOS' CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM=D4X8TSBQJC -allowProvisioningUpdates
-   xcodebuild -exportArchive -archivePath ~/Desktop/RedShiftMobile.xcarchive -exportPath ~/Desktop/RedShiftMobile_Export -exportOptionsPlist ~/Desktop/ExportOptions.plist
-   ```
-
-6. **Upload via Xcode Organizer:**
-   ```bash
-   open ~/Desktop/RedShiftMobile.xcarchive
-   ```
-   Then: Distribute App → App Store Connect → Upload
-
-### Key Files:
-- **Icons:** `RedShiftMobile/RedShiftMobile/Assets.xcassets/AppIcon.appiconset/*.png`
-- **Info.plist:** `RedShiftMobile/RedShiftMobile/Resources/Info.plist` (has CFBundleIconName)
-- **Export Options:** `~/Desktop/ExportOptions.plist` (method: app-store-connect, teamID: D4X8TSBQJC)
-- **Contents.json:** `RedShiftMobile/RedShiftMobile/Assets.xcassets/AppIcon.appiconset/Contents.json`
-
-### Icon Files That Exist:
-- AppIcon-120.png (120x120 - iPhone 2x)
-- AppIcon-180.png (180x180 - iPhone 3x)
-- AppIcon-152.png (152x152 - iPad 2x)
-- AppIcon-167.png (167x167 - iPad Pro)
-- AppIcon-1024.png (1024x1024 - App Store)
-
-### Next Steps:
-The fix is almost certainly in the Xcode project configuration. The asset catalog needs to be properly linked to the target, and the build settings need to reference it correctly. Once that's verified in Xcode GUI, the command-line build should work.
-
+5:10:59 PM [INFO] 🎵 Playing track: /Users/strattenwaldt/Music/Music/Media.localized/Music/Alan Walker/Different World/01 Intro.mp3
+5:10:59 PM [INFO] 🎵    Set currentTrack - path: SET, name: 01 Intro.mp3
+5:10:59 PM [INFO] 🎵 Updating track info UI: 01 Intro.mp3
+5:10:59 PM [INFO] 🎵 Updated track info: "Intro" by "Alan Walker"
+5:10:59 PM [INFO] 🎵 Updating track info UI: 05 Paul “Bunyan” Rosenberg - Paul.m4a
+5:10:59 PM [INFO] 🎵 Updated track info: "Paul" by "Paul “Bunyan” Rosenberg"
+5:10:59 PM [INFO] 🎵 Updating track info UI: 01 Intro.mp3
+5:10:59 PM [INFO] 🎵 Updated track info: "Intro" by "Alan Walker"
+5:10:59 PM [INFO] 🎵 Updating track info UI: 01 Intro.mp3
+5:10:59 PM [INFO] 🎵 Updated track info: "Intro" by "Alan Walker"
+5:10:59 PM [INFO] 🎵 Updating track info UI: 01 Intro.mp3
+5:10:59 PM [INFO] 🎵 Updated track info: "Intro" by "Alan Walker"
+5:10:59 PM [INFO] 🎵 Audio loading started
+5:10:59 PM [INFO] 🎵 Audio playback started
+5:10:59 PM [INFO] 🎵 Audio metadata loaded, duration: 1:16
+5:10:59 PM [INFO] 🎵 Audio ready to play
+5:10:59 PM [SUCCESS] 🎵 Track loaded and playing: 01 Intro.mp3
+5:10:59 PM [SUCCESS] 🎵 🎯 Double-click track loaded and playing: 01 Intro.mp3
+5:11:00 PM [INFO] 🎵 Seeking to: 1:11
+5:11:00 PM [INFO] 🎵 Audio ready to play
+5:11:05 PM [INFO] 🎵 Audio playback paused
+5:11:05 PM [SUCCESS] 🎵 🎵 Track finished playing: 01 Intro.mp3
+5:11:05 PM [INFO] 🎵 🎵 Track ended handler called for: 01 Intro.mp3
+5:11:05 PM [INFO] 🎵    Context: library: all tracks, Repeat: none
+5:11:05 PM [INFO] 🎵 📤 Sending track-ended notification to main process...
+[Songs] 📥 Received track-ended notification from renderer
+[Songs]    File: /Users/strattenwaldt/Music/Music/Media.localized/Music/Alan Walker/Different World/01 Intro.mp3
+[Songs] 🎵 Processing track ended: 01 Intro.mp3
+[Songs] ✅ Play count updated for 01 Intro.mp3: 3 → 4, last_played: 1760735465
+[Songs] ✅ Track ended processing complete for: 01 Intro.mp3
+5:11:05 PM [SUCCESS] 🎵 ✅ Main process confirmed play count update for: 01 Intro.mp3
+5:11:05 PM [INFO] 🎵 Auto-advancing to next track: 02 Lost Control (feat. SORANA).mp3
+5:11:05 PM [INFO] 🎵 Playing track: /Users/strattenwaldt/Music/Music/Media.localized/Music/Alan Walker/Different World/02 Lost Control (feat. SORANA).mp3
+5:11:05 PM [SUCCESS] 🎵 🔄 Track ended event received - triggering UI refresh
+5:11:05 PM [INFO] 🎵    Track: /Users/strattenwaldt/Music/Music/Media.localized/Music/Alan Walker/Different World/01 Intro.mp3
+5:11:05 PM [INFO] 🎵 📊 Reloading song metadata from database...
+5:11:05 PM [INFO] 🎵    Set currentTrack - path: SET, name: 02 Lost Control (feat. SORANA).mp3
+5:11:05 PM [INFO] 🎵 Updating track info UI: 02 Lost Control (feat. SORANA).mp3
+5:11:05 PM [INFO] 🎵 Updated track info: "Lost Control (feat. SORANA)" by "Alan Walker"
+5:11:05 PM [INFO] 🎵 Updating track info UI: 01 Intro.mp3
+5:11:05 PM [INFO] 🎵 Updated track info: "Intro" by "Alan Walker"
+5:11:05 PM [INFO] 🎵 Updating track info UI: 02 Lost Control (feat. SORANA).mp3
+5:11:05 PM [INFO] 🎵 Updated track info: "Lost Control (feat. SORANA)" by "Alan Walker"
+5:11:05 PM [INFO] 🎵 Updating track info UI: 02 Lost Control (feat. SORANA).mp3
+5:11:05 PM [INFO] 🎵 Updated track info: "Lost Control (feat. SORANA)" by "Alan Walker"
+5:11:05 PM [INFO] 🎵 Loaded song metadata for 421 songs
+5:11:05 PM [INFO] 🎵 🎵 Loaded metadata: 2 favorites, 2 ratings, 421 play counts
+5:11:05 PM [SUCCESS] 🎵 ✅ Song metadata reloaded
+5:11:05 PM [INFO] 🎵    Library tab visible: YES
+5:11:05 PM [INFO] 🎵    Recently Played tab visible: NO
+5:11:05 PM [INFO] 🎵 🔄 Updating play count for track in library view...
+5:11:05 PM [INFO] 🎵    Found track in library: 01 Intro.mp3, playCount: undefined
+5:11:05 PM [INFO] 🎵    Searching 419 rows for path: /Users/strattenwaldt/Music/Music/Media.localized/Music/Alan Walker/Different World/01 Intro.mp3
+5:11:05 PM [WARNING] 🎵    ⚠️ No matching row found for path: /Users/strattenwaldt/Music/Music/Media.localized/Music/Alan Walker/Different World/01 Intro.mp3
+5:11:05 PM [INFO] 🎵    First row path sample: N/A
+5:11:05 PM [SUCCESS] 🎵 ✅ Play count updated in library view
+5:11:05 PM [INFO] 🎵 Updating track info UI: 02 Lost Control (feat. SORANA).mp3
+5:11:05 PM [INFO] 🎵 Updated track info: "Lost Control (feat. SORANA)" by "Alan Walker"
+5:11:05 PM [INFO] 🎵 Audio loading started
+5:11:05 PM [INFO] 🎵 Audio playback started
+5:11:05 PM [INFO] 🎵 Audio metadata loaded, duration: 3:42
+5:11:05 PM [INFO] 🎵 Audio ready to play
+5:11:05 PM [SUCCESS] 🎵 Track loaded and playing: 02 Lost Control (feat. SORANA).mp3
