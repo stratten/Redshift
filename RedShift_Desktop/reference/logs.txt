@@ -1,63 +1,43 @@
-5:10:59 PM [INFO] 🎵 Playing track: /Users/strattenwaldt/Music/Music/Media.localized/Music/Alan Walker/Different World/01 Intro.mp3
-5:10:59 PM [INFO] 🎵    Set currentTrack - path: SET, name: 01 Intro.mp3
-5:10:59 PM [INFO] 🎵 Updating track info UI: 01 Intro.mp3
-5:10:59 PM [INFO] 🎵 Updated track info: "Intro" by "Alan Walker"
-5:10:59 PM [INFO] 🎵 Updating track info UI: 05 Paul “Bunyan” Rosenberg - Paul.m4a
-5:10:59 PM [INFO] 🎵 Updated track info: "Paul" by "Paul “Bunyan” Rosenberg"
-5:10:59 PM [INFO] 🎵 Updating track info UI: 01 Intro.mp3
-5:10:59 PM [INFO] 🎵 Updated track info: "Intro" by "Alan Walker"
-5:10:59 PM [INFO] 🎵 Updating track info UI: 01 Intro.mp3
-5:10:59 PM [INFO] 🎵 Updated track info: "Intro" by "Alan Walker"
-5:10:59 PM [INFO] 🎵 Updating track info UI: 01 Intro.mp3
-5:10:59 PM [INFO] 🎵 Updated track info: "Intro" by "Alan Walker"
-5:10:59 PM [INFO] 🎵 Audio loading started
-5:10:59 PM [INFO] 🎵 Audio playback started
-5:10:59 PM [INFO] 🎵 Audio metadata loaded, duration: 1:16
-5:10:59 PM [INFO] 🎵 Audio ready to play
-5:10:59 PM [SUCCESS] 🎵 Track loaded and playing: 01 Intro.mp3
-5:10:59 PM [SUCCESS] 🎵 🎯 Double-click track loaded and playing: 01 Intro.mp3
-5:11:00 PM [INFO] 🎵 Seeking to: 1:11
-5:11:00 PM [INFO] 🎵 Audio ready to play
-5:11:05 PM [INFO] 🎵 Audio playback paused
-5:11:05 PM [SUCCESS] 🎵 🎵 Track finished playing: 01 Intro.mp3
-5:11:05 PM [INFO] 🎵 🎵 Track ended handler called for: 01 Intro.mp3
-5:11:05 PM [INFO] 🎵    Context: library: all tracks, Repeat: none
-5:11:05 PM [INFO] 🎵 📤 Sending track-ended notification to main process...
-[Songs] 📥 Received track-ended notification from renderer
-[Songs]    File: /Users/strattenwaldt/Music/Music/Media.localized/Music/Alan Walker/Different World/01 Intro.mp3
-[Songs] 🎵 Processing track ended: 01 Intro.mp3
-[Songs] ✅ Play count updated for 01 Intro.mp3: 3 → 4, last_played: 1760735465
-[Songs] ✅ Track ended processing complete for: 01 Intro.mp3
-5:11:05 PM [SUCCESS] 🎵 ✅ Main process confirmed play count update for: 01 Intro.mp3
-5:11:05 PM [INFO] 🎵 Auto-advancing to next track: 02 Lost Control (feat. SORANA).mp3
-5:11:05 PM [INFO] 🎵 Playing track: /Users/strattenwaldt/Music/Music/Media.localized/Music/Alan Walker/Different World/02 Lost Control (feat. SORANA).mp3
-5:11:05 PM [SUCCESS] 🎵 🔄 Track ended event received - triggering UI refresh
-5:11:05 PM [INFO] 🎵    Track: /Users/strattenwaldt/Music/Music/Media.localized/Music/Alan Walker/Different World/01 Intro.mp3
-5:11:05 PM [INFO] 🎵 📊 Reloading song metadata from database...
-5:11:05 PM [INFO] 🎵    Set currentTrack - path: SET, name: 02 Lost Control (feat. SORANA).mp3
-5:11:05 PM [INFO] 🎵 Updating track info UI: 02 Lost Control (feat. SORANA).mp3
-5:11:05 PM [INFO] 🎵 Updated track info: "Lost Control (feat. SORANA)" by "Alan Walker"
-5:11:05 PM [INFO] 🎵 Updating track info UI: 01 Intro.mp3
-5:11:05 PM [INFO] 🎵 Updated track info: "Intro" by "Alan Walker"
-5:11:05 PM [INFO] 🎵 Updating track info UI: 02 Lost Control (feat. SORANA).mp3
-5:11:05 PM [INFO] 🎵 Updated track info: "Lost Control (feat. SORANA)" by "Alan Walker"
-5:11:05 PM [INFO] 🎵 Updating track info UI: 02 Lost Control (feat. SORANA).mp3
-5:11:05 PM [INFO] 🎵 Updated track info: "Lost Control (feat. SORANA)" by "Alan Walker"
-5:11:05 PM [INFO] 🎵 Loaded song metadata for 421 songs
-5:11:05 PM [INFO] 🎵 🎵 Loaded metadata: 2 favorites, 2 ratings, 421 play counts
-5:11:05 PM [SUCCESS] 🎵 ✅ Song metadata reloaded
-5:11:05 PM [INFO] 🎵    Library tab visible: YES
-5:11:05 PM [INFO] 🎵    Recently Played tab visible: NO
-5:11:05 PM [INFO] 🎵 🔄 Updating play count for track in library view...
-5:11:05 PM [INFO] 🎵    Found track in library: 01 Intro.mp3, playCount: undefined
-5:11:05 PM [INFO] 🎵    Searching 419 rows for path: /Users/strattenwaldt/Music/Music/Media.localized/Music/Alan Walker/Different World/01 Intro.mp3
-5:11:05 PM [WARNING] 🎵    ⚠️ No matching row found for path: /Users/strattenwaldt/Music/Music/Media.localized/Music/Alan Walker/Different World/01 Intro.mp3
-5:11:05 PM [INFO] 🎵    First row path sample: N/A
-5:11:05 PM [SUCCESS] 🎵 ✅ Play count updated in library view
-5:11:05 PM [INFO] 🎵 Updating track info UI: 02 Lost Control (feat. SORANA).mp3
-5:11:05 PM [INFO] 🎵 Updated track info: "Lost Control (feat. SORANA)" by "Alan Walker"
-5:11:05 PM [INFO] 🎵 Audio loading started
-5:11:05 PM [INFO] 🎵 Audio playback started
-5:11:05 PM [INFO] 🎵 Audio metadata loaded, duration: 3:42
-5:11:05 PM [INFO] 🎵 Audio ready to play
-5:11:05 PM [SUCCESS] 🎵 Track loaded and playing: 02 Lost Control (feat. SORANA).mp3
+}
+11:23:09 AM [INFO] 🎵 Media key listeners initialized
+11:23:09 AM [INFO] 🎵 Setting up HTML5 Audio element for playback
+11:23:09 AM [INFO] 🎵 🎛️ Loaded equalizer settings
+11:23:09 AM [SUCCESS] 🎵 🎛️ Equalizer initialized with 10 bands
+11:23:09 AM [INFO] 🎵 Setting up music player event listeners
+11:23:09 AM [INFO] 🎵 Music player event listeners setup complete
+11:23:09 AM [INFO] 🎵 Setting up Refresh Library button listener
+11:23:09 AM [INFO] 🎵 🎵 Setting up music table filters
+11:23:09 AM [INFO] 🎵 🎵 Music table filters setup complete
+11:23:09 AM [SUCCESS] 🎵 ✅ Playback listeners initialized for auto-refresh
+11:23:09 AM [INFO] 🎵 📱 Loading Doppler sync status...
+📱 Analyzing Doppler sync status...
+🎵 Starting smart music library scan...
+🔄 refreshDeviceStatus called, deviceFiles.size: 0
+⚠️  Skipping refresh - waiting for actual device scan to complete
+11:23:09 AM [INFO] 🎵 Loaded 2 playlists
+11:23:09 AM [INFO] 🎵 Music Library: /Users/strattenwaldt/Music
+🎵 Found 419 audio files in filesystem
+🎵 Found 419 files in cache
+🎵 File analysis:
+      - New files: 0
+      - Modified files: 0  
+      - Deleted files: 0
+      - Unchanged files: 419
+⚠️  Could not scan device files: Command failed: "/Users/strattenwaldt/Desktop/Projects/Personal Projects/Redshift/RedShift_Desktop/resources/python/python/bin/python3" "/Users/strattenwaldt/Desktop/Projects/Personal Projects/Redshift/RedShift_Desktop/scripts/list-device-files.py"
+
+📱 RedShift Mobile app not found on this device
+📡 AppBridge received device-scanned, forwarding to renderer: {
+  filesOnDevice: 0,
+  totalTracks: 0,
+  unsyncedTracks: 0,
+  appInstalled: false
+}
+📤 Sending to renderer: usb-device-scanned {
+  filesOnDevice: 0,
+  totalTracks: 0,
+  unsyncedTracks: 0,
+  appInstalled: false
+}
+🎵 Smart scan complete in 573ms:
+      - Total files: 419
+      - Processed: 0

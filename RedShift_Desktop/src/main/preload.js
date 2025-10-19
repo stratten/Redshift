@@ -40,6 +40,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
         'audio-clear-queue',
         'get-cache-stats',
         'clear-music-cache',
+        'update-track-metadata',
         'library-delete-track',
         // Playlist management
         'playlist-create',
@@ -69,6 +70,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'doppler-get-device',
       'doppler-forget-device',
       'doppler-sync-websocket',
+      // USB sync
+      'usb-sync-start',
+      'usb-sync-rescan',
+      'usb-sync-get-status',
+      'usb-sync-get-unsynced-tracks',
       // Songs persistence
       'songs-get-all-metadata',
       'songs-toggle-favorite',
@@ -153,7 +159,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'doppler-ws-file-completed',
       'doppler-ws-file-failed',
       'doppler-ws-sync-completed',
-      'doppler-ws-sync-error'
+      'doppler-ws-sync-error',
+      // USB sync events
+      'usb-device-scanned',
+      'usb-sync-started',
+      'usb-sync-progress',
+      'usb-sync-completed',
+      'usb-sync-failed'
     ];
     
     if (validChannels.includes(channel)) {
@@ -212,7 +224,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'doppler-ws-file-completed',
       'doppler-ws-file-failed',
       'doppler-ws-sync-completed',
-      'doppler-ws-sync-error'
+      'doppler-ws-sync-error',
+      // USB sync events
+      'usb-device-scanned',
+      'usb-sync-started',
+      'usb-sync-progress',
+      'usb-sync-completed',
+      'usb-sync-failed'
     ];
     
     if (validChannels.includes(channel)) {

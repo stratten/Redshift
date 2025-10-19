@@ -7,6 +7,7 @@ import SwiftUI
 struct RedShiftMobileApp: App {
     @StateObject private var audioPlayer = AudioPlayerService()
     @StateObject private var libraryManager = MusicLibraryManager()
+    @Environment(\.scenePhase) private var scenePhase
     
     init() {
         // Setup audio session for background playback
@@ -29,6 +30,13 @@ struct RedShiftMobileApp: App {
                         }
                     }
                 }
+        }
+        .onChange(of: scenePhase) { oldPhase, newPhase in
+            if newPhase == .background {
+                // Export sync status when app goes to background
+                print("📱 App entering background - exporting sync status...")
+                SyncStatusService.shared.exportOnBackground()
+            }
         }
     }
 }

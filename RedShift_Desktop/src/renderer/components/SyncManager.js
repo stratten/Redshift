@@ -66,17 +66,6 @@ class SyncManager {
     });
   }
   
-  updatePhoneStatus(connected, message) {
-    const statusDot = document.getElementById('phoneStatus');
-    const statusText = document.getElementById('phoneStatusText');
-    
-    statusDot.className = `status-dot ${connected ? 'connected' : 'disconnected'}`;
-    statusText.textContent = message;
-    
-    // Enable/disable sync button based on connection and files
-    this.updateSyncButtonState();
-  }
-  
   updateScanState(scanning) {
     this.isScanning = scanning;
     const scanBtn = document.getElementById('scanBtn');
@@ -100,11 +89,10 @@ class SyncManager {
   
   updateSyncButtonState() {
     const syncBtn = document.getElementById('syncBtn');
-    const phoneConnected = document.getElementById('phoneStatus').classList.contains('connected');
     
+    // Sync button is disabled during scanning/transferring or if no files to sync
     syncBtn.disabled = this.isScanning || 
                       this.isTransferring || 
-                      !phoneConnected || 
                       this.currentFiles.length === 0;
   }
   

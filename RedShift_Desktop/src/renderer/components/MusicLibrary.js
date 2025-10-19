@@ -1053,6 +1053,7 @@ class MusicLibrary {
         headerDuration = span;
       }
     }
+    const headerPlaycount = document.querySelector('th.col-playcount .column-header span');
     
     const attach = (el, field) => {
       if (!el) return;
@@ -1088,6 +1089,7 @@ class MusicLibrary {
     attach(headerArtist, 'artist');
     attach(headerAlbum, 'album');
     attach(headerDuration, 'duration');
+    attach(headerPlaycount, 'playcount');
     
     // Draw initial indicators
     this.updateSortIndicators();
@@ -1096,6 +1098,11 @@ class MusicLibrary {
   getSortValue(track, field) {
     if (field === 'duration') {
       return Number(track.metadata?.format?.duration || 0);
+    }
+    
+    if (field === 'playcount') {
+      // Play count is stored in the Map, not on the track object
+      return Number(this.playCountByPath.get(track.path) || 0);
     }
     
     // Derive display names similar to render logic
@@ -1136,14 +1143,15 @@ class MusicLibrary {
       case 'track': return document.querySelector('th.col-track .column-header span') || document.querySelector('th.col-track');
       case 'artist': return document.querySelector('th.col-artist .column-header span') || document.querySelector('th.col-artist');
       case 'album': return document.querySelector('th.col-album .column-header span') || document.querySelector('th.col-album');
-      case 'duration': return document.querySelector('th.col-duration');
+      case 'duration': return document.querySelector('th.col-duration .column-header span') || document.querySelector('th.col-duration');
+      case 'playcount': return document.querySelector('th.col-playcount .column-header span') || document.querySelector('th.col-playcount');
       default: return null;
     }
   }
   
   updateSortIndicators() {
     // Remove existing indicators
-    document.querySelectorAll('th.col-track, th.col-artist, th.col-album, th.col-duration')
+    document.querySelectorAll('th.col-track, th.col-artist, th.col-album, th.col-duration, th.col-playcount')
       .forEach(th => {
         th.removeAttribute('aria-sort');
         const existing = th.querySelector('.sort-indicator');
@@ -1162,7 +1170,6 @@ class MusicLibrary {
     const indicator = document.createElement('span');
     indicator.className = 'sort-indicator';
     indicator.textContent = dir === 'asc' ? '▲' : '▼';
-    indicator.style.marginRight = '6px';
     indicator.style.fontSize = '10px';
     indicator.style.color = '#6b7280';
     indicator.style.userSelect = 'none';
@@ -1176,6 +1183,11 @@ class MusicLibrary {
   }
 
   enterEditMode(cell, rowIndex) {
+    // Don't re-enter edit mode if already editing this cell
+    if (this.editingCell && this.editingCell.cell === cell) {
+      return;
+    }
+    
     if (this.editingCell) this.exitEditMode(false);
     
     const track = this.musicLibrary[rowIndex];
@@ -1184,7 +1196,8 @@ class MusicLibrary {
     const fieldType = cell.classList.contains('track-name') ? 'title' :
                      cell.classList.contains('artist-name') ? 'artist' : 'album';
     
-    const currentValue = cell.textContent;
+    const currentValue = cell.textContent.trim();
+    this.ui.logBoth('info', `📝 Edit mode: ${fieldType} = "${currentValue}"`);
     
     // Replace cell content with input
     const input = document.createElement('input');
@@ -1196,25 +1209,50 @@ class MusicLibrary {
     cell.textContent = '';
     cell.appendChild(input);
     input.focus();
+    input.select(); // Select all text for easy editing
     
     this.editingCell = { cell, input, fieldType, rowIndex, originalValue: currentValue };
     
+    // Log input value changes to terminal
+    input.addEventListener('input', () => {
+      this.ui.logBoth('info', `⌨️  Input changed to: "${input.value}"`);
+    });
+    
     // Save on blur or Enter
-    input.addEventListener('blur', () => this.exitEditMode(true));
+    // Capture the value at the moment of the event and pass it directly
+    input.addEventListener('blur', () => {
+      const valueAtBlur = input.value;
+      this.ui.logBoth('info', `👁️  Blur captured: "${valueAtBlur}"`);
+      setTimeout(() => this.exitEditMode(true, valueAtBlur), 10);
+    });
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
-        this.exitEditMode(true);
+        const valueAtEnter = e.target.value;
+        this.ui.logBoth('info', `⏎  Enter captured: "${valueAtEnter}"`);
+        e.preventDefault();
+        this.exitEditMode(true, valueAtEnter);
       } else if (e.key === 'Escape') {
+        e.preventDefault();
         this.exitEditMode(false);
       }
     });
   }
   
-  async exitEditMode(save) {
-    if (!this.editingCell) return;
+  async exitEditMode(save, capturedValue = null) {
+    if (!this.editingCell) {
+      return;
+    }
     
     const { cell, input, fieldType, rowIndex, originalValue } = this.editingCell;
-    const newValue = input.value.trim();
+    
+    // Use the captured value if provided, otherwise read from input
+    const rawValue = capturedValue !== null ? capturedValue : input.value;
+    const newValue = rawValue.trim();
+    
+    this.ui.logBoth('info', `📤 Exit edit: "${originalValue}" → "${newValue}" (${newValue !== originalValue ? 'CHANGED' : 'unchanged'})`);
+    
+    // Clear editing state FIRST to prevent re-entry
+    this.editingCell = null;
     
     // Restore display
     cell.textContent = save && newValue ? newValue : originalValue;
@@ -1240,8 +1278,6 @@ class MusicLibrary {
         }
       }
     }
-    
-    this.editingCell = null;
   }
   
   showContextMenu(x, y, track, index) {

@@ -310,6 +310,9 @@
     align-items: flex-start;
 }
 
+/* Center-aligned columns: Duration, Plays, Favorite */
+.col-duration .column-header,
+.col-playcount .column-header,
 .col-favourite .column-header,
 .col-rating .column-header {
     align-items: center;
@@ -336,6 +339,9 @@
 }
 
 .column-header span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
     font-size: 10px;
     font-weight: 600;
     color: #6b7280;

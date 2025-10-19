@@ -16,6 +16,7 @@ class DeviceMonitorService {
     this.currentPollingRate = 3000; // Current polling rate in ms
     this.FAST_POLL_RATE = 3000; // Poll every 3s when no device connected (for quick detection)
     this.SLOW_POLL_RATE = 10000; // Poll every 10s when device is connected (just for disconnection)
+    this.syncInProgress = false; // Flag to pause device monitoring during sync
     
     console.log('📱 DeviceMonitorService constructor called');
     console.log('   USB module available:', !!usb);
@@ -187,6 +188,11 @@ class DeviceMonitorService {
    * Adjust polling rate based on device connection state
    */
   adjustPollingRate() {
+    // Skip adjustment if we're in the middle of a sync operation
+    if (this.syncInProgress) {
+      return; // Don't mess with device status during active sync
+    }
+    
     const hasDevices = this.connectedDevices.size > 0;
     const newRate = hasDevices ? this.SLOW_POLL_RATE : this.FAST_POLL_RATE;
     
@@ -233,6 +239,9 @@ class DeviceMonitorService {
         
         // Emit events based on device type
         if (deviceInfo.isIOS) {
+          // Try to get the actual device name asynchronously
+          this.fetchActualDeviceName(deviceKey, idProduct, deviceInfo.type);
+          
           this.eventEmitter.emit('phone-connected', { 
             deviceId: idProduct,
             deviceName: deviceInfo.name,
@@ -356,59 +365,53 @@ class DeviceMonitorService {
   
   /**
    * Get device information from product ID
-   * Try to query actual device info via ideviceinfo for accurate detection
+   * Use ideviceinfo to get ACTUAL device type (iPhone vs iPad)
    */
   getDeviceInfo(productId) {
-    // Try to get actual device info from ideviceinfo command
+    // Always use ideviceinfo for accurate detection - USB product IDs are unreliable
     try {
       const { execSync } = require('child_process');
-      const output = execSync('ideviceinfo -k DeviceClass -k ProductType', { 
+      const output = execSync('ideviceinfo -k DeviceClass -k ProductType -k DeviceName', { 
         encoding: 'utf8', 
-        timeout: 2000 
+        timeout: 5000,
+        stdio: ['pipe', 'pipe', 'ignore'] // Suppress stderr
       });
       
       const lines = output.trim().split('\n');
       let deviceClass = null;
       let productType = null;
+      let deviceName = null;
       
       for (const line of lines) {
-        if (line.startsWith('DeviceClass:')) {
+        if (line.includes('DeviceClass:')) {
           deviceClass = line.split(':')[1].trim();
-        } else if (line.startsWith('ProductType:')) {
+        } else if (line.includes('ProductType:')) {
           productType = line.split(':')[1].trim();
+        } else if (line.includes('DeviceName:')) {
+          deviceName = line.split(':')[1].trim();
         }
       }
       
-      // DeviceClass is the most accurate: "iPhone", "iPad", "iPod", "Watch", etc.
+      // DeviceClass is the most accurate: "iPhone", "iPad", "iPod", etc.
       if (deviceClass) {
+        console.log(`✅ Device detected via ideviceinfo: ${deviceClass} (${productType || 'unknown model'})`);
         return {
-          name: productType || deviceClass,
-          type: deviceClass,
+          name: deviceName || productType || deviceClass,
+          type: deviceClass, // This is the correct type directly from iOS
           isIOS: ['iPhone', 'iPad', 'iPod'].includes(deviceClass)
         };
       }
     } catch (e) {
-      // Fall back to product ID lookup if ideviceinfo fails
-      console.log('⚠️  ideviceinfo failed, falling back to USB product ID lookup');
+      console.error('❌ ideviceinfo failed:', e.message);
+      console.error('   Device may be locked or not trusted');
     }
     
-    // Fallback: Use product ID lookup
-    const deviceName = this.IOS_DEVICE_PRODUCT_IDS[productId];
-    
-    if (deviceName) {
-      const type = deviceName.includes('iPad') ? 'iPad' : 'iPhone';
-      return {
-        name: deviceName,
-        type: type,
-        isIOS: true
-      };
-    }
-    
-    // Unknown Apple device
+    // Last resort: Generic iOS device
+    // Don't guess iPhone vs iPad - we don't know
     return {
-      name: `Apple Device (0x${productId.toString(16)})`,
-      type: 'Unknown',
-      isIOS: false
+      name: 'iOS Device',
+      type: 'iOS Device',
+      isIOS: true
     };
   }
   
@@ -424,13 +427,72 @@ class DeviceMonitorService {
    */
   hasConnectedIOSDevice() {
     for (const device of this.connectedDevices.values()) {
-      if (device.deviceType === 'iPhone' || device.deviceType === 'iPad') {
+      if (device.deviceType === 'iPhone' || 
+          device.deviceType === 'iPad' || 
+          device.deviceType === 'iOS Device') {
         return true;
       }
     }
     return false;
   }
   
+  /**
+   * Pause monitoring during sync operations
+   */
+  pauseForSync() {
+    this.syncInProgress = true;
+    console.log('   ⏸️  Device monitoring paused for sync operation');
+  }
+
+  /**
+   * Resume monitoring after sync
+   */
+  resumeAfterSync() {
+    this.syncInProgress = false;
+    console.log('   ▶️  Device monitoring resumed');
+  }
+
+  /**
+   * Fetch the actual device name from the iOS device
+   */
+  async fetchActualDeviceName(deviceKey, deviceId, deviceType) {
+    try {
+      const { exec } = require('child_process');
+      const { promisify } = require('util');
+      const path = require('path');
+      const execAsync = promisify(exec);
+      
+      const scriptPath = path.join(__dirname, '../../../scripts/get-device-name.py');
+      const pythonPath = path.join(__dirname, '../../../resources/python/python/bin/python3');
+      
+      const { stdout } = await execAsync(`"${pythonPath}" "${scriptPath}"`);
+      const result = JSON.parse(stdout);
+      
+      if (result.success && result.name) {
+        console.log(`  📱 Device name retrieved: ${result.name}`);
+        
+        // Update the stored device info
+        const deviceInfo = this.connectedDevices.get(deviceKey);
+        if (deviceInfo) {
+          deviceInfo.deviceName = result.name;
+          deviceInfo.deviceModel = result.model;
+          this.connectedDevices.set(deviceKey, deviceInfo);
+          
+          // Emit updated connection event
+          this.eventEmitter.emit('phone-connected', {
+            deviceId: deviceId,
+            deviceName: result.name,
+            deviceType: deviceType,
+            deviceModel: result.model
+          });
+        }
+      }
+    } catch (error) {
+      console.log(`  ⚠️  Could not fetch device name: ${error.message}`);
+      // Not a critical error, continue with generic name
+    }
+  }
+
   /**
    * Get monitoring status
    */

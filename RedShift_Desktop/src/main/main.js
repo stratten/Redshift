@@ -19,6 +19,7 @@ const MusicLibraryCache = require('./services/MusicLibraryCache');
 const PlaylistService = require('./services/PlaylistService');
 const WindowManager = require('./services/WindowManager');
 const MediaKeysService = require('./services/MediaKeysService');
+const RedShiftUSBSyncService = require('./services/RedShiftUSBSyncService');
 const { registerIpc, attachEventForwarders } = require('./services/AppBridge');
 const { initializeDatabase } = require('./services/Database');
 const FileWatcher = require('./services/FileWatcher');
@@ -45,6 +46,7 @@ class RedshiftSyncManager extends EventEmitter {
     this.musicLibraryCache = null;
     this.playlistService = null;
     this.mediaKeysService = null;
+    this.redshiftUSBSyncService = null;
     this.ipcHandlersSetup = false;
     
     // Paths
@@ -161,6 +163,9 @@ class RedshiftSyncManager extends EventEmitter {
     // Initialize media keys service
     this.mediaKeysService = new MediaKeysService(this);
     
+    // Initialize USB sync service
+    this.redshiftUSBSyncService = new RedShiftUSBSyncService(this.db, this.musicLibraryCache, this.deviceMonitorService);
+    
     // Set up event listeners for services via consolidated bridge
     attachEventForwarders(this);
     
@@ -268,7 +273,10 @@ class RedshiftSyncManager extends EventEmitter {
   
   sendToRenderer(channel, data = null) {
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      console.log(`📤 Sending to renderer: ${channel}`, data);
       this.mainWindow.webContents.send(channel, data);
+    } else {
+      console.warn(`⚠️  Cannot send ${channel} - window not ready or destroyed`);
     }
   }
   
@@ -293,6 +301,16 @@ class RedshiftSyncManager extends EventEmitter {
       registerIpc(ipcMain, this);
       this.ipcHandlersSetup = true;
     }
+    
+    // When renderer is ready, refresh device status if device is connected
+    this.mainWindow.webContents.on('did-finish-load', () => {
+      if (this.redshiftUSBSyncService) {
+        // Small delay to ensure renderer listeners are set up
+        setTimeout(() => {
+          this.redshiftUSBSyncService.refreshDeviceStatus();
+        }, 100);
+      }
+    });
   }
   
   setupIPCHandlers() { /* replaced by AppBridge.registerIpc */ }

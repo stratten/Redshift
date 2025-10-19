@@ -43,9 +43,28 @@ function attachEventForwarders(manager) {
   // DeviceMonitorService events
   if (manager.deviceMonitorService && manager.deviceMonitorService.eventEmitter) {
     const de = manager.deviceMonitorService.eventEmitter;
-    de.on('phone-connected', (data) => manager.sendToRenderer('phone-connected', data));
-    de.on('phone-disconnected', (data) => manager.sendToRenderer('phone-disconnected', data));
+    de.on('phone-connected', (data) => {
+      console.log('📡 DeviceMonitor phone-connected event:', data);
+      manager.sendToRenderer('phone-connected', data);
+    });
+    de.on('phone-disconnected', (data) => {
+      console.log('📡 DeviceMonitor phone-disconnected event:', data);
+      manager.sendToRenderer('phone-disconnected', data);
+    });
     de.on('log', (data) => manager.sendToRenderer('log', data));
+  }
+
+  // RedShiftUSBSyncService events
+  if (manager.redshiftUSBSyncService) {
+    const usb = manager.redshiftUSBSyncService;
+    usb.on('sync-started', () => manager.sendToRenderer('usb-sync-started'));
+    usb.on('sync-progress', (data) => manager.sendToRenderer('usb-sync-progress', data));
+    usb.on('sync-completed', (data) => manager.sendToRenderer('usb-sync-completed', data));
+    usb.on('sync-failed', (error) => manager.sendToRenderer('usb-sync-failed', error));
+    usb.on('device-scanned', (data) => {
+      console.log('📡 AppBridge received device-scanned, forwarding to renderer:', data);
+      manager.sendToRenderer('usb-device-scanned', data);
+    });
   }
 
   // AudioPlayerService events
@@ -189,6 +208,19 @@ function registerIpc(ipcMain, manager) {
   // Cache
   ipcMain.handle('get-cache-stats', h(async () => manager.musicLibraryCache.getCacheStats()));
   ipcMain.handle('clear-music-cache', async () => { await manager.musicLibraryCache.clearCache(); return true; });
+  
+  // Metadata editing - writes to actual audio files
+  ipcMain.handle('update-track-metadata', async (event, filePath, updates) => {
+    try {
+      await waitReady();
+      const libraryPath = manager.settings.musicLibraryPath || manager.masterLibraryPath;
+      const result = await manager.musicLibraryCache.updateFileMetadata(filePath, updates, libraryPath);
+      return result;
+    } catch (error) {
+      console.error('❌ Failed to update track metadata:', error);
+      throw error;
+    }
+  });
   ipcMain.handle('library-delete-track', async (event, filePath) => {
     try {
       const fs = require('fs-extra');
@@ -594,6 +626,107 @@ function registerIpc(ipcMain, manager) {
       }
       
       throw error;
+    }
+  });
+
+  // ============================================================================
+  // REDSHIFT USB SYNC IPC HANDLERS
+  // ============================================================================
+
+  /**
+   * Start USB sync with connected iPhone
+   */
+  ipcMain.handle('usb-sync-start', async () => {
+    try {
+      await waitReady();
+      
+      if (!manager.redshiftUSBSyncService) {
+        throw new Error('USB sync service not initialized');
+      }
+      
+      await manager.redshiftUSBSyncService.sync();
+      
+      return { success: true };
+    } catch (error) {
+      console.error('❌ USB sync failed:', error);
+      throw error;
+    }
+  });
+
+  /**
+   * Manually rescan connected device
+   */
+  ipcMain.handle('usb-sync-rescan', async () => {
+    console.log('🔄 IPC handler: usb-sync-rescan called');
+    try {
+      await waitReady();
+      console.log('🔄 Manager ready, checking service...');
+      
+      if (!manager.redshiftUSBSyncService) {
+        console.error('❌ USB sync service not initialized');
+        throw new Error('USB sync service not initialized');
+      }
+      
+      console.log('🔄 Calling scanDeviceFiles()...');
+      await manager.redshiftUSBSyncService.scanDeviceFiles();
+      console.log('🔄 scanDeviceFiles() completed');
+      
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Device rescan failed:', error);
+      throw error;
+    }
+  });
+
+  /**
+   * Get list of unsynced tracks
+   */
+  ipcMain.handle('usb-sync-get-unsynced-tracks', async () => {
+    try {
+      await waitReady();
+      
+      if (!manager.redshiftUSBSyncService) {
+        return [];
+      }
+      
+      const unsyncedTracks = await manager.redshiftUSBSyncService.getUnsyncedTracks();
+      return unsyncedTracks;
+    } catch (error) {
+      console.error('❌ Failed to get unsynced tracks:', error);
+      return [];
+    }
+  });
+
+  /**
+   * Get USB sync status
+   */
+  ipcMain.handle('usb-sync-get-status', async () => {
+    console.log('📱 IPC handler: usb-sync-get-status called');
+    try {
+      await waitReady();
+      
+      if (!manager.redshiftUSBSyncService) {
+        console.log('⚠️  USB sync service not available');
+        return { available: false };
+      }
+      
+      const syncStatus = manager.redshiftUSBSyncService.getStatus();
+      const deviceStatus = manager.deviceMonitorService.getStatus();
+      
+      console.log('📱 Device status from monitor:', deviceStatus);
+      
+      const result = {
+        available: true,
+        isConnected: deviceStatus.hasIOSDevice,
+        connectedDevices: deviceStatus.connectedDevices,
+        ...syncStatus
+      };
+      
+      console.log('📱 Returning status:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ Failed to get USB sync status:', error);
+      return { available: false, error: error.message };
     }
   });
 }
