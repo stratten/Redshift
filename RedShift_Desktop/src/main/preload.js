@@ -75,6 +75,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'usb-sync-rescan',
       'usb-sync-get-status',
       'usb-sync-get-unsynced-tracks',
+      // Artist images
+      'save-artist-image',
+      'load-artist-image-cache',
       // Songs persistence
       'songs-get-all-metadata',
       'songs-toggle-favorite',

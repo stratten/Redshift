@@ -6,6 +6,7 @@ class RedshiftSyncUI {
     this.audioPlayer = new AudioPlayer(this);
     this.musicLibrary = new MusicLibrary(this);
     this.artistsView = new ArtistsView(this);
+    this.albumsView = new AlbumsView(this);
     this.syncManager = new SyncManager(this);
     this.settingsManager = new SettingsManager(this);
     this.playlistManager = new PlaylistManager(this);
@@ -44,6 +45,9 @@ class RedshiftSyncUI {
     
     // Initialize Artists view
     this.artistsView.initialize();
+    
+    // Initialize Albums view
+    this.albumsView.initialize();
 
     // Initialize column resizing for music table once DOM is ready
     setTimeout(() => this.setupColumnResizing(), 0);
@@ -119,6 +123,11 @@ class RedshiftSyncUI {
             // Refresh artists view with current library data
             if (this.musicLibrary && this.musicLibrary.musicLibrary) {
               this.artistsView.refresh(this.musicLibrary.musicLibrary);
+            }
+          } else if (subtabId === 'albums') {
+            // Refresh albums view with current library data
+            if (this.musicLibrary && this.musicLibrary.musicLibrary) {
+              this.albumsView.refresh(this.musicLibrary.musicLibrary);
             }
           }
         });
