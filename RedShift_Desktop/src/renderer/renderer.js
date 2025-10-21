@@ -5,6 +5,7 @@ class RedshiftSyncUI {
     // Initialize components
     this.audioPlayer = new AudioPlayer(this);
     this.musicLibrary = new MusicLibrary(this);
+    this.artistsView = new ArtistsView(this);
     this.syncManager = new SyncManager(this);
     this.settingsManager = new SettingsManager(this);
     this.playlistManager = new PlaylistManager(this);
@@ -40,6 +41,9 @@ class RedshiftSyncUI {
     
     // Load settings and auto-scan music library
     this.initializeMusicLibrary();
+    
+    // Initialize Artists view
+    this.artistsView.initialize();
 
     // Initialize column resizing for music table once DOM is ready
     setTimeout(() => this.setupColumnResizing(), 0);
@@ -111,26 +115,31 @@ class RedshiftSyncUI {
             // Playlists are automatically loaded by PlaylistManager
           } else if (subtabId === 'recentlyPlayed') {
             this.musicLibrary.loadRecentlyPlayed();
+          } else if (subtabId === 'artists') {
+            // Refresh artists view with current library data
+            if (this.musicLibrary && this.musicLibrary.musicLibrary) {
+              this.artistsView.refresh(this.musicLibrary.musicLibrary);
+            }
           }
         });
       });
     }
   
   setupEventListeners() {
-    // USB Sync button
-    const usbSyncBtn = document.getElementById('usbSyncBtn');
-    if (usbSyncBtn) {
-      usbSyncBtn.addEventListener('click', async () => {
-        await this.startUSBSync();
-      });
-    }
+    // Scan for Devices buttons (header and empty state)
+    const scanDevicesBtn = document.getElementById('scanDevicesBtn');
+    const scanDevicesBtnEmpty = document.getElementById('scanDevicesBtnEmpty');
     
-    // Rescan Device button
-    const rescanDeviceBtn = document.getElementById('rescanDeviceBtn');
-    if (rescanDeviceBtn) {
-      rescanDeviceBtn.addEventListener('click', async () => {
-        await this.rescanDevice();
-      });
+    const scanHandler = async () => {
+      this.logBoth('info', 'Scanning for connected devices...');
+      await this.checkUSBDeviceStatus();
+    };
+    
+    if (scanDevicesBtn) {
+      scanDevicesBtn.addEventListener('click', scanHandler);
+    }
+    if (scanDevicesBtnEmpty) {
+      scanDevicesBtnEmpty.addEventListener('click', scanHandler);
     }
   }
   
@@ -201,79 +210,55 @@ class RedshiftSyncUI {
     
     // USB Sync events
     window.electronAPI.on('usb-device-scanned', (data) => {
-      console.log('📡 Renderer received usb-device-scanned event:', data);
-      const filesOnDevice = data.filesOnDevice || 0;
-      const totalTracks = data.totalTracks || 0;
-      const unsyncedTracks = data.unsyncedTracks || 0;
-      const appInstalled = data.appInstalled !== false; // Default to true if not specified
+      this.logBoth('info', `📡 Device scanned: ${data.deviceName || 'iOS Device'}`);
+      this.logBoth('info', `   Device ID: ${data.deviceId}`);
+      this.logBoth('info', `   App Installed: ${data.appInstalled}`);
+      this.logBoth('info', `   Files: ${data.filesOnDevice}/${data.totalTracks}`);
       
-      const statusSubtext = document.getElementById('usbSyncDeviceSubtext');
-      const syncBtn = document.getElementById('usbSyncBtn');
+      // Use the actual device ID from the event (convert to string to be safe)
+      const deviceId = String(data.deviceId || 'unknown');
+      const deviceData = {
+        deviceName: data.deviceName || 'iOS Device',
+        deviceType: data.deviceType || 'iOS Device',
+        deviceModel: data.deviceModel || '',
+        totalTracks: data.totalTracks || 0,
+        syncedTracks: data.filesOnDevice || 0,
+        unsyncedTracks: data.unsyncedTracks || 0,
+        appInstalled: data.appInstalled !== false
+      };
       
-      if (!appInstalled) {
-        // App not installed - disable sync and hide dashboard stats
-        this.logBoth('warning', '📱 RedShift Mobile app not found on this device');
-        if (statusSubtext) {
-          statusSubtext.textContent = 'RedShift Mobile app not installed on this device';
-          statusSubtext.style.color = '#e67e22'; // Orange warning color
-        }
-        if (syncBtn) {
-          syncBtn.disabled = true;
-        }
-        
-        // Hide USB sync dashboard
-        this.hideUSBSyncDashboard();
-      } else {
-        // App installed - show stats and enable sync
-        this.logBoth('info', `📱 Device scanned: ${filesOnDevice} of ${totalTracks} songs on device (${unsyncedTracks} to sync)`);
-        
-        if (statusSubtext) {
-          const statusText = `${filesOnDevice} of ${totalTracks} songs • ${unsyncedTracks} to sync`;
-          console.log('📝 Updating statusSubtext to:', statusText);
-          statusSubtext.textContent = statusText;
-          statusSubtext.style.color = ''; // Reset to default color
-        }
-        if (syncBtn) {
-          syncBtn.disabled = false;
-        }
-        
-        // Update USB sync dashboard
-        this.updateUSBSyncDashboard(filesOnDevice, totalTracks, unsyncedTracks);
-      }
+      this.addOrUpdateDevice(deviceId, deviceData);
     });
     
     window.electronAPI.on('usb-sync-started', () => {
       this.logBoth('info', '🔄 USB sync started...');
+      this.showDeviceProgress('primary', 0, 'Preparing to sync...');
     });
     
     window.electronAPI.on('usb-sync-progress', (data) => {
-      const progressDiv = document.getElementById('usbSyncProgress');
-      const progressFill = document.getElementById('usbSyncProgressFill');
-      const progressText = document.getElementById('usbSyncProgressText');
+      const deviceId = data.deviceId || 'primary';
+      const percent = Math.round((data.current / data.total) * 100);
       
-      if (progressDiv && progressFill && progressText) {
-        progressDiv.style.display = 'block';
-        const percent = Math.round((data.current / data.total) * 100);
-        progressFill.style.width = `${percent}%`;
-        
-        if (data.status === 'starting') {
-          const alreadyOnDevice = data.alreadyOnDevice || 0;
-          if (alreadyOnDevice > 0) {
-            progressText.textContent = `${alreadyOnDevice} already on device, syncing ${data.total} new/changed tracks...`;
-          } else {
-            progressText.textContent = `Preparing to sync ${data.total} tracks...`;
-          }
+      let statusText = '';
+      if (data.status === 'starting') {
+        const alreadyOnDevice = data.alreadyOnDevice || 0;
+        if (alreadyOnDevice > 0) {
+          statusText = `${alreadyOnDevice} already on device, syncing ${data.total} new/changed tracks...`;
         } else {
-          const transferred = data.transferred || 0;
-          const failed = data.failed || 0;
-          const skipped = data.skipped || 0;
-          const statusEmoji = data.status === 'copied' ? '✅' : data.status === 'skipped' ? '⏭️' : '❌';
-          progressText.textContent = `${statusEmoji} [${data.current}/${data.total}] ${transferred} sent • ${skipped} skipped • ${failed} failed`;
+          statusText = `Preparing to sync ${data.total} tracks...`;
         }
+      } else {
+        const transferred = data.transferred || 0;
+        const failed = data.failed || 0;
+        const skipped = data.skipped || 0;
+        statusText = `[${data.current}/${data.total}] ${transferred} sent • ${skipped} skipped • ${failed} failed`;
       }
+      
+      this.updateDeviceProgress(deviceId, percent, statusText);
     });
     
     window.electronAPI.on('usb-sync-completed', (data) => {
+      const deviceId = data.deviceId || 'primary';
       const transferred = data.transferred || 0;
       const skipped = data.skipped || 0;
       const failed = data.failed || 0;
@@ -281,24 +266,21 @@ class RedshiftSyncUI {
       
       this.logBoth('success', `✅ USB sync completed: ${transferred} transferred, ${skipped} skipped, ${failed} failed (${total} total)`);
       
-      const progressText = document.getElementById('usbSyncProgressText');
-      const progressFill = document.getElementById('usbSyncProgressFill');
-      if (progressText && progressFill) {
-        progressFill.style.width = '100%';
-        progressText.textContent = `✅ Complete: ${transferred} files synced to device`;
-      }
+      this.updateDeviceProgress(deviceId, 100, `✅ Complete: ${transferred} files synced to device`);
       
       setTimeout(() => {
-        const progressDiv = document.getElementById('usbSyncProgress');
-        if (progressDiv) progressDiv.style.display = 'none';
+        this.hideDeviceProgress(deviceId);
+        // Rescan the device to update stats
+        window.electronAPI.invoke('usb-sync-rescan');
       }, 3000);
     });
     
     window.electronAPI.on('usb-sync-failed', (error) => {
+      const deviceId = error.deviceId || 'primary';
       this.logBoth('error', `❌ USB sync failed: ${error.message || error}`);
+      this.updateDeviceProgress(deviceId, 0, `❌ Sync failed: ${error.message || error}`);
       setTimeout(() => {
-        const progressDiv = document.getElementById('usbSyncProgress');
-        if (progressDiv) progressDiv.style.display = 'none';
+        this.hideDeviceProgress(deviceId);
       }, 3000);
     });
     
@@ -453,6 +435,11 @@ class RedshiftSyncUI {
   
   addLog(type, message) {
     const logArea = document.getElementById('logArea');
+    if (!logArea) {
+      // Log area removed from UI, skip DOM logging
+      return;
+    }
+    
     const time = new Date().toLocaleTimeString();
     
     const logEntry = document.createElement('div');
@@ -632,23 +619,215 @@ class RedshiftSyncUI {
     }
   }
 
-  updateUSBSyncDeviceStatus(connected, deviceName = '') {
-    const statusText = document.getElementById('usbSyncDeviceText');
-    const statusSubtext = document.getElementById('usbSyncDeviceSubtext');
-    const syncBtn = document.getElementById('usbSyncBtn');
+  // Device Cards Management
+  connectedDevices = new Map(); // Store device data by UDID or identifier
 
-    if (connected) {
-      statusText.textContent = `${deviceName} connected`;
-      // Only update subtext if it doesn't already have comprehensive stats
-      if (!statusSubtext.textContent.includes('songs •')) {
-        statusSubtext.textContent = 'Scanning device...';
+  createDeviceCard(deviceId, deviceData) {
+    this.logBoth('info', `🎨 Creating device card for: ${deviceId}`);
+    this.logBoth('info', `   deviceData received: ${JSON.stringify(deviceData)}`);
+    
+    const card = document.createElement('div');
+    card.className = 'device-card';
+    card.id = `device-card-${deviceId}`;
+    card.dataset.deviceId = deviceId;
+    
+    const { deviceName = 'iOS Device', totalTracks = 0, syncedTracks = 0, unsyncedTracks = 0, appInstalled = true } = deviceData;
+    
+    this.logBoth('info', `   Using deviceName: ${deviceName}`);
+    
+    card.innerHTML = `
+      <div class="device-card-header">
+        <div class="device-card-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#5a67d8" stroke-width="2">
+            <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+            <line x1="12" y1="18" x2="12.01" y2="18"></line>
+          </svg>
+        </div>
+        <div class="device-card-info">
+          <h3 class="device-card-name">${deviceName}</h3>
+          <p class="device-card-status">${appInstalled ? 'RedShift Mobile installed' : 'RedShift Mobile not found'}</p>
+        </div>
+      </div>
+      
+      <div class="device-card-stats">
+        <div class="device-stat">
+          <div class="device-stat-value">${totalTracks}</div>
+          <div class="device-stat-label">Total</div>
+        </div>
+        <div class="device-stat">
+          <div class="device-stat-value">${syncedTracks}</div>
+          <div class="device-stat-label">Synced</div>
+        </div>
+        <div class="device-stat">
+          <div class="device-stat-value">${unsyncedTracks}</div>
+          <div class="device-stat-label">Remaining</div>
+        </div>
+      </div>
+      
+      <div class="device-card-actions">
+        <button class="btn btn-primary device-sync-btn" data-device-id="${deviceId}" ${!appInstalled ? 'disabled' : ''}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 4v6h6"></path>
+            <path d="M23 20v-6h-6"></path>
+            <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10"></path>
+            <path d="M3.51 15a9 9 0 0 0 14.85 4.36L23 14"></path>
+          </svg>
+          Sync
+        </button>
+        <button class="btn btn-secondary device-rescan-btn" data-device-id="${deviceId}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+          Rescan
+        </button>
+      </div>
+      
+      <div class="device-card-progress" style="display: none;">
+        <div class="device-progress-bar">
+          <div class="device-progress-fill" style="width: 0%;"></div>
+        </div>
+        <p class="device-progress-text">Preparing sync...</p>
+      </div>
+    `;
+    
+    // Add event listeners
+    const syncBtn = card.querySelector('.device-sync-btn');
+    const rescanBtn = card.querySelector('.device-rescan-btn');
+    
+    syncBtn.addEventListener('click', () => this.startDeviceSync(deviceId));
+    rescanBtn.addEventListener('click', () => this.rescanDevice(deviceId));
+    
+    return card;
+  }
+
+  updateDevicesContainer() {
+    const container = document.getElementById('connectedDevicesContainer');
+    if (!container) return;
+    
+    const emptyState = container.querySelector('.empty-devices-state');
+    
+    if (this.connectedDevices.size === 0) {
+      // Show empty state
+      if (emptyState) {
+        emptyState.style.display = 'block';
       }
-      syncBtn.disabled = false;
+      // Remove all device cards
+      container.querySelectorAll('.device-card').forEach(card => card.remove());
     } else {
-      statusText.textContent = 'No device connected';
-      statusSubtext.textContent = 'Plug in your iPhone via USB to sync music';
-      syncBtn.disabled = true;
+      // Hide empty state
+      if (emptyState) {
+        emptyState.style.display = 'none';
+      }
+      
+      // Update or create device cards
+      this.connectedDevices.forEach((deviceData, deviceId) => {
+        let card = document.getElementById(`device-card-${deviceId}`);
+        if (!card) {
+          card = this.createDeviceCard(deviceId, deviceData);
+          container.appendChild(card);
+        } else {
+          this.updateDeviceCard(deviceId, deviceData);
+        }
+      });
     }
+  }
+
+  updateDeviceCard(deviceId, deviceData) {
+    const card = document.getElementById(`device-card-${deviceId}`);
+    if (!card) return;
+    
+    const { totalTracks = 0, syncedTracks = 0, unsyncedTracks = 0, appInstalled = true } = deviceData;
+    
+    // Update stats
+    const stats = card.querySelectorAll('.device-stat-value');
+    if (stats[0]) stats[0].textContent = totalTracks;
+    if (stats[1]) stats[1].textContent = syncedTracks;
+    if (stats[2]) stats[2].textContent = unsyncedTracks;
+    
+    // Update status
+    const status = card.querySelector('.device-card-status');
+    if (status) {
+      status.textContent = appInstalled ? 'RedShift Mobile installed' : 'RedShift Mobile not found';
+    }
+    
+    // Update sync button
+    const syncBtn = card.querySelector('.device-sync-btn');
+    if (syncBtn) {
+      syncBtn.disabled = !appInstalled;
+    }
+  }
+
+  addOrUpdateDevice(deviceId, deviceData) {
+    this.connectedDevices.set(deviceId, deviceData);
+    this.updateDevicesContainer();
+  }
+
+  removeDevice(deviceId) {
+    this.connectedDevices.delete(deviceId);
+    const card = document.getElementById(`device-card-${deviceId}`);
+    if (card) {
+      card.remove();
+    }
+    this.updateDevicesContainer();
+  }
+
+  startDeviceSync(deviceId) {
+    this.logBoth('info', `Starting sync for device: ${deviceId}`);
+    // TODO: Implement device-specific sync
+    window.electronAPI.invoke('usb-sync-start');
+  }
+
+  async rescanDevice(deviceId) {
+    this.logBoth('info', `Rescanning device: ${deviceId}`);
+    try {
+      await window.electronAPI.invoke('usb-sync-rescan');
+    } catch (error) {
+      this.logBoth('error', `Failed to rescan device: ${error.message}`);
+    }
+  }
+
+  showDeviceProgress(deviceId, percent = 0, text = '') {
+    const card = document.getElementById(`device-card-${deviceId}`);
+    if (!card) return;
+    
+    const progressDiv = card.querySelector('.device-card-progress');
+    if (progressDiv) {
+      progressDiv.style.display = 'block';
+    }
+    
+    this.updateDeviceProgress(deviceId, percent, text);
+  }
+
+  updateDeviceProgress(deviceId, percent, text) {
+    const card = document.getElementById(`device-card-${deviceId}`);
+    if (!card) return;
+    
+    const progressFill = card.querySelector('.device-progress-fill');
+    const progressText = card.querySelector('.device-progress-text');
+    
+    if (progressFill) {
+      progressFill.style.width = `${percent}%`;
+    }
+    if (progressText) {
+      progressText.textContent = text;
+    }
+  }
+
+  hideDeviceProgress(deviceId) {
+    const card = document.getElementById(`device-card-${deviceId}`);
+    if (!card) return;
+    
+    const progressDiv = card.querySelector('.device-card-progress');
+    if (progressDiv) {
+        progressDiv.style.display = 'none';
+    }
+  }
+
+  updateUSBSyncDeviceStatus(connected, deviceName = '') {
+    // Legacy method - deprecated, device cards are now created via usb-device-scanned events
+    // This method is no longer used but kept for compatibility
   }
 
   async checkUSBDeviceStatus() {

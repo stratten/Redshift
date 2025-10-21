@@ -1,43 +1,154 @@
+📱 Skipping duplicate file: Fever Ray - Shiver (Ivory IT Remix).mp3 (matches existing hash)
+📱 Sync Status: 419 local, 228 synced, 190 new, 100 orphaned
+3:05:07 PM [SUCCESS] 🎵 📱 Sync status loaded: 419 local, 228 synced, 190 new
+  ✨ New iOS Device detected: 1452:4776
+📱 Scanning 2 connected device(s)...
+🔍 Scanning device 4779 (iPad Pro 12.9-inch (5th gen, WiFi))...
+  📱 Querying productId 4779 via UDID 00008103...
+📡 DeviceMonitor phone-connected event: { deviceId: 4776, deviceName: 'iOS Device', deviceType: 'iOS Device' }
+📤 Sending to renderer: phone-connected { deviceId: 4776, deviceName: 'iOS Device', deviceType: 'iOS Device' }
+📤 Sending to renderer: log { type: 'success', message: 'iOS Device detected via USB' }
+📤 Sending to renderer: log { type: 'success', message: 'iOS Device detected via USB' }
+  📱 Found 4 device UDID(s)
+  📱 Device 1: iPhone 15 Pro Max (00008130...)
+🔍 Scanning device 4779 (iPhone 15 Pro Max)...
+  📱 Querying productId 4779 via UDID 00008130...
+📡 DeviceMonitor phone-connected event: {
+  deviceId: 4779,
+  productId: 4779,
+  deviceName: 'iPhone 15 Pro Max',
+  deviceType: 'iOS Device',
+  deviceModel: 'iPhone16,2',
+  udid: '00008130-000E78D021E0001C'
 }
-11:23:09 AM [INFO] 🎵 Media key listeners initialized
-11:23:09 AM [INFO] 🎵 Setting up HTML5 Audio element for playback
-11:23:09 AM [INFO] 🎵 🎛️ Loaded equalizer settings
-11:23:09 AM [SUCCESS] 🎵 🎛️ Equalizer initialized with 10 bands
-11:23:09 AM [INFO] 🎵 Setting up music player event listeners
-11:23:09 AM [INFO] 🎵 Music player event listeners setup complete
-11:23:09 AM [INFO] 🎵 Setting up Refresh Library button listener
-11:23:09 AM [INFO] 🎵 🎵 Setting up music table filters
-11:23:09 AM [INFO] 🎵 🎵 Music table filters setup complete
-11:23:09 AM [SUCCESS] 🎵 ✅ Playback listeners initialized for auto-refresh
-11:23:09 AM [INFO] 🎵 📱 Loading Doppler sync status...
-📱 Analyzing Doppler sync status...
-🎵 Starting smart music library scan...
-🔄 refreshDeviceStatus called, deviceFiles.size: 0
-⚠️  Skipping refresh - waiting for actual device scan to complete
-11:23:09 AM [INFO] 🎵 Loaded 2 playlists
-11:23:09 AM [INFO] 🎵 Music Library: /Users/strattenwaldt/Music
-🎵 Found 419 audio files in filesystem
-🎵 Found 419 files in cache
-🎵 File analysis:
-      - New files: 0
-      - Modified files: 0  
-      - Deleted files: 0
-      - Unchanged files: 419
-⚠️  Could not scan device files: Command failed: "/Users/strattenwaldt/Desktop/Projects/Personal Projects/Redshift/RedShift_Desktop/resources/python/python/bin/python3" "/Users/strattenwaldt/Desktop/Projects/Personal Projects/Redshift/RedShift_Desktop/scripts/list-device-files.py"
+📤 Sending to renderer: phone-connected {
+  deviceId: 4779,
+  productId: 4779,
+  deviceName: 'iPhone 15 Pro Max',
+  deviceType: 'iOS Device',
+  deviceModel: 'iPhone16,2',
+  udid: '00008130-000E78D021E0001C'
+}
+⚠️  Could not scan device 4779: Command failed: "/Users/strattenwaldt/Desktop/Projects/Personal Projects/Redshift/RedShift_Desktop/resources/python/python/bin/python3" "/Users/strattenwaldt/Desktop/Projects/Personal Projects/Redshift/RedShift_Desktop/scripts/list-device-files.py" "00008103-000C519C2EC3001E"
 
-📱 RedShift Mobile app not found on this device
+📱 RedShift Mobile app not found on device 4779
 📡 AppBridge received device-scanned, forwarding to renderer: {
+  deviceId: '4779',
+  deviceName: 'iPhone 15 Pro Max',
+  deviceType: 'iOS Device',
+  deviceModel: 'iPhone16,2',
   filesOnDevice: 0,
   totalTracks: 0,
   unsyncedTracks: 0,
   appInstalled: false
 }
 📤 Sending to renderer: usb-device-scanned {
+  deviceId: '4779',
+  deviceName: 'iPhone 15 Pro Max',
+  deviceType: 'iOS Device',
+  deviceModel: 'iPhone16,2',
   filesOnDevice: 0,
   totalTracks: 0,
   unsyncedTracks: 0,
   appInstalled: false
 }
-🎵 Smart scan complete in 573ms:
-      - Total files: 419
-      - Processed: 0
+🔍 Scanning device 4776 (iOS Device)...
+  📱 Querying productId 4776 via default connection
+3:05:20 PM [INFO] 🎵 📡 Device scanned: iPhone 15 Pro Max
+3:05:20 PM [INFO] 🎵    Device ID: 4779
+3:05:20 PM [INFO] 🎵    App Installed: false
+3:05:20 PM [INFO] 🎵    Files: 0/0
+  📱 Device 2: iPhone 15 Pro Max (00008130...)
+🔍 Scanning device 4776 (iPhone 15 Pro Max)...
+  📱 Querying productId 4776 via UDID 00008130...
+📡 DeviceMonitor phone-connected event: {
+  deviceId: 4776,
+  productId: 4776,
+  deviceName: 'iPhone 15 Pro Max',
+  deviceType: 'iOS Device',
+  deviceModel: 'iPhone16,2',
+  udid: '00008130-000E78D021E0001C'
+}
+📤 Sending to renderer: phone-connected {
+  deviceId: 4776,
+  productId: 4776,
+  deviceName: 'iPhone 15 Pro Max',
+  deviceType: 'iOS Device',
+  deviceModel: 'iPhone16,2',
+  udid: '00008130-000E78D021E0001C'
+}
+📱 Found 416 files on device 4779
+📱 Found 416 files on device 4776
+📱 Found 416 files on device 4776
+📡 Emitting device-scanned event for device 4779: {
+  deviceId: '4779',
+  deviceName: 'iPhone 15 Pro Max',
+  deviceType: 'iOS Device',
+  deviceModel: 'iPhone16,2',
+  filesOnDevice: 416,
+  totalTracks: 419,
+  unsyncedTracks: 3,
+  appInstalled: true
+}
+📡 AppBridge received device-scanned, forwarding to renderer: {
+  deviceId: '4779',
+  deviceName: 'iPhone 15 Pro Max',
+  deviceType: 'iOS Device',
+  deviceModel: 'iPhone16,2',
+  filesOnDevice: 416,
+  totalTracks: 419,
+  unsyncedTracks: 3,
+  appInstalled: true
+}
+📤 Sending to renderer: usb-device-scanned {
+  deviceId: '4779',
+  deviceName: 'iPhone 15 Pro Max',
+  deviceType: 'iOS Device',
+  deviceModel: 'iPhone16,2',
+  filesOnDevice: 416,
+  totalTracks: 419,
+  unsyncedTracks: 3,
+  appInstalled: true
+}
+3:05:22 PM [INFO] 🎵 📡 Device scanned: iPhone 15 Pro Max
+3:05:22 PM [INFO] 🎵    Device ID: 4779
+3:05:22 PM [INFO] 🎵    App Installed: true
+3:05:22 PM [INFO] 🎵    Files: 416/419
+📡 Emitting device-scanned event for device 4776: {
+  deviceId: '4776',
+  deviceName: 'iPhone 15 Pro Max',
+  deviceType: 'iOS Device',
+  deviceModel: 'iPhone16,2',
+  filesOnDevice: 416,
+  totalTracks: 419,
+  unsyncedTracks: 3,
+  appInstalled: true
+}
+📡 AppBridge received device-scanned, forwarding to renderer: {
+  deviceId: '4776',
+  deviceName: 'iPhone 15 Pro Max',
+  deviceType: 'iOS Device',
+  deviceModel: 'iPhone16,2',
+  filesOnDevice: 416,
+  totalTracks: 419,
+  unsyncedTracks: 3,
+  appInstalled: true
+}
+📤 Sending to renderer: usb-device-scanned {
+  deviceId: '4776',
+  deviceName: 'iPhone 15 Pro Max',
+  deviceType: 'iOS Device',
+  deviceModel: 'iPhone16,2',
+  filesOnDevice: 416,
+  totalTracks: 419,
+  unsyncedTracks: 3,
+  appInstalled: true
+}
+3:05:23 PM [INFO] 🎵 📡 Device scanned: iPhone 15 Pro Max
+3:05:23 PM [INFO] 🎵    Device ID: 4776
+3:05:23 PM [INFO] 🎵    App Installed: true
+3:05:23 PM [INFO] 🎵    Files: 416/419
+3:05:23 PM [INFO] 🎵 🎨 Creating device card for: 4776
+3:05:23 PM [INFO] 🎵    deviceData received: {"deviceName":"iPhone 15 Pro Max","deviceType":"iOS Device","deviceModel":"iPhone16,2","totalTracks":419,"syncedTracks":416,"unsyncedTracks":3,"appInstalled":true}
+3:05:23 PM [INFO] 🎵    Using deviceName: iPhone 15 Pro Max
+📡 Skipping duplicate device-scanned event for device 4776

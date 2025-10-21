@@ -234,7 +234,8 @@ class DeviceMonitorService {
           productId: idProduct,
           deviceType: deviceInfo.type,
           deviceName: deviceInfo.name,
-          connectedAt: Date.now()
+          connectedAt: Date.now(),
+          udid: null // Will be fetched asynchronously
         });
         
         // Emit events based on device type
@@ -455,7 +456,36 @@ class DeviceMonitorService {
   /**
    * Fetch the actual device name from the iOS device
    */
-  async fetchActualDeviceName(deviceKey, deviceId, deviceType) {
+  /**
+   * Fetch UDIDs for all connected devices
+   */
+  async fetchAllUDIDs() {
+    try {
+      const { exec } = require('child_process');
+      const { promisify } = require('util');
+      const path = require('path');
+      const execAsync = promisify(exec);
+      
+      const scriptPath = path.join(__dirname, '../../../scripts/get-device-udids.py');
+      const pythonPath = path.join(__dirname, '../../../resources/python/python/bin/python3');
+      
+      const { stdout } = await execAsync(`"${pythonPath}" "${scriptPath}"`);
+      const result = JSON.parse(stdout);
+      
+      if (result.success && result.devices) {
+        return result.devices.map(d => d.udid);
+      }
+      return [];
+    } catch (error) {
+      console.error('  ⚠️  Error fetching UDIDs:', error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Fetch device info for a specific UDID
+   */
+  async fetchDeviceInfoByUDID(udid) {
     try {
       const { exec } = require('child_process');
       const { promisify } = require('util');
@@ -465,31 +495,75 @@ class DeviceMonitorService {
       const scriptPath = path.join(__dirname, '../../../scripts/get-device-name.py');
       const pythonPath = path.join(__dirname, '../../../resources/python/python/bin/python3');
       
-      const { stdout } = await execAsync(`"${pythonPath}" "${scriptPath}"`);
+      const { stdout } = await execAsync(`"${pythonPath}" "${scriptPath}" "${udid}"`);
       const result = JSON.parse(stdout);
       
-      if (result.success && result.name) {
-        console.log(`  📱 Device name retrieved: ${result.name}`);
+      if (result.success) {
+        return {
+          name: result.name,
+          model: result.model,
+          udid: result.udid
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error(`  ⚠️  Error fetching info for UDID ${udid}:`, error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Fetch device names for all connected iOS devices
+   * Maps UDIDs to tracked devices
+   */
+  async fetchActualDeviceName(deviceKey, deviceId, deviceType) {
+    try {
+      // Get all UDIDs
+      const udids = await this.fetchAllUDIDs();
+      
+      if (udids.length === 0) {
+        console.log('  ⚠️  No UDIDs found, using fallback name');
+        return;
+      }
+      
+      // Deduplicate UDIDs (pymobiledevice3 returns multiple connections per device)
+      const uniqueUDIDs = [...new Set(udids)];
+      console.log(`  📱 Found ${uniqueUDIDs.length} unique device UDID(s) (from ${udids.length} total connections)`);
+      
+      // Fetch info for each unique UDID and assign to devices
+      let deviceIndex = 0;
+      const deviceEntries = Array.from(this.connectedDevices.entries());
+      
+      for (const udid of uniqueUDIDs) {
+        const deviceInfo = await this.fetchDeviceInfoByUDID(udid);
         
-        // Update the stored device info
-        const deviceInfo = this.connectedDevices.get(deviceKey);
-        if (deviceInfo) {
-          deviceInfo.deviceName = result.name;
-          deviceInfo.deviceModel = result.model;
-          this.connectedDevices.set(deviceKey, deviceInfo);
+        if (deviceInfo && deviceIndex < deviceEntries.length) {
+          const [key, device] = deviceEntries[deviceIndex];
           
-          // Emit updated connection event
+          console.log(`  📱 Device ${deviceIndex + 1}: ${deviceInfo.name} (${udid.substr(0, 8)}...)`);
+          
+          // Update device with UDID and actual name
+          device.deviceName = deviceInfo.name;
+          device.deviceModel = deviceInfo.model;
+          device.udid = deviceInfo.udid;
+          this.connectedDevices.set(key, device);
+          
+          // Emit updated event with full info
+          const productId = key.split(':')[1];
           this.eventEmitter.emit('phone-connected', {
-            deviceId: deviceId,
-            deviceName: result.name,
-            deviceType: deviceType,
-            deviceModel: result.model
+            deviceId: parseInt(productId),
+            productId: parseInt(productId),
+            deviceName: deviceInfo.name,
+            deviceType: device.deviceType,
+            deviceModel: deviceInfo.model,
+            udid: deviceInfo.udid
           });
+          
+          deviceIndex++;
         }
       }
     } catch (error) {
-      console.log(`  ⚠️  Could not fetch device name: ${error.message}`);
-      // Not a critical error, continue with generic name
+      console.log(`  ⚠️  Could not fetch device names: ${error.message}`);
     }
   }
 

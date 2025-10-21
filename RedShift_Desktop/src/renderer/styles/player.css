@@ -42,6 +42,14 @@
     align-items: center;
 }
 
+.header-center-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    justify-content: center;
+    -webkit-app-region: no-drag;
+}
+
 .header-right {
     display: flex;
     justify-content: flex-end;

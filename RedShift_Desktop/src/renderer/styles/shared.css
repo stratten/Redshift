@@ -72,6 +72,143 @@
     margin-bottom: 30px;
 }
 
+/* Devices Container */
+.devices-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: 20px;
+}
+
+/* Empty Devices State */
+.empty-devices-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    background: white;
+    border-radius: 12px;
+    border: 2px dashed #e2e8f0;
+}
+
+.empty-devices-state svg {
+    color: #cbd5e0;
+    margin-bottom: 16px;
+}
+
+.empty-devices-state h3 {
+    margin: 0 0 8px 0;
+    color: #4a5568;
+    font-size: 18px;
+}
+
+.empty-devices-state p {
+    margin: 0;
+    color: #a0aec0;
+    font-size: 14px;
+}
+
+/* Device Card */
+.device-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+}
+
+.device-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.device-card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #f7fafc;
+}
+
+.device-card-icon {
+    flex-shrink: 0;
+}
+
+.device-card-info {
+    flex: 1;
+}
+
+.device-card-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #2d3748;
+    margin: 0 0 4px 0;
+}
+
+.device-card-status {
+    font-size: 13px;
+    color: #718096;
+    margin: 0;
+}
+
+.device-card-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.device-stat {
+    text-align: center;
+    padding: 12px 8px;
+    background: #f7fafc;
+    border-radius: 8px;
+}
+
+.device-stat-value {
+    font-size: 20px;
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 4px;
+}
+
+.device-stat-label {
+    font-size: 11px;
+    color: #718096;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.device-card-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.device-card-progress {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #f7fafc;
+}
+
+.device-progress-bar {
+    height: 6px;
+    background: #e2e8f0;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.device-progress-fill {
+    height: 100%;
+    background: #5a67d8;
+    transition: width 0.3s ease;
+}
+
+.device-progress-text {
+    font-size: 13px;
+    color: #718096;
+    margin: 0;
+}
+
 /* Stat Cards */
 .stat-card {
     background: white;

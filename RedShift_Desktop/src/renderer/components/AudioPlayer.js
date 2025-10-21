@@ -38,6 +38,9 @@ class AudioPlayer {
     // Initialize equalizer component (Web Audio API)
     this.equalizer = new AudioPlayerEqualizer(this);
     
+    // Initialize output device component
+    this.outputDevice = new AudioPlayerOutputDevice(this);
+    
     // Initialize playback manager component
     this.playback = new AudioPlayerPlayback(this);
     
@@ -54,9 +57,13 @@ class AudioPlayer {
     
     this.setupEventListeners();
     this.setupEqualizerListeners();
+    this.outputDevice.setupEventListeners();
 
     // Keyboard shortcuts (playback, seek, volume, modes)
     this.setupKeyboardShortcuts();
+    
+    // Initialize output device selection
+    this.outputDevice.initialize();
   }
   
   setupAudioElement() {

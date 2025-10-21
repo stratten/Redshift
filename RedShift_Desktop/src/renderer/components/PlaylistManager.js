@@ -907,7 +907,7 @@ class PlaylistManager {
 }
 
 // Add path module for filename operations
-const path = require ? require('path') : {
+const path = (typeof require !== 'undefined') ? require('path') : {
   basename: (filePath, ext) => {
     const name = filePath.split('/').pop();
     return ext ? name.replace(ext, '') : name;

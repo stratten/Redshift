@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-List files in RedShift Mobile app's Documents/Music folder
+List files in RedShift Mobile app's Documents/Music folder on a specific device
 """
 import sys
 import json
@@ -9,15 +9,26 @@ import os
 try:
     from pymobiledevice3.lockdown import create_using_usbmux
     from pymobiledevice3.services.afc import AfcService, AfcShell
+    from pymobiledevice3.usbmux import list_devices
 except ImportError as e:
     print(json.dumps([]))
     sys.exit(0)
 
-def list_app_files(bundle_id, remote_path):
-    """List files in app's specified path"""
+def list_app_files(bundle_id, remote_path, udid=None):
+    """List files in app's specified path
+    
+    Args:
+        bundle_id: App bundle identifier
+        remote_path: Path within the app container
+        udid: Optional device UDID. If None, uses first device.
+    """
     try:
-        # Connect to device
-        lockdown = create_using_usbmux()
+        # Connect to specific device if UDID provided
+        if udid:
+            lockdown = create_using_usbmux(serial=udid)
+        else:
+            # Connect to first available device (legacy behavior)
+            lockdown = create_using_usbmux()
         
         # Create AFC service for the app's container
         afc = AfcService(lockdown=lockdown, service_name='com.apple.afc')
@@ -69,5 +80,9 @@ def list_app_files(bundle_id, remote_path):
 if __name__ == '__main__':
     bundle_id = 'com.redshiftplayer.mobile'
     remote_path = 'Documents/Music'
-    sys.exit(list_app_files(bundle_id, remote_path))
+    
+    # Check if UDID was passed as argument
+    udid_arg = sys.argv[1] if len(sys.argv) > 1 else None
+    
+    sys.exit(list_app_files(bundle_id, remote_path, udid_arg))
 
