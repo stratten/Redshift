@@ -307,7 +307,7 @@ class RedshiftSyncUI {
         deviceType: data.deviceType || 'iOS Device',
         deviceModel: data.deviceModel || '',
         totalTracks: data.totalTracks || 0,
-        syncedTracks: data.filesOnDevice || 0,
+        filesOnDevice: data.filesOnDevice || 0,
         unsyncedTracks: data.unsyncedTracks || 0,
         appInstalled: data.appInstalled !== false
       };
@@ -367,6 +367,24 @@ class RedshiftSyncUI {
       setTimeout(() => {
         this.hideDeviceProgress(deviceId);
       }, 3000);
+    });
+    
+    // Device scan progress
+    window.electronAPI.on('device-scan-progress', (data) => {
+      if (data.deviceId === this.currentScanningDevice) {
+        const card = document.getElementById(`device-card-${data.deviceId}`);
+        if (!card) return;
+        
+        const scanMusicBtn = card.querySelector('.device-scan-music-btn');
+        if (scanMusicBtn) {
+          scanMusicBtn.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 12a9 9 0 11-6.219-8.56"/>
+            </svg>
+            ${data.percent}% (${data.current}/${data.total})
+          `;
+        }
+      }
     });
     
     // Log messages
@@ -716,7 +734,7 @@ class RedshiftSyncUI {
     card.id = `device-card-${deviceId}`;
     card.dataset.deviceId = deviceId;
     
-    const { deviceName = 'iOS Device', totalTracks = 0, syncedTracks = 0, unsyncedTracks = 0, appInstalled = true } = deviceData;
+    const { deviceName = 'iOS Device', totalTracks = 0, filesOnDevice = 0, unsyncedTracks = 0, appInstalled = true } = deviceData;
     
     this.logBoth('info', `   Using deviceName: ${deviceName}`);
     
@@ -737,15 +755,23 @@ class RedshiftSyncUI {
       <div class="device-card-stats">
         <div class="device-stat">
           <div class="device-stat-value">${totalTracks}</div>
-          <div class="device-stat-label">Total</div>
+          <div class="device-stat-label">Total Tracks</div>
         </div>
         <div class="device-stat">
-          <div class="device-stat-value">${syncedTracks}</div>
-          <div class="device-stat-label">Synced</div>
+          <div class="device-stat-value">${filesOnDevice}</div>
+          <div class="device-stat-label">On Device</div>
         </div>
         <div class="device-stat">
           <div class="device-stat-value">${unsyncedTracks}</div>
-          <div class="device-stat-label">Remaining</div>
+          <div class="device-stat-label">To Sync</div>
+        </div>
+        <div class="device-stat device-music-stat" style="display: none;">
+          <div class="device-stat-value" id="deviceMusicCount-${deviceId}">-</div>
+          <div class="device-stat-label">On Device</div>
+        </div>
+        <div class="device-stat device-import-stat" style="display: none;">
+          <div class="device-stat-value" id="deviceImportCount-${deviceId}">-</div>
+          <div class="device-stat-label">Not in Library</div>
         </div>
       </div>
       
@@ -757,7 +783,22 @@ class RedshiftSyncUI {
             <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10"></path>
             <path d="M3.51 15a9 9 0 0 0 14.85 4.36L23 14"></path>
           </svg>
-          Sync
+          Push to Device
+        </button>
+        <button class="btn btn-secondary device-scan-music-btn" data-device-id="${deviceId}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.35-4.35"></path>
+          </svg>
+          Scan Device Music
+        </button>
+        <button class="btn btn-success device-import-btn" data-device-id="${deviceId}" style="display: none;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          Import from Device
         </button>
         <button class="btn btn-secondary device-rescan-btn" data-device-id="${deviceId}">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -765,7 +806,7 @@ class RedshiftSyncUI {
             <polyline points="1 20 1 14 7 14"></polyline>
             <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
           </svg>
-          Rescan
+          Rescan App
         </button>
       </div>
       
@@ -779,12 +820,96 @@ class RedshiftSyncUI {
     
     // Add event listeners
     const syncBtn = card.querySelector('.device-sync-btn');
+    const scanMusicBtn = card.querySelector('.device-scan-music-btn');
+    const importBtn = card.querySelector('.device-import-btn');
     const rescanBtn = card.querySelector('.device-rescan-btn');
     
     syncBtn.addEventListener('click', () => this.startDeviceSync(deviceId));
+    scanMusicBtn.addEventListener('click', () => this.scanDeviceMusic(deviceId));
+    importBtn.addEventListener('click', () => this.importFromDevice(deviceId));
     rescanBtn.addEventListener('click', () => this.rescanDevice(deviceId));
     
     return card;
+  }
+  
+  async scanDeviceMusic(deviceId) {
+    this.logBoth('info', `🎵 Scanning device music library for: ${deviceId}`);
+    
+    const card = document.getElementById(`device-card-${deviceId}`);
+    if (!card) return;
+    
+    const scanMusicBtn = card.querySelector('.device-scan-music-btn');
+    const originalText = scanMusicBtn.innerHTML;
+    
+    try {
+      // Show scanning status
+      scanMusicBtn.disabled = true;
+      scanMusicBtn.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12a9 9 0 11-6.219-8.56"/>
+        </svg>
+        Scanning...
+      `;
+      
+      // Store the device ID for progress updates
+      this.currentScanningDevice = deviceId;
+      
+      const result = await window.electronAPI.invoke('scan-device-music-library', { deviceId });
+      
+      if (result.success) {
+        this.logBoth('success', `✅ Found ${result.totalOnDevice} music files on device, ${result.notInLibrary} not in library`);
+        
+        // Update stats
+        const musicCountEl = document.getElementById(`deviceMusicCount-${deviceId}`);
+        const importCountEl = document.getElementById(`deviceImportCount-${deviceId}`);
+        const musicStatEl = card.querySelector('.device-music-stat');
+        const importStatEl = card.querySelector('.device-import-stat');
+        const importBtn = card.querySelector('.device-import-btn');
+        
+        if (musicCountEl) {
+          musicCountEl.textContent = result.totalOnDevice;
+          musicStatEl.style.display = 'block';
+        }
+        
+        if (importCountEl) {
+          importCountEl.textContent = result.notInLibrary;
+          importStatEl.style.display = 'block';
+        }
+        
+        // Show import button if there are files to import
+        if (result.notInLibrary > 0 && importBtn) {
+          importBtn.style.display = 'inline-flex';
+        }
+      } else {
+        this.logBoth('error', `❌ Failed to scan device music: ${result.error}`);
+      }
+    } catch (error) {
+      this.logBoth('error', `❌ Error scanning device music: ${error.message}`);
+    } finally {
+      // Restore button
+      scanMusicBtn.disabled = false;
+      scanMusicBtn.innerHTML = originalText;
+    }
+  }
+  
+  async importFromDevice(deviceId) {
+    this.logBoth('info', `📥 Starting import from device: ${deviceId}`);
+    
+    try {
+      const result = await window.electronAPI.invoke('import-from-device', { deviceId });
+      
+      if (result.success) {
+        this.logBoth('success', `✅ Import complete: ${result.copied} files copied, ${result.skipped} skipped, ${result.errors} errors`);
+        
+        // Rescan library to pick up new files
+        this.logBoth('info', '🔄 Rescanning library...');
+        await this.musicLibrary.scanMusicLibrary();
+      } else {
+        this.logBoth('error', `❌ Import failed: ${result.error}`);
+      }
+    } catch (error) {
+      this.logBoth('error', `❌ Error importing from device: ${error.message}`);
+    }
   }
 
   updateDevicesContainer() {
@@ -823,13 +948,13 @@ class RedshiftSyncUI {
     const card = document.getElementById(`device-card-${deviceId}`);
     if (!card) return;
     
-    const { totalTracks = 0, syncedTracks = 0, unsyncedTracks = 0, appInstalled = true } = deviceData;
+    const { totalTracks = 0, filesOnDevice = 0, unsyncedTracks = 0, appInstalled = true } = deviceData;
     
-    // Update stats
+    // Update stats (all three visible stats)
     const stats = card.querySelectorAll('.device-stat-value');
-    if (stats[0]) stats[0].textContent = totalTracks;
-    if (stats[1]) stats[1].textContent = syncedTracks;
-    if (stats[2]) stats[2].textContent = unsyncedTracks;
+    if (stats[0]) stats[0].textContent = totalTracks;     // Total Tracks
+    if (stats[1]) stats[1].textContent = filesOnDevice;   // On Device
+    if (stats[2]) stats[2].textContent = unsyncedTracks;  // To Sync
     
     // Update status
     const status = card.querySelector('.device-card-status');
@@ -858,10 +983,18 @@ class RedshiftSyncUI {
     this.updateDevicesContainer();
   }
 
-  startDeviceSync(deviceId) {
+  async startDeviceSync(deviceId) {
     this.logBoth('info', `Starting sync for device: ${deviceId}`);
-    // TODO: Implement device-specific sync
-    window.electronAPI.invoke('usb-sync-start');
+    
+    try {
+      // Show progress UI
+      this.showDeviceProgress(deviceId, 0, 'Starting sync...');
+      
+      await window.electronAPI.invoke('usb-sync-start', { deviceId });
+    } catch (error) {
+      this.logBoth('error', `Sync failed: ${error.message}`);
+      this.hideDeviceProgress(deviceId);
+    }
   }
 
   async rescanDevice(deviceId) {

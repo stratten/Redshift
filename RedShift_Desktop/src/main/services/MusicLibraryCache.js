@@ -292,7 +292,7 @@ class MusicLibraryCache {
    */
   async getAllMetadata() {
     return new Promise((resolve, reject) => {
-      const sql = `SELECT file_path, file_name, metadata_json FROM music_files`;
+      const sql = `SELECT file_path, file_name, file_size, metadata_json FROM music_files`;
       
       this.db.all(sql, [], (error, rows) => {
         if (error) {
@@ -303,6 +303,7 @@ class MusicLibraryCache {
             return {
               path: row.file_path,
               name: row.file_name,
+              size: row.file_size,
               ...metadata
             };
           });

@@ -22,6 +22,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'log-to-terminal',
       'get-device-status',
       'get-connected-devices',
+      'scan-device-music-library',
+      'import-from-device',
       // Audio player IPC channels
       'audio-load-track',
       'audio-play',
@@ -169,7 +171,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'usb-sync-started',
       'usb-sync-progress',
       'usb-sync-completed',
-      'usb-sync-failed'
+      'usb-sync-failed',
+      'device-scan-progress'
     ];
     
     if (validChannels.includes(channel)) {
@@ -234,7 +237,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'usb-sync-started',
       'usb-sync-progress',
       'usb-sync-completed',
-      'usb-sync-failed'
+      'usb-sync-failed',
+      'device-scan-progress'
     ];
     
     if (validChannels.includes(channel)) {

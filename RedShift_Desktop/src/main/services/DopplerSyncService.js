@@ -147,7 +147,6 @@ class DopplerSyncService extends EventEmitter {
         
         // Skip if already transferred by hash (duplicate detection)
         if (transferredHashes.has(hash)) {
-          console.log(`📱 Skipping duplicate file: ${localFile.name} (matches existing hash)`);
           continue;
         }
         

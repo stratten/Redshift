@@ -111,10 +111,9 @@ struct ArtistsListView: View {
         List {
             ForEach(artists, id: \.self) { artist in
                 NavigationLink(destination: ArtistDetailView(artist: artist)) {
-                    HStack {
-                        Image(systemName: "person.circle.fill")
-                            .font(.title2)
-                            .foregroundColor(.purple)
+                    HStack(spacing: 12) {
+                        ArtistImageView(artistName: artist)
+                            .frame(width: 50, height: 50)
                         
                         VStack(alignment: .leading, spacing: 4) {
                             Text(artist)
@@ -140,6 +139,72 @@ struct ArtistsListView: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Artist Image View
+struct ArtistImageView: View {
+    let artistName: String
+    @State private var artistImage: UIImage?
+    
+    var body: some View {
+        Group {
+            if let image = artistImage {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .clipShape(Circle())
+            } else {
+                Image(systemName: "person.circle.fill")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .foregroundColor(.purple)
+            }
+        }
+        .onAppear {
+            loadArtistImage()
+        }
+    }
+    
+    private func loadArtistImage() {
+        guard let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            return
+        }
+        
+        let artistImagesURL = documentsURL.appendingPathComponent("artist-images")
+        
+        // Create safe filename from artist name
+        let safeFilename = artistName.replacingOccurrences(of: "[^a-z0-9]", with: "_", options: .regularExpression).lowercased()
+        
+        // Generate hash for the artist name (matching desktop implementation)
+        let hash = artistName.md5Hash().prefix(8)
+        let baseFilename = "\(safeFilename)_\(hash)"
+        
+        // Try common image formats
+        let formats = ["jpg", "jpeg", "png", "gif", "webp"]
+        for format in formats {
+            let imageURL = artistImagesURL.appendingPathComponent("\(baseFilename).\(format)")
+            if let image = UIImage(contentsOfFile: imageURL.path) {
+                self.artistImage = image
+                return
+            }
+        }
+    }
+}
+
+// MARK: - String Extension for MD5 Hash
+import CommonCrypto
+
+extension String {
+    func md5Hash() -> String {
+        let data = Data(self.utf8)
+        var digest = [UInt8](repeating: 0, count: Int(CC_MD5_DIGEST_LENGTH))
+        
+        data.withUnsafeBytes { buffer in
+            _ = CC_MD5(buffer.baseAddress, CC_LONG(buffer.count), &digest)
+        }
+        
+        return digest.map { String(format: "%02x", $0) }.joined()
     }
 }
 

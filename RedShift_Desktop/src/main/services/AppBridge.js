@@ -57,13 +57,16 @@ function attachEventForwarders(manager) {
   // RedShiftUSBSyncService events
   if (manager.redshiftUSBSyncService) {
     const usb = manager.redshiftUSBSyncService;
-    usb.on('sync-started', () => manager.sendToRenderer('usb-sync-started'));
+    usb.on('sync-started', (data) => manager.sendToRenderer('usb-sync-started', data));
     usb.on('sync-progress', (data) => manager.sendToRenderer('usb-sync-progress', data));
     usb.on('sync-completed', (data) => manager.sendToRenderer('usb-sync-completed', data));
     usb.on('sync-failed', (error) => manager.sendToRenderer('usb-sync-failed', error));
     usb.on('device-scanned', (data) => {
       console.log('📡 AppBridge received device-scanned, forwarding to renderer:', data);
       manager.sendToRenderer('usb-device-scanned', data);
+    });
+    usb.on('device-scan-progress', (data) => {
+      manager.sendToRenderer('device-scan-progress', data);
     });
   }
 
@@ -245,6 +248,34 @@ function registerIpc(ipcMain, manager) {
   // Device
   ipcMain.handle('get-device-status', async () => manager.deviceMonitorService.getStatus());
   ipcMain.handle('get-connected-devices', async () => manager.deviceMonitorService.getConnectedDevices());
+  ipcMain.handle('scan-device-music-library', async (event, { deviceId }) => {
+    try {
+      if (!manager.redshiftUSBSyncService) {
+        return { success: false, error: 'USB sync service not initialized' };
+      }
+      
+      const result = await manager.redshiftUSBSyncService.scanDeviceMusicLibrary(deviceId);
+      return result;
+    } catch (error) {
+      console.error('❌ Error scanning device music library:', error);
+      return { success: false, error: error.message };
+    }
+  });
+  
+  ipcMain.handle('import-from-device', async (event, { deviceId }) => {
+    try {
+      const libraryPath = manager.settings.masterLibraryPath;
+      if (!libraryPath) {
+        return { success: false, error: 'Library path not configured' };
+      }
+      
+      const result = await manager.redshiftUSBSyncService.importFromDevice(deviceId, libraryPath);
+      return result;
+    } catch (error) {
+      console.error('❌ Error importing from device:', error);
+      return { success: false, error: error.message };
+    }
+  });
 
   // Audio
   ipcMain.handle('audio-load-track', async (event, filePath) => manager.audioPlayerService.loadTrack(filePath));
@@ -702,7 +733,7 @@ function registerIpc(ipcMain, manager) {
   /**
    * Start USB sync with connected iPhone
    */
-  ipcMain.handle('usb-sync-start', async () => {
+  ipcMain.handle('usb-sync-start', async (event, { deviceId }) => {
     try {
       await waitReady();
       
@@ -710,7 +741,11 @@ function registerIpc(ipcMain, manager) {
         throw new Error('USB sync service not initialized');
       }
       
-      await manager.redshiftUSBSyncService.sync();
+      if (!deviceId) {
+        throw new Error('Device ID is required');
+      }
+      
+      await manager.redshiftUSBSyncService.sync(deviceId);
       
       return { success: true };
     } catch (error) {
