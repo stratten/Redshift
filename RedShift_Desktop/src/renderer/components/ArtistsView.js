@@ -788,7 +788,7 @@ class ArtistsView {
     const title = track.metadata?.common?.title || track.name?.replace(/\.\w+$/, '') || 'Unknown Track';
     const artist = track.metadata?.common?.artist || 'Unknown Artist';
     const album = track.metadata?.common?.album || 'Unknown Album';
-    const duration = track.metadata?.common?.duration || track.duration || 0;
+    const duration = track.metadata?.format?.duration || 0;
     
     return `
       <tr class="track-row" data-path="${this.escapeHtml(track.path)}">
@@ -806,12 +806,28 @@ class ArtistsView {
   setupTrackTableListeners() {
     const trackRows = this.container.querySelectorAll('.track-row');
     
-    trackRows.forEach(row => {
-      row.addEventListener('dblclick', () => {
+    trackRows.forEach((row, index) => {
+      row.addEventListener('dblclick', async () => {
         const path = row.dataset.path;
-        // Trigger play via the main UI
-        if (this.ui.musicLibrary) {
-          this.ui.musicLibrary.playTrackByPath(path);
+        
+        // Find the track in the selected artist's tracks
+        const track = this.selectedArtist.tracks.find(t => t.path === path);
+        
+        if (!track) {
+          console.error('Track not found:', path);
+          return;
+        }
+        
+        try {
+          // Set playback context to this artist's tracks
+          this.ui.audioPlayer.setPlaybackContext('artist', this.selectedArtist.tracks, index);
+          
+          // Play the track
+          await this.ui.audioPlayer.playTrack(track.path, track);
+          
+          console.log(`▶️ Playing track from artist view: ${track.metadata?.common?.title || track.name}`);
+        } catch (error) {
+          console.error('Error playing track from artist view:', error);
         }
       });
     });

@@ -150,6 +150,82 @@ class RedshiftSyncUI {
     if (scanDevicesBtnEmpty) {
       scanDevicesBtnEmpty.addEventListener('click', scanHandler);
     }
+    
+    // Setup drag-and-drop for music library
+    this.setupDragAndDrop();
+  }
+  
+  /**
+   * Setup drag-and-drop handlers for adding music to library
+   */
+  setupDragAndDrop() {
+    const musicTable = document.getElementById('musicTable');
+    const musicTab = document.querySelector('[data-tab="music"]');
+    
+    if (!musicTable) {
+      console.warn('Music table not found for drag-and-drop setup');
+      return;
+    }
+    
+    // Prevent default drag behaviors
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      musicTable.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      });
+    });
+    
+    // Visual feedback when dragging over
+    musicTable.addEventListener('dragenter', (e) => {
+      // Only show feedback if we're on the music tab
+      if (musicTab && musicTab.classList.contains('active')) {
+        musicTable.style.opacity = '0.6';
+        musicTable.style.border = '2px dashed #3b82f6';
+      }
+    });
+    
+    musicTable.addEventListener('dragleave', (e) => {
+      // Only if leaving the music table itself
+      if (e.target === musicTable) {
+        musicTable.style.opacity = '1';
+        musicTable.style.border = '';
+      }
+    });
+    
+    musicTable.addEventListener('drop', async (e) => {
+      musicTable.style.opacity = '1';
+      musicTable.style.border = '';
+      
+      // Only handle drops if we're on the music tab
+      if (!musicTab || !musicTab.classList.contains('active')) {
+        return;
+      }
+      
+      const files = Array.from(e.dataTransfer.files);
+      
+      if (files.length === 0) {
+        return;
+      }
+      
+      this.logBoth('info', `📥 Dropped ${files.length} item(s) into library`);
+      
+      try {
+        const paths = files.map(f => f.path);
+        const result = await window.electronAPI.invoke('add-files-to-library', { paths });
+        
+        if (result.success) {
+          this.logBoth('success', `✅ Added ${result.filesAdded} file(s) to library`);
+          
+          // Rescan library to pick up new files
+          this.logBoth('info', '🔄 Rescanning library...');
+          await this.musicLibrary.scanMusicLibrary();
+        } else {
+          this.logBoth('error', `❌ Failed to add files: ${result.error}`);
+        }
+      } catch (error) {
+        this.logBoth('error', `❌ Error adding files to library: ${error.message}`);
+      }
+    });
   }
   
   setupIPCListeners() {

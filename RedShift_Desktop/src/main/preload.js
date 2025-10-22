@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const validChannels = [
       'scan-library',
       'scan-music-library',
+      'add-files-to-library',
       'transfer-files', 
       'get-settings',
       'update-setting',

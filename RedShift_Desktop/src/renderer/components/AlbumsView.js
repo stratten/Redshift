@@ -504,7 +504,7 @@ class AlbumsView {
    */
   renderTrackRow(track, trackNo) {
     const title = track.metadata?.common?.title || track.name?.replace(/\.\w+$/, '') || 'Unknown Track';
-    const duration = track.metadata?.common?.duration || track.duration || 0;
+    const duration = track.metadata?.format?.duration || 0;
     const displayTrackNo = track.metadata?.common?.track?.no || trackNo;
     
     return `
@@ -521,15 +521,29 @@ class AlbumsView {
    */
   setupTrackTableListeners() {
     const trackRows = this.container.querySelectorAll('.track-row');
-    trackRows.forEach(row => {
-      row.addEventListener('click', () => {
+    
+    trackRows.forEach((row, index) => {
+      row.addEventListener('dblclick', async () => {
         const path = row.dataset.path;
-        if (path && this.ui.audioPlayer) {
-          // Find the track in the music library
-          const track = this.ui.musicLibrary.musicLibrary.find(t => t.path === path);
-          if (track) {
-            this.ui.audioPlayer.loadTrack(track);
-          }
+        
+        // Find the track in the selected album's tracks
+        const track = this.selectedAlbum.tracks.find(t => t.path === path);
+        
+        if (!track) {
+          console.error('Track not found:', path);
+          return;
+        }
+        
+        try {
+          // Set playback context to this album's tracks
+          this.ui.audioPlayer.setPlaybackContext('album', this.selectedAlbum.tracks, index);
+          
+          // Play the track
+          await this.ui.audioPlayer.playTrack(track.path, track);
+          
+          console.log(`▶️ Playing track from album view: ${track.metadata?.common?.title || track.name}`);
+        } catch (error) {
+          console.error('Error playing track from album view:', error);
         }
       });
     });
