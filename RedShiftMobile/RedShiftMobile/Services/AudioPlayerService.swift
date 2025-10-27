@@ -23,11 +23,20 @@ class AudioPlayerService: NSObject, ObservableObject {
     @Published var queue: [Track] = []
     @Published var currentIndex: Int = 0
     @Published var volume: Float = 1.0
+    @Published var sleepTimerMinutesRemaining: Int? = nil // nil = off, else minutes remaining
+    @Published var playbackRate: Float = 1.0 // 0.5x to 2.0x
+    @Published var crossfadeDuration: TimeInterval = 0 // 0 = off, 1-12 seconds
     
     // MARK: - Private Properties
     private var player: AVAudioPlayer?
+    private var nextPlayer: AVAudioPlayer? // For crossfade
     private var timer: Timer?
+    private var sleepTimer: Timer?
+    private var sleepTimerEndDate: Date?
+    private var crossfadeTimer: Timer?
+    private var isCrossfading: Bool = false
     private var originalQueue: [Track] = [] // For shuffle/unshuffle
+    weak var libraryManager: MusicLibraryManager? // For updating play counts
     
     // MARK: - Audio Session Setup
     static func setupAudioSession() {
@@ -54,6 +63,8 @@ class AudioPlayerService: NSObject, ObservableObject {
             player = try AVAudioPlayer(contentsOf: track.fileURL)
             player?.delegate = self
             player?.volume = volume
+            player?.enableRate = true // Enable playback rate adjustment
+            player?.rate = playbackRate // Apply current playback rate
             player?.prepareToPlay()
             player?.play()
             
@@ -111,6 +122,17 @@ class AudioPlayerService: NSObject, ObservableObject {
         player?.volume = volume
     }
     
+    func setPlaybackRate(_ rate: Float) {
+        playbackRate = min(max(rate, 0.5), 2.0) // Clamp between 0.5x and 2.0x
+        player?.rate = playbackRate
+        print("🎚️ Playback rate set to \(playbackRate)x")
+    }
+    
+    func setCrossfadeDuration(_ duration: TimeInterval) {
+        crossfadeDuration = min(max(duration, 0), 12) // Clamp between 0 and 12 seconds
+        print("🔀 Crossfade duration set to \(crossfadeDuration)s")
+    }
+    
     // MARK: - Queue Management
     func playQueue(_ tracks: [Track], startingAt index: Int = 0) {
         guard !tracks.isEmpty, index < tracks.count else { return }
@@ -126,15 +148,115 @@ class AudioPlayerService: NSObject, ObservableObject {
         play(track: queue[currentIndex])
     }
     
+    func addToQueue(_ track: Track) {
+        queue.append(track)
+        if !shuffleEnabled {
+            originalQueue.append(track)
+        }
+        print("➕ Added to queue: \(track.displayTitle)")
+    }
+    
+    func addToQueue(_ tracks: [Track]) {
+        queue.append(contentsOf: tracks)
+        if !shuffleEnabled {
+            originalQueue.append(contentsOf: tracks)
+        }
+        print("➕ Added \(tracks.count) tracks to queue")
+    }
+    
+    func playNext(_ track: Track) {
+        let insertIndex = currentIndex + 1
+        queue.insert(track, at: insertIndex)
+        if !shuffleEnabled {
+            originalQueue.insert(track, at: insertIndex)
+        }
+        print("⏭️ Added to play next: \(track.displayTitle)")
+    }
+    
+    func playNext(_ tracks: [Track]) {
+        let insertIndex = currentIndex + 1
+        queue.insert(contentsOf: tracks, at: insertIndex)
+        if !shuffleEnabled {
+            originalQueue.insert(contentsOf: tracks, at: insertIndex)
+        }
+        print("⏭️ Added \(tracks.count) tracks to play next")
+    }
+    
+    func moveTrackInQueue(from source: IndexSet, to destination: Int) {
+        queue.move(fromOffsets: source, toOffset: destination)
+        
+        // Update originalQueue if not shuffled
+        if !shuffleEnabled {
+            originalQueue = queue
+        }
+        
+        // Update currentIndex if the current track was moved
+        if let sourceIndex = source.first {
+            if sourceIndex == currentIndex {
+                // Current track was moved
+                if destination > currentIndex {
+                    currentIndex = destination - 1
+                } else {
+                    currentIndex = destination
+                }
+            } else if sourceIndex < currentIndex && destination > currentIndex {
+                // Track before current was moved after current
+                currentIndex -= 1
+            } else if sourceIndex > currentIndex && destination <= currentIndex {
+                // Track after current was moved before current
+                currentIndex += 1
+            }
+        }
+        
+        print("🔄 Queue reordered")
+    }
+    
+    func removeFromQueue(at index: Int) {
+        guard index < queue.count else { return }
+        
+        let removedTrack = queue.remove(at: index)
+        
+        if !shuffleEnabled {
+            if let originalIndex = originalQueue.firstIndex(where: { $0.id == removedTrack.id }) {
+                originalQueue.remove(at: originalIndex)
+            }
+        }
+        
+        // Adjust currentIndex if needed
+        if index < currentIndex {
+            currentIndex -= 1
+        } else if index == currentIndex {
+            // Removed current track - play next or stop
+            if !queue.isEmpty && currentIndex < queue.count {
+                play(track: queue[currentIndex])
+            } else if currentIndex > 0 {
+                currentIndex -= 1
+                if currentIndex < queue.count {
+                    play(track: queue[currentIndex])
+                }
+            } else {
+                stop()
+            }
+        }
+        
+        print("➖ Removed from queue: \(removedTrack.displayTitle)")
+    }
+    
+    func clearQueue() {
+        stop()
+        queue.removeAll()
+        originalQueue.removeAll()
+        currentIndex = 0
+        print("🗑️ Queue cleared")
+    }
+    
     func next() {
         guard !queue.isEmpty else { return }
         
         if repeatMode == .one {
             // Replay current track
             seek(to: 0)
-            if !isPlaying {
-                resume()
-            }
+            resume() // Always resume when repeating one track
             return
         }
         
@@ -229,6 +351,14 @@ class AudioPlayerService: NSObject, ObservableObject {
         timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
             guard let self = self, let player = self.player else { return }
             self.currentTime = player.currentTime
+            
+            // Check if we should start crossfade
+            if self.crossfadeDuration > 0 && !self.isCrossfading {
+                let timeRemaining = self.duration - self.currentTime
+                if timeRemaining <= self.crossfadeDuration && timeRemaining > 0 {
+                    self.startCrossfade()
+                }
+            }
         }
     }
     
@@ -294,10 +424,145 @@ class AudioPlayerService: NSObject, ObservableObject {
         }
     }
     
+    // MARK: - Sleep Timer
+    func setSleepTimer(minutes: Int) {
+        // Cancel existing timer
+        cancelSleepTimer()
+        
+        // Set end date
+        sleepTimerEndDate = Date().addingTimeInterval(TimeInterval(minutes * 60))
+        sleepTimerMinutesRemaining = minutes
+        
+        // Start countdown timer (checks every 10 seconds for more accuracy)
+        sleepTimer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
+            self?.updateSleepTimerDisplay()
+        }
+        
+        print("💤 Sleep timer set for \(minutes) minutes")
+    }
+    
+    func cancelSleepTimer() {
+        sleepTimer?.invalidate()
+        sleepTimer = nil
+        sleepTimerEndDate = nil
+        sleepTimerMinutesRemaining = nil
+        
+        print("💤 Sleep timer cancelled")
+    }
+    
+    private func updateSleepTimerDisplay() {
+        guard let endDate = sleepTimerEndDate else {
+            cancelSleepTimer()
+            return
+        }
+        
+        let remaining = endDate.timeIntervalSinceNow
+        
+        if remaining <= 0 {
+            // Timer expired - pause playback
+            print("💤 Sleep timer expired - pausing playback")
+            pause()
+            cancelSleepTimer()
+        } else {
+            // Update remaining time display
+            let minutesRemaining = Int(ceil(remaining / 60))
+            if sleepTimerMinutesRemaining != minutesRemaining {
+                sleepTimerMinutesRemaining = minutesRemaining
+                print("💤 Sleep timer: \(minutesRemaining) minutes remaining")
+            }
+        }
+    }
+    
+    // MARK: - Crossfade
+    private func startCrossfade() {
+        guard crossfadeDuration > 0,
+              !isCrossfading,
+              let currentPlayer = player,
+              currentIndex + 1 < queue.count else { return }
+        
+        isCrossfading = true
+        let nextTrack = queue[currentIndex + 1]
+        
+        print("🔀 Starting crossfade to: \(nextTrack.displayTitle)")
+        
+        // Prepare next player
+        guard FileManager.default.fileExists(atPath: nextTrack.filePath) else {
+            print("❌ Next track file not found for crossfade")
+            isCrossfading = false
+            return
+        }
+        
+        do {
+            nextPlayer = try AVAudioPlayer(contentsOf: nextTrack.fileURL)
+            nextPlayer?.delegate = self
+            nextPlayer?.volume = 0 // Start silent
+            nextPlayer?.enableRate = true
+            nextPlayer?.rate = playbackRate
+            nextPlayer?.prepareToPlay()
+            nextPlayer?.play()
+            
+            // Perform crossfade
+            let steps = 20 // Number of volume adjustment steps
+            let interval = crossfadeDuration / Double(steps)
+            var currentStep = 0
+            
+            crossfadeTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] timer in
+                guard let self = self else {
+                    timer.invalidate()
+                    return
+                }
+                
+                currentStep += 1
+                let progress = Double(currentStep) / Double(steps)
+                
+                // Fade out current, fade in next
+                currentPlayer.volume = self.volume * Float(1.0 - progress)
+                self.nextPlayer?.volume = self.volume * Float(progress)
+                
+                if currentStep >= steps {
+                    timer.invalidate()
+                    self.completeCrossfade()
+                }
+            }
+        } catch {
+            print("❌ Failed to prepare next track for crossfade: \(error)")
+            isCrossfading = false
+        }
+    }
+    
+    private func completeCrossfade() {
+        print("✅ Crossfade complete")
+        
+        // Stop old player
+        player?.stop()
+        player = nil
+        
+        // Promote next player to current
+        player = nextPlayer
+        nextPlayer = nil
+        
+        // Update track info
+        currentIndex += 1
+        currentTrack = queue[currentIndex]
+        duration = player?.duration ?? 0
+        currentTime = 0
+        
+        // Reset state
+        isCrossfading = false
+        crossfadeTimer?.invalidate()
+        crossfadeTimer = nil
+        
+        // Update UI
+        updateNowPlayingInfo()
+    }
+    
     // MARK: - Cleanup
     deinit {
         stopProgressTimer()
+        cancelSleepTimer()
+        crossfadeTimer?.invalidate()
         player = nil
+        nextPlayer = nil
     }
 }
 
@@ -305,10 +570,16 @@ class AudioPlayerService: NSObject, ObservableObject {
 extension AudioPlayerService: AVAudioPlayerDelegate {
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
             if flag {
-                // Track finished successfully - increment play count and move to next
-                // TODO: Update play count in database
-                self?.next()
+                // Track finished successfully - increment play count
+                if let currentTrack = self.currentTrack {
+                    Task {
+                        await self.libraryManager?.incrementPlayCount(for: currentTrack)
+                    }
+                }
+                self.next()
             }
         }
     }

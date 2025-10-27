@@ -264,25 +264,34 @@ actor DatabaseService {
     
     // MARK: - Playlist Operations
     func loadPlaylists() async throws -> [Playlist] {
+        print("💾 DatabaseService.loadPlaylists: Starting to load playlists...")
         var playlists: [Playlist] = []
         let sql = "SELECT * FROM playlists ORDER BY name;"
         
         var statement: OpaquePointer?
         if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
+            print("💾 SQL query prepared successfully")
             while sqlite3_step(statement) == SQLITE_ROW {
                 if let playlist = parsePlaylistRow(statement) {
+                    print("💾 Loaded playlist: \(playlist.name) with \(playlist.trackStableIDs.count) tracks")
                     playlists.append(playlist)
                 }
             }
+        } else {
+            let error = String(cString: sqlite3_errmsg(db)!)
+            print("❌ Failed to prepare playlist load statement: \(error)")
         }
         sqlite3_finalize(statement)
         
+        print("💾 DatabaseService.loadPlaylists: Returning \(playlists.count) playlists")
         return playlists
     }
     
     func savePlaylist(_ playlist: Playlist) async throws {
-        let trackIDsJSON = try JSONEncoder().encode(playlist.trackIDs)
-        let trackIDsString = String(data: trackIDsJSON, encoding: .utf8) ?? "[]"
+        print("💾 DatabaseService.savePlaylist: \(playlist.name) (id: \(playlist.id))")
+        let trackStableIDsJSON = try JSONEncoder().encode(playlist.trackStableIDs)
+        let trackStableIDsString = String(data: trackStableIDsJSON, encoding: .utf8) ?? "[]"
+        print("💾 Track Stable IDs JSON: \(trackStableIDsString)")
         
         let sql = """
         INSERT OR REPLACE INTO playlists (id, name, track_ids, created_date, modified_date, is_favorite)
@@ -291,16 +300,23 @@ actor DatabaseService {
         
         var statement: OpaquePointer?
         if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
-            sqlite3_bind_text(statement, 1, playlist.id.uuidString, -1, nil)
-            sqlite3_bind_text(statement, 2, playlist.name, -1, nil)
-            sqlite3_bind_text(statement, 3, trackIDsString, -1, nil)
+            let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+            sqlite3_bind_text(statement, 1, (playlist.id.uuidString as NSString).utf8String, -1, SQLITE_TRANSIENT)
+            sqlite3_bind_text(statement, 2, (playlist.name as NSString).utf8String, -1, SQLITE_TRANSIENT)
+            sqlite3_bind_text(statement, 3, (trackStableIDsString as NSString).utf8String, -1, SQLITE_TRANSIENT)
             sqlite3_bind_int64(statement, 4, Int64(playlist.createdDate.timeIntervalSince1970))
             sqlite3_bind_int64(statement, 5, Int64(playlist.modifiedDate.timeIntervalSince1970))
             sqlite3_bind_int(statement, 6, playlist.isFavorite ? 1 : 0)
             
             if sqlite3_step(statement) != SQLITE_DONE {
-                print("❌ Failed to save playlist: \(String(cString: sqlite3_errmsg(db)))")
+                let error = String(cString: sqlite3_errmsg(db)!)
+                print("❌ Failed to save playlist: \(error)")
+            } else {
+                print("✅ Playlist saved to database successfully")
             }
+        } else {
+            let error = String(cString: sqlite3_errmsg(db)!)
+            print("❌ Failed to prepare playlist save statement: \(error)")
         }
         sqlite3_finalize(statement)
     }
@@ -327,17 +343,17 @@ actor DatabaseService {
         guard let id = UUID(uuidString: idString) else { return nil }
         
         let name = String(cString: sqlite3_column_text(statement, 1))
-        let trackIDsString = String(cString: sqlite3_column_text(statement, 2))
+        let trackStableIDsString = String(cString: sqlite3_column_text(statement, 2))
         let createdDate = Date(timeIntervalSince1970: TimeInterval(sqlite3_column_int64(statement, 3)))
         let modifiedDate = Date(timeIntervalSince1970: TimeInterval(sqlite3_column_int64(statement, 4)))
         let isFavorite = sqlite3_column_int(statement, 5) == 1
         
-        let trackIDs = (try? JSONDecoder().decode([UUID].self, from: trackIDsString.data(using: .utf8) ?? Data())) ?? []
+        let trackStableIDs = (try? JSONDecoder().decode([String].self, from: trackStableIDsString.data(using: .utf8) ?? Data())) ?? []
         
         return Playlist(
             id: id,
             name: name,
-            trackIDs: trackIDs,
+            trackStableIDs: trackStableIDs,
             createdDate: createdDate,
             modifiedDate: modifiedDate,
             isFavorite: isFavorite

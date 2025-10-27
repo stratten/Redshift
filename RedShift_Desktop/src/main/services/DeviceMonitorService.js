@@ -513,12 +513,42 @@ class DeviceMonitorService {
   }
 
   /**
+   * Get UDIDs of USB-connected devices only (not WiFi)
+   */
+  async getUSBConnectedUDIDs() {
+    try {
+      const { execSync } = require('child_process');
+      const output = execSync('idevice_id -l', { 
+        encoding: 'utf8', 
+        timeout: 5000,
+        stdio: ['pipe', 'pipe', 'ignore']
+      });
+      
+      const udids = output.trim().split('\n').filter(line => line.length > 0);
+      return udids;
+    } catch (error) {
+      return [];
+    }
+  }
+
+  /**
    * Fetch device names for all connected iOS devices
    * Maps UDIDs to tracked devices
+   * Only includes USB-connected devices (filters out WiFi)
    */
   async fetchActualDeviceName(deviceKey, deviceId, deviceType) {
     try {
-      // Get all UDIDs
+      // Get USB-only UDIDs (not WiFi)
+      const usbUDIDs = await this.getUSBConnectedUDIDs();
+      
+      if (usbUDIDs.length === 0) {
+        console.log('  ⚠️  No USB-connected devices found');
+        return;
+      }
+      
+      console.log(`  📱 Found ${usbUDIDs.length} USB-connected device(s)`);
+      
+      // Get all UDIDs (for comparison)
       const udids = await this.fetchAllUDIDs();
       
       if (udids.length === 0) {
@@ -526,11 +556,20 @@ class DeviceMonitorService {
         return;
       }
       
-      // Deduplicate UDIDs (pymobiledevice3 returns multiple connections per device)
-      const uniqueUDIDs = [...new Set(udids)];
-      console.log(`  📱 Found ${uniqueUDIDs.length} unique device UDID(s) (from ${udids.length} total connections)`);
+      // Filter to only USB-connected devices
+      const usbUDIDSet = new Set(usbUDIDs);
+      const usbOnlyUDIDs = udids.filter(udid => usbUDIDSet.has(udid));
       
-      // Fetch info for each unique UDID and assign to devices
+      // Deduplicate UDIDs
+      const uniqueUDIDs = [...new Set(usbOnlyUDIDs)];
+      console.log(`  📱 Found ${uniqueUDIDs.length} USB-connected device(s) (filtered from ${udids.length} total)`);
+      
+      if (uniqueUDIDs.length === 0) {
+        console.log('  ⚠️  No USB devices to process (WiFi-only devices filtered out)');
+        return;
+      }
+      
+      // Fetch info for each unique USB-connected UDID and assign to devices
       let deviceIndex = 0;
       const deviceEntries = Array.from(this.connectedDevices.entries());
       
@@ -546,6 +585,7 @@ class DeviceMonitorService {
           device.deviceName = deviceInfo.name;
           device.deviceModel = deviceInfo.model;
           device.udid = deviceInfo.udid;
+          device.connectionType = 'USB'; // Mark as USB-connected (we filtered WiFi out)
           this.connectedDevices.set(key, device);
           
           // Emit updated event with full info
@@ -556,7 +596,8 @@ class DeviceMonitorService {
             deviceName: deviceInfo.name,
             deviceType: device.deviceType,
             deviceModel: deviceInfo.model,
-            udid: deviceInfo.udid
+            udid: deviceInfo.udid,
+            connectionType: 'USB'
           });
           
           deviceIndex++;

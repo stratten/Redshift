@@ -134,6 +134,8 @@ struct SettingsView: View {
 // MARK: - Storage View
 struct StorageView: View {
     @EnvironmentObject var libraryManager: MusicLibraryManager
+    @State private var showingDeleteAllAlert = false
+    @State private var isDeleting = false
     
     var body: some View {
         List {
@@ -155,20 +157,61 @@ struct StorageView: View {
                             .foregroundColor(.gray)
                     }
                 }
+                .onDelete { indexSet in
+                    Task {
+                        isDeleting = true
+                        let tracksToDelete = indexSet.map { libraryManager.tracks[$0] }
+                        try? await libraryManager.deleteTracks(tracksToDelete)
+                        isDeleting = false
+                    }
+                }
+                
+                if libraryManager.tracks.count > 0 {
+                    Button(role: .destructive, action: {
+                        showingDeleteAllAlert = true
+                    }) {
+                        HStack {
+                            Spacer()
+                            if isDeleting {
+                                ProgressView()
+                            } else {
+                                Text("Delete All Tracks")
+                                Image(systemName: "trash")
+                            }
+                            Spacer()
+                        }
+                    }
+                    .disabled(isDeleting)
+                }
             } header: {
                 HStack {
-                    Text("Files")
+                    Text("Files (\(libraryManager.tracks.count))")
                     Spacer()
                     Text("Total: \(formatFileSize(totalSize))")
                         .font(.caption)
                         .foregroundColor(.gray)
                 }
             } footer: {
-                Text("To add or remove files, connect your device to a computer and use iTunes File Sharing or the Files app.")
+                Text("Swipe left on a track to delete it. You can also sync more files from RedShift Desktop via USB.")
             }
         }
         .navigationTitle("Storage")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            EditButton()
+        }
+        .alert("Delete All Tracks?", isPresented: $showingDeleteAllAlert) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete All", role: .destructive) {
+                Task {
+                    isDeleting = true
+                    try? await libraryManager.deleteAllTracks()
+                    isDeleting = false
+                }
+            }
+        } message: {
+            Text("This will permanently delete all \(libraryManager.tracks.count) music files from your device. This cannot be undone.")
+        }
     }
     
     private var totalSize: Int64 {

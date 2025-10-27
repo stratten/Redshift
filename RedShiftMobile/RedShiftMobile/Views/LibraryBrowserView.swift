@@ -8,6 +8,7 @@ enum LibraryCategory: String, CaseIterable {
     case albums = "Albums"
     case songs = "Songs"
     case genres = "Genres"
+    case recentlyPlayed = "Recently Played"
     
     var icon: String {
         switch self {
@@ -15,6 +16,7 @@ enum LibraryCategory: String, CaseIterable {
         case .albums: return "square.stack.fill"
         case .songs: return "music.note.list"
         case .genres: return "guitars.fill"
+        case .recentlyPlayed: return "clock.fill"
         }
     }
 }
@@ -69,6 +71,8 @@ struct LibraryBrowserView: View {
     @ViewBuilder
     private func destinationView(for category: LibraryCategory) -> some View {
         switch category {
+        case .recentlyPlayed:
+            RecentlyPlayedView()
         case .artists:
             ArtistsListView()
         case .albums:
@@ -82,6 +86,9 @@ struct LibraryBrowserView: View {
     
     private func itemCount(for category: LibraryCategory) -> String {
         switch category {
+        case .recentlyPlayed:
+            let count = libraryManager.tracks.filter { $0.lastPlayed != nil }.count
+            return "\(count) track\(count == 1 ? "" : "s")"
         case .artists:
             let count = Set(libraryManager.tracks.compactMap { $0.artist }).count
             return "\(count) artist\(count == 1 ? "" : "s")"
@@ -101,10 +108,18 @@ struct LibraryBrowserView: View {
 struct ArtistsListView: View {
     @EnvironmentObject var libraryManager: MusicLibraryManager
     @State private var sortAscending = true
+    @State private var searchText = ""
     
     private var artists: [String] {
         let artistSet = Set(libraryManager.tracks.compactMap { $0.artist })
-        return sortAscending ? artistSet.sorted() : artistSet.sorted(by: >)
+        let sortedArtists = sortAscending ? artistSet.sorted() : artistSet.sorted(by: >)
+        
+        // Filter by search text if not empty
+        if searchText.isEmpty {
+            return sortedArtists
+        } else {
+            return sortedArtists.filter { $0.localizedCaseInsensitiveContains(searchText) }
+        }
     }
     
     var body: some View {
@@ -130,6 +145,7 @@ struct ArtistsListView: View {
         }
         .navigationTitle("Artists")
         .navigationBarTitleDisplayMode(.large)
+        .searchable(text: $searchText, prompt: "Search artists")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: { sortAscending.toggle() }) {
@@ -168,27 +184,37 @@ struct ArtistImageView: View {
     
     private func loadArtistImage() {
         guard let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            print("❌ Could not get documents URL")
             return
         }
         
         let artistImagesURL = documentsURL.appendingPathComponent("artist-images")
         
         // Create safe filename from artist name
-        let safeFilename = artistName.replacingOccurrences(of: "[^a-z0-9]", with: "_", options: .regularExpression).lowercased()
+        let safeFilename = artistName.lowercased().replacingOccurrences(of: "[^a-z0-9]", with: "_", options: .regularExpression)
         
         // Generate hash for the artist name (matching desktop implementation)
         let hash = artistName.md5Hash().prefix(8)
         let baseFilename = "\(safeFilename)_\(hash)"
         
+        print("🎨 Looking for artist image: \(artistName)")
+        print("   Base filename: \(baseFilename)")
+        print("   Search path: \(artistImagesURL.path)")
+        
         // Try common image formats
         let formats = ["jpg", "jpeg", "png", "gif", "webp"]
         for format in formats {
             let imageURL = artistImagesURL.appendingPathComponent("\(baseFilename).\(format)")
+            print("   Checking: \(imageURL.path)")
+            
             if let image = UIImage(contentsOfFile: imageURL.path) {
+                print("   ✅ Found image!")
                 self.artistImage = image
                 return
             }
         }
+        
+        print("   ❌ No image found for \(artistName)")
     }
 }
 
@@ -212,10 +238,18 @@ extension String {
 struct AlbumsListView: View {
     @EnvironmentObject var libraryManager: MusicLibraryManager
     @State private var sortAscending = true
+    @State private var searchText = ""
     
     private var albums: [String] {
         let albumSet = Set(libraryManager.tracks.compactMap { $0.album })
-        return sortAscending ? albumSet.sorted() : albumSet.sorted(by: >)
+        let sortedAlbums = sortAscending ? albumSet.sorted() : albumSet.sorted(by: >)
+        
+        // Filter by search text if not empty
+        if searchText.isEmpty {
+            return sortedAlbums
+        } else {
+            return sortedAlbums.filter { $0.localizedCaseInsensitiveContains(searchText) }
+        }
     }
     
     var body: some View {
@@ -268,6 +302,7 @@ struct AlbumsListView: View {
         }
         .navigationTitle("Albums")
         .navigationBarTitleDisplayMode(.large)
+        .searchable(text: $searchText, prompt: "Search albums")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: { sortAscending.toggle() }) {
@@ -332,6 +367,137 @@ struct GenresListView: View {
                     Image(systemName: sortAscending ? "arrow.up.arrow.down" : "arrow.down.arrow.up")
                 }
             }
+        }
+    }
+}
+
+// MARK: - Recently Played View
+struct RecentlyPlayedView: View {
+    @EnvironmentObject var libraryManager: MusicLibraryManager
+    @EnvironmentObject var audioPlayer: AudioPlayerService
+    @State private var searchText = ""
+    
+    var recentlyPlayedTracks: [Track] {
+        let filtered = libraryManager.tracks
+            .filter { $0.lastPlayed != nil }
+            .sorted { ($0.lastPlayed ?? Date.distantPast) > ($1.lastPlayed ?? Date.distantPast) }
+        
+        if searchText.isEmpty {
+            return filtered
+        }
+        
+        return filtered.filter { track in
+            track.displayTitle.localizedCaseInsensitiveContains(searchText) ||
+            track.displayArtist.localizedCaseInsensitiveContains(searchText) ||
+            track.displayAlbum.localizedCaseInsensitiveContains(searchText)
+        }
+    }
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            if recentlyPlayedTracks.isEmpty {
+                VStack(spacing: 16) {
+                    Image(systemName: "clock")
+                        .font(.system(size: 60))
+                        .foregroundColor(.gray.opacity(0.5))
+                    
+                    Text("No Recently Played Tracks")
+                        .font(.title3)
+                        .foregroundColor(.gray)
+                    
+                    Text("Tracks you play will appear here")
+                        .font(.caption)
+                        .foregroundColor(.gray.opacity(0.7))
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List {
+                    ForEach(recentlyPlayedTracks) { track in
+                        VStack(spacing: 0) {
+                            TrackRow(track: track)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    audioPlayer.playQueue(recentlyPlayedTracks, startingAt: recentlyPlayedTracks.firstIndex(where: { $0.id == track.id }) ?? 0)
+                                }
+                                .contextMenu {
+                                    Button(action: {
+                                        audioPlayer.playQueue(recentlyPlayedTracks, startingAt: recentlyPlayedTracks.firstIndex(where: { $0.id == track.id }) ?? 0)
+                                    }) {
+                                        Label("Play Now", systemImage: "play.fill")
+                                    }
+                                    
+                                    Button(action: {
+                                        audioPlayer.playNext(track)
+                                    }) {
+                                        Label("Play Next", systemImage: "text.insert")
+                                    }
+                                    
+                                    Button(action: {
+                                        audioPlayer.addToQueue(track)
+                                    }) {
+                                        Label("Add to Queue", systemImage: "text.append")
+                                    }
+                                    
+                                    Divider()
+                                    
+                                    Button(action: {
+                                        Task {
+                                            await libraryManager.toggleFavorite(for: track)
+                                        }
+                                    }) {
+                                        Label(
+                                            track.isFavorite ? "Remove from Favorites" : "Add to Favorites",
+                                            systemImage: track.isFavorite ? "heart.slash.fill" : "heart.fill"
+                                        )
+                                    }
+                                }
+                            
+                            // Last played timestamp
+                            if let lastPlayed = track.lastPlayed {
+                                HStack {
+                                    Image(systemName: "clock")
+                                        .font(.caption2)
+                                        .foregroundColor(.gray)
+                                    Text(formatRelativeTime(lastPlayed))
+                                        .font(.caption2)
+                                        .foregroundColor(.gray)
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.top, 4)
+                                .padding(.bottom, 8)
+                            }
+                        }
+                    }
+                }
+                .listStyle(.plain)
+            }
+        }
+        .navigationTitle("Recently Played")
+        .navigationBarTitleDisplayMode(.large)
+        .searchable(text: $searchText, prompt: "Search recently played")
+    }
+    
+    private func formatRelativeTime(_ date: Date) -> String {
+        let now = Date()
+        let interval = now.timeIntervalSince(date)
+        
+        if interval < 60 {
+            return "Just now"
+        } else if interval < 3600 {
+            let minutes = Int(interval / 60)
+            return "\(minutes) minute\(minutes == 1 ? "" : "s") ago"
+        } else if interval < 86400 {
+            let hours = Int(interval / 3600)
+            return "\(hours) hour\(hours == 1 ? "" : "s") ago"
+        } else if interval < 604800 {
+            let days = Int(interval / 86400)
+            return "\(days) day\(days == 1 ? "" : "s") ago"
+        } else {
+            let formatter = DateFormatter()
+            formatter.dateStyle = .medium
+            formatter.timeStyle = .none
+            return formatter.string(from: date)
         }
     }
 }

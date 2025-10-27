@@ -378,6 +378,125 @@ class PlaylistService {
   }
   
   /**
+   * Import playlist from JSON (from device sync)
+   * @param {object} playlistData - Playlist data from JSON
+   */
+  async importPlaylistFromJSON(playlistData) {
+    try {
+      // Create the playlist
+      const playlist = await this.createPlaylist(playlistData.name, '', false); // Don't sync to Doppler by default
+      
+      // Add tracks by filename
+      for (const filename of playlistData.tracks) {
+        // Find track by filename
+        const track = await this.findTrackByFilename(filename);
+        if (track) {
+          await this.addTrackToPlaylist(playlist.id, track.id);
+        } else {
+          console.warn(`⚠️  Track not found in library: ${filename}`);
+        }
+      }
+      
+      // Update timestamps to match device
+      await this.updatePlaylistTimestamps(playlist.id, playlistData.createdDate, playlistData.modifiedDate);
+      
+      console.log(`✅ Imported playlist from device: ${playlistData.name} (${playlistData.tracks.length} tracks)`);
+      return playlist;
+    } catch (error) {
+      console.error(`❌ Failed to import playlist from JSON: ${error.message}`);
+      throw error;
+    }
+  }
+  
+  /**
+   * Update existing playlist from JSON (from device sync)
+   * @param {number} playlistId - Local playlist ID
+   * @param {object} playlistData - Playlist data from JSON
+   */
+  async updatePlaylistFromJSON(playlistId, playlistData) {
+    try {
+      // Remove all existing tracks
+      await this.removeAllTracksFromPlaylist(playlistId);
+      
+      // Add tracks by filename
+      for (const filename of playlistData.tracks) {
+        const track = await this.findTrackByFilename(filename);
+        if (track) {
+          await this.addTrackToPlaylist(playlistId, track.id);
+        } else {
+          console.warn(`⚠️  Track not found in library: ${filename}`);
+        }
+      }
+      
+      // Update timestamps to match device
+      await this.updatePlaylistTimestamps(playlistId, playlistData.createdDate, playlistData.modifiedDate);
+      
+      console.log(`✅ Updated playlist from device: ${playlistData.name} (${playlistData.tracks.length} tracks)`);
+    } catch (error) {
+      console.error(`❌ Failed to update playlist from JSON: ${error.message}`);
+      throw error;
+    }
+  }
+  
+  /**
+   * Find track by filename
+   * @param {string} filename - Track filename
+   */
+  async findTrackByFilename(filename) {
+    return new Promise((resolve, reject) => {
+      const sql = `SELECT id FROM songs WHERE file_path LIKE ?`;
+      this.db.get(sql, [`%${filename}`], (error, row) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve(row || null);
+        }
+      });
+    });
+  }
+  
+  /**
+   * Update playlist timestamps
+   * @param {number} playlistId - Playlist ID
+   * @param {number} createdDate - Created timestamp (Unix)
+   * @param {number} modifiedDate - Modified timestamp (Unix)
+   */
+  async updatePlaylistTimestamps(playlistId, createdDate, modifiedDate) {
+    return new Promise((resolve, reject) => {
+      const sql = `
+        UPDATE playlists
+        SET created_date = ?, modified_date = ?
+        WHERE id = ?
+      `;
+      
+      this.db.run(sql, [createdDate, modifiedDate, playlistId], (error) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve();
+        }
+      });
+    });
+  }
+  
+  /**
+   * Remove all tracks from playlist
+   * @param {number} playlistId - Playlist ID
+   */
+  async removeAllTracksFromPlaylist(playlistId) {
+    return new Promise((resolve, reject) => {
+      const sql = `DELETE FROM playlist_tracks WHERE playlist_id = ?`;
+      this.db.run(sql, [playlistId], (error) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve();
+        }
+      });
+    });
+  }
+  
+  /**
    * Import playlist from M3U format
    */
   async importPlaylistFromM3U(filePath, playlistName = null) {

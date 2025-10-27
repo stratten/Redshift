@@ -43,7 +43,9 @@ RedShiftMobile/
 │   └── Resources/
 │       └── Info.plist                 # App configuration + iTunes File Sharing
 │
-├── build.sh                           # Quick build/run script
+├── build/
+│   └── scripts/
+│       └── build.sh                   # Quick build/run script
 ├── BUILD_INSTRUCTIONS.md              # Detailed build guide
 ├── README.md                          # Feature overview
 └── .gitignore                         # Git configuration
@@ -56,19 +58,19 @@ RedShiftMobile/
 cd /Users/strattenwaldt/Desktop/Projects/Personal\ Projects/RedShiftMobile
 
 # Build for simulator
-./build.sh build
+./build/scripts/build.sh build
 
 # Build and run
-./build.sh run
+./build/scripts/build.sh run
 
 # Run on specific simulator
-./build.sh run "iPhone 15 Pro"
+./build/scripts/build.sh run "iPhone 15 Pro"
 
 # Show logs
-./build.sh logs
+./build/scripts/build.sh logs
 
 # Clean build
-./build.sh clean
+./build/scripts/build.sh clean
 ```
 
 ### Manual Xcode Build

@@ -12,11 +12,15 @@ yarn-error.log*
 # Build outputs
 dist/
 build/
+RedShift_Desktop/build/
 *.app
 *.dmg
 *.pkg
 *.ipa
 *.xcarchive
+
+# Reference build files
+RedShift_Desktop/reference
 
 # Generated HTML files
 RedShift_Desktop/src/renderer/index.built.html

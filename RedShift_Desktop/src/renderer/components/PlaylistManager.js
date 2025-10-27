@@ -34,6 +34,12 @@ class PlaylistManager {
     
     // Modal event listeners
     this.setupModalEventListeners();
+    
+    // Listen for play count updates
+    window.addEventListener('play-count-incremented', (event) => {
+      const { filePath } = event.detail;
+      this.updateTrackPlayCountInUI(filePath);
+    });
   }
   
   setupModalEventListeners() {
@@ -479,6 +485,31 @@ class PlaylistManager {
     
     // Add event listeners for track actions
     this.setupPlaylistTrackListeners();
+  }
+  
+  updateTrackPlayCountInUI(filePath) {
+    // Only update if a playlist is currently displayed
+    if (!this.currentPlaylist) {
+      return;
+    }
+    
+    // Get the updated play count from the MusicLibrary's Map
+    const playCount = this.ui.musicLibrary.playCountByPath.get(filePath) || 0;
+    
+    // Find the row in the playlist table with matching file path
+    const tracksArea = document.getElementById('playlistTracks');
+    if (!tracksArea) return;
+    
+    const row = tracksArea.querySelector(`tr[data-file-path="${filePath}"]`);
+    if (row) {
+      // Update the play count cell
+      const playCountCell = row.querySelector('.col-playcount .play-count');
+      if (playCountCell) {
+        const oldValue = playCountCell.textContent;
+        playCountCell.textContent = playCount;
+        this.ui.logBoth('success', `🎵 Updated play count in playlist view: ${oldValue} → ${playCount}`);
+      }
+    }
   }
   
   formatTime(seconds) {

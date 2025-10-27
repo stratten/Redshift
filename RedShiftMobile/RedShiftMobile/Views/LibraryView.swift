@@ -12,11 +12,17 @@ struct LibraryView: View {
     @State private var sortAscending = true
     @State private var filterFavorites = false
     
+    // Determines if the current sort should default to descending
+    var defaultToDescending: Bool {
+        return sortOption == .recent || sortOption == .playCount
+    }
+    
     enum SortOption: String, CaseIterable {
         case artist = "Artist"
         case album = "Album"
         case title = "Title"
         case recent = "Recently Added"
+        case playCount = "Most Played"
     }
     
     var filteredTracks: [Track] {
@@ -50,8 +56,15 @@ struct LibraryView: View {
                 return sortAscending ? comparison : !comparison
             }
         case .recent:
+            // For "recent", ascending means oldest first, descending means newest first
             tracks.sort { 
-                let comparison = $0.addedDate > $1.addedDate
+                let comparison = $0.addedDate < $1.addedDate
+                return sortAscending ? comparison : !comparison
+            }
+        case .playCount:
+            // For "play count", ascending means least played first, descending means most played first
+            tracks.sort { 
+                let comparison = ($0.playCount, $0.lastPlayed ?? Date.distantPast) < ($1.playCount, $1.lastPlayed ?? Date.distantPast)
                 return sortAscending ? comparison : !comparison
             }
         }
@@ -125,6 +138,38 @@ struct LibraryView: View {
                                 .onTapGesture {
                                     audioPlayer.playQueue(filteredTracks, startingAt: filteredTracks.firstIndex(where: { $0.id == track.id }) ?? 0)
                                 }
+                                .contextMenu {
+                                    Button(action: {
+                                        audioPlayer.playQueue(filteredTracks, startingAt: filteredTracks.firstIndex(where: { $0.id == track.id }) ?? 0)
+                                    }) {
+                                        Label("Play Now", systemImage: "play.fill")
+                                    }
+                                    
+                                    Button(action: {
+                                        audioPlayer.playNext(track)
+                                    }) {
+                                        Label("Play Next", systemImage: "text.insert")
+                                    }
+                                    
+                                    Button(action: {
+                                        audioPlayer.addToQueue(track)
+                                    }) {
+                                        Label("Add to Queue", systemImage: "text.append")
+                                    }
+                                    
+                                    Divider()
+                                    
+                                    Button(action: {
+                                        Task {
+                                            await libraryManager.toggleFavorite(for: track)
+                                        }
+                                    }) {
+                                        Label(
+                                            track.isFavorite ? "Remove from Favorites" : "Add to Favorites",
+                                            systemImage: track.isFavorite ? "heart.slash.fill" : "heart.fill"
+                                        )
+                                    }
+                                }
                         }
                     }
                     .listStyle(.plain)
@@ -147,6 +192,15 @@ struct LibraryView: View {
                                     Text(option.rawValue).tag(option)
                                 }
                             }
+                            .onChange(of: sortOption) { _, newValue in
+                                // When sort option changes, set sensible default direction
+                                // For "Most Played" and "Recently Added", default to descending (arrow down)
+                                if newValue == .playCount || newValue == .recent {
+                                    sortAscending = false // descending = arrow down = highest/newest first
+                                } else {
+                                    sortAscending = true // ascending = arrow up = alphabetical A-Z
+                                }
+                            }
                         } label: {
                             HStack(spacing: 4) {
                                 Text(sortOption.rawValue)
@@ -160,7 +214,12 @@ struct LibraryView: View {
                         
                         // Sort direction toggle
                         Button(action: { sortAscending.toggle() }) {
-                            Image(systemName: sortAscending ? "arrow.up" : "arrow.down")
+                            // For play count and recent, the arrow logic is inverted
+                            let isInvertedSort = sortOption == .playCount || sortOption == .recent
+                            let arrowDirection = isInvertedSort ? 
+                                (sortAscending ? "arrow.down" : "arrow.up") :
+                                (sortAscending ? "arrow.up" : "arrow.down")
+                            Image(systemName: arrowDirection)
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                         }
@@ -322,7 +381,7 @@ struct TrackContextMenu: View {
             ForEach(libraryManager.playlists) { playlist in
                 Button(playlist.name) {
                     Task {
-                        await libraryManager.addTrackToPlaylist(trackID: track.id, playlistID: playlist.id)
+                        await libraryManager.addTrackToPlaylist(trackStableID: track.stableID, playlistID: playlist.id)
                     }
                 }
             }

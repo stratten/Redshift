@@ -2,17 +2,17 @@
     "name": "redshift",
     "version": "1.0.0",
     "description": "Desktop app for managing Doppler music library sync between Mac and iPhone",
+    "author": "Redshift",
     "main": "src/main/main.js",
     "scripts": {
         "start": "electron .",
         "dev": "node build-html.js && electron . --dev",
-        "build": "node build-html.js && electron-builder",
-        "pack": "node build-html.js && electron-builder --dir",
+        "build": "node build-html.js && ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES=true electron-builder",
+        "pack": "node build-html.js && ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES=true electron-builder --dir",
         "build:renderer": "node build-html.js"
     },
     "dependencies": {
         "chokidar": "^3.5.3",
-        "electron": "^27.0.0",
         "fs-extra": "^11.1.1",
         "fuzzysort": "^2.0.4",
         "jimp": "^0.22.12",
@@ -29,6 +29,7 @@
         "applescript": "^1.0.0"
     },
     "devDependencies": {
+        "electron": "^27.0.0",
         "electron-builder": "^24.6.4"
     },
     "build": {
@@ -41,9 +42,70 @@
             "src/**/*",
             "package.json"
         ],
+        "extraResources": [
+            {
+                "from": "resources/python",
+                "to": "python",
+                "filter": ["**/*"]
+            },
+            {
+                "from": "resources/python-deps",
+                "to": "python-deps",
+                "filter": ["**/*"]
+            }
+        ],
+        "asarUnpack": [
+            "resources/python/**/*",
+            "resources/python-deps/**/*",
+            "node_modules/sqlite3/**/*",
+            "node_modules/usb/**/*"
+        ],
+        "npmRebuild": false,
+        "buildDependenciesFromSource": false,
+        "afterSign": "build/scripts/afterSign.js",
         "mac": {
             "category": "public.app-category.music",
-            "icon": "build/icon.icns"
+            "icon": "build/icon.icns",
+            "target": [
+                {
+                    "target": "dmg",
+                    "arch": ["arm64", "x64"]
+                },
+                {
+                    "target": "zip",
+                    "arch": ["arm64", "x64"]
+                }
+            ],
+            "identity": "Baobab Group LLC (D4X8TSBQJC)",
+            "hardenedRuntime": true,
+            "gatekeeperAssess": false,
+            "entitlements": "build/entitlements.mac.plist",
+            "entitlementsInherit": "build/entitlements.mac.plist",
+            "notarize": {
+                "teamId": "D4X8TSBQJC"
+            }
+        },
+        "dmg": {
+            "title": "Redshift",
+            "icon": "build/icon.icns",
+            "backgroundColor": "#1a1a1a",
+            "window": {
+                "width": 540,
+                "height": 380
+            },
+            "contents": [
+                {
+                    "x": 144,
+                    "y": 150,
+                    "type": "file"
+                },
+                {
+                    "x": 396,
+                    "y": 150,
+                    "type": "link",
+                    "path": "/Applications"
+                }
+            ]
         }
     }
 }

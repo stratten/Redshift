@@ -4,12 +4,13 @@
 .btn {
     display: inline-flex;
     align-items: center;
-    padding: 8px 16px;
+    padding: 6px 16px;
     border-radius: 8px;
     border: none;
     cursor: pointer;
     font-size: 14px;
     font-weight: 500;
+    line-height: 1;
     transition: all 0.2s;
     text-decoration: none;
 }
@@ -39,6 +40,7 @@
 
 .btn svg {
     margin-right: 6px;
+    flex-shrink: 0;
 }
 
 .btn-sm {

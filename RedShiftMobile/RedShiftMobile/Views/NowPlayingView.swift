@@ -78,23 +78,48 @@ struct NowPlayingView: View {
                         
                         // Progress slider
                         VStack(spacing: 8) {
-                            Slider(
-                                value: isDraggingSlider ? $tempSliderValue : Binding(
-                                    get: { audioPlayer.currentTime },
-                                    set: { _ in }
-                                ),
-                                in: 0...max(audioPlayer.duration, 1),
-                                onEditingChanged: { editing in
-                                    if editing {
-                                        isDraggingSlider = true
-                                        tempSliderValue = audioPlayer.currentTime
-                                    } else {
-                                        audioPlayer.seek(to: tempSliderValue)
-                                        isDraggingSlider = false
+                            ZStack {
+                                // Slider
+                                Slider(
+                                    value: isDraggingSlider ? $tempSliderValue : Binding(
+                                        get: { audioPlayer.currentTime },
+                                        set: { _ in }
+                                    ),
+                                    in: 0...max(audioPlayer.duration, 1),
+                                    onEditingChanged: { editing in
+                                        if editing {
+                                            isDraggingSlider = true
+                                            tempSliderValue = audioPlayer.currentTime
+                                        } else {
+                                            audioPlayer.seek(to: tempSliderValue)
+                                            isDraggingSlider = false
+                                        }
                                     }
+                                )
+                                .accentColor(.white)
+                                
+                                // Tap gesture overlay with modest hit area
+                                GeometryReader { geometry in
+                                    Rectangle()
+                                        .fill(Color.clear)
+                                        .contentShape(Rectangle())
+                                        .gesture(
+                                            DragGesture(minimumDistance: 0)
+                                                .onChanged { value in
+                                                    let percent = value.location.x / geometry.size.width
+                                                    let newTime = percent * audioPlayer.duration
+                                                    let clampedTime = max(0, min(newTime, audioPlayer.duration))
+                                                    
+                                                    if !isDraggingSlider {
+                                                        // Direct tap - seek immediately
+                                                        audioPlayer.seek(to: clampedTime)
+                                                    }
+                                                }
+                                        )
                                 }
-                            )
-                            .accentColor(.white)
+                                .frame(height: 30) // Tap target height
+                            }
+                            .frame(height: 30)
                             
                             HStack {
                                 Text(formatTime(isDraggingSlider ? tempSliderValue : audioPlayer.currentTime))
@@ -141,7 +166,7 @@ struct NowPlayingView: View {
                             .padding(.top, 16)
                             
                             // Secondary controls
-                            HStack(spacing: 60) {
+                            HStack(spacing: 48) {
                                 // Shuffle
                                 Button(action: { audioPlayer.toggleShuffle() }) {
                                     Image(systemName: audioPlayer.shuffleEnabled ? "shuffle.circle.fill" : "shuffle")
@@ -175,6 +200,83 @@ struct NowPlayingView: View {
                                     .font(.system(size: 24))
                                     .foregroundColor(audioPlayer.repeatMode != .off ? .purple : .white.opacity(0.7))
                                 }
+                                
+                                // Playback Speed
+                                Menu {
+                                    ForEach([0.5, 0.75, 1.0, 1.25, 1.5, 2.0], id: \.self) { rate in
+                                        Button(action: {
+                                            audioPlayer.setPlaybackRate(Float(rate))
+                                        }) {
+                                            HStack {
+                                                Text(rate == 1.0 ? "Normal (1×)" : "\(rate, specifier: "%.2g")×")
+                                                if audioPlayer.playbackRate == Float(rate) {
+                                                    Image(systemName: "checkmark")
+                                                }
+                                            }
+                                        }
+                                    }
+                                } label: {
+                                    ZStack {
+                                        Image(systemName: "gauge.with.dots.needle.33percent")
+                                            .font(.system(size: 24))
+                                            .foregroundColor(audioPlayer.playbackRate != 1.0 ? .purple : .white.opacity(0.7))
+                                        
+                                        // Show speed badge if not normal
+                                        if audioPlayer.playbackRate != 1.0 {
+                                            Text("\(audioPlayer.playbackRate, specifier: "%.2g")×")
+                                                .font(.system(size: 9, weight: .bold))
+                                                .foregroundColor(.white)
+                                                .padding(3)
+                                                .background(Circle().fill(Color.purple))
+                                                .offset(x: 12, y: -12)
+                                        }
+                                    }
+                                }
+                                
+                                // Crossfade
+                                Menu {
+                                    Button(action: {
+                                        audioPlayer.setCrossfadeDuration(0)
+                                    }) {
+                                        HStack {
+                                            Text("Off")
+                                            if audioPlayer.crossfadeDuration == 0 {
+                                                Image(systemName: "checkmark")
+                                            }
+                                        }
+                                    }
+                                    
+                                    Divider()
+                                    
+                                    ForEach([1, 2, 4, 6, 8, 10, 12], id: \.self) { seconds in
+                                        Button(action: {
+                                            audioPlayer.setCrossfadeDuration(TimeInterval(seconds))
+                                        }) {
+                                            HStack {
+                                                Text(seconds == 1 ? "1 second" : "\(seconds) seconds")
+                                                if Int(audioPlayer.crossfadeDuration) == seconds {
+                                                    Image(systemName: "checkmark")
+                                                }
+                                            }
+                                        }
+                                    }
+                                } label: {
+                                    ZStack {
+                                        Image(systemName: "waveform.path")
+                                            .font(.system(size: 24))
+                                            .foregroundColor(audioPlayer.crossfadeDuration > 0 ? .purple : .white.opacity(0.7))
+                                        
+                                        // Show duration badge if enabled
+                                        if audioPlayer.crossfadeDuration > 0 {
+                                            Text("\(Int(audioPlayer.crossfadeDuration))s")
+                                                .font(.system(size: 9, weight: .bold))
+                                                .foregroundColor(.white)
+                                                .padding(3)
+                                                .background(Circle().fill(Color.purple))
+                                                .offset(x: 12, y: -12)
+                                        }
+                                    }
+                                }
                             }
                             .padding(.bottom, 8)
                         }
@@ -185,11 +287,30 @@ struct NowPlayingView: View {
                             Image(systemName: "speaker.fill")
                                 .foregroundColor(.white.opacity(0.6))
                             
-                            Slider(value: Binding(
-                                get: { Double(audioPlayer.volume) },
-                                set: { audioPlayer.setVolume(Float($0)) }
-                            ), in: 0...1)
-                            .accentColor(.white)
+                            ZStack {
+                                Slider(value: Binding(
+                                    get: { Double(audioPlayer.volume) },
+                                    set: { audioPlayer.setVolume(Float($0)) }
+                                ), in: 0...1)
+                                .accentColor(.white)
+                                
+                                // Tap gesture overlay
+                                GeometryReader { geometry in
+                                    Rectangle()
+                                        .fill(Color.clear)
+                                        .contentShape(Rectangle())
+                                        .gesture(
+                                            DragGesture(minimumDistance: 0)
+                                                .onChanged { value in
+                                                    let percent = value.location.x / geometry.size.width
+                                                    let clampedPercent = max(0, min(percent, 1))
+                                                    audioPlayer.setVolume(Float(clampedPercent))
+                                                }
+                                        )
+                                }
+                                .frame(height: 30)
+                            }
+                            .frame(height: 30)
                             
                             Image(systemName: "speaker.wave.3.fill")
                                 .foregroundColor(.white.opacity(0.6))
@@ -220,6 +341,49 @@ struct NowPlayingView: View {
             .navigationTitle("Now Playing")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                // Sleep Timer (left side)
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Menu {
+                        ForEach([1, 5, 10, 15, 30, 45, 60, 90, 120], id: \.self) { minutes in
+                            Button(action: {
+                                audioPlayer.setSleepTimer(minutes: minutes)
+                            }) {
+                                HStack {
+                                    Text(minutes == 1 ? "1 minute" : "\(minutes) minutes")
+                                    if audioPlayer.sleepTimerMinutesRemaining == minutes {
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                        }
+                        
+                        if audioPlayer.sleepTimerMinutesRemaining != nil {
+                            Divider()
+                            Button(role: .destructive, action: {
+                                audioPlayer.cancelSleepTimer()
+                            }) {
+                                Label("Cancel Timer", systemImage: "xmark.circle")
+                            }
+                        }
+                    } label: {
+                        ZStack {
+                            Image(systemName: audioPlayer.sleepTimerMinutesRemaining != nil ? "moon.zzz.fill" : "moon.zzz")
+                                .foregroundColor(audioPlayer.sleepTimerMinutesRemaining != nil ? .blue : .white)
+                            
+                            // Show remaining time badge
+                            if let minutes = audioPlayer.sleepTimerMinutesRemaining {
+                                Text("\(minutes)")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundColor(.white)
+                                    .padding(3)
+                                    .background(Circle().fill(Color.blue))
+                                    .offset(x: 10, y: -10)
+                            }
+                        }
+                    }
+                }
+                
+                // Queue (right side)
                 ToolbarItem(placement: .navigationBarTrailing) {
                     NavigationLink(destination: QueueView()) {
                         Image(systemName: "list.bullet")
@@ -240,6 +404,7 @@ struct NowPlayingView: View {
 // MARK: - Queue View
 struct QueueView: View {
     @EnvironmentObject var audioPlayer: AudioPlayerService
+    @State private var editMode: EditMode = .inactive
     
     var body: some View {
         List {
@@ -275,13 +440,48 @@ struct QueueView: View {
                     }
                     .contentShape(Rectangle())
                     .onTapGesture {
-                        audioPlayer.playQueue(audioPlayer.queue, startingAt: index)
+                        if editMode == .inactive {
+                            audioPlayer.playQueue(audioPlayer.queue, startingAt: index)
+                        }
+                    }
+                }
+                .onMove { source, destination in
+                    audioPlayer.moveTrackInQueue(from: source, to: destination)
+                }
+                .onDelete { indexSet in
+                    for index in indexSet {
+                        audioPlayer.removeFromQueue(at: index)
                     }
                 }
             }
         }
-        .navigationTitle("Queue")
+        .navigationTitle("Queue (\(audioPlayer.queue.count))")
         .navigationBarTitleDisplayMode(.inline)
+        .environment(\.editMode, $editMode)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                HStack(spacing: 16) {
+                    if !audioPlayer.queue.isEmpty {
+                        // Edit button
+                        Button(editMode == .active ? "Done" : "Edit") {
+                            withAnimation {
+                                editMode = editMode == .active ? .inactive : .active
+                            }
+                        }
+                        
+                        // Clear queue button
+                        if editMode == .inactive {
+                            Button(action: {
+                                audioPlayer.clearQueue()
+                            }) {
+                                Image(systemName: "trash")
+                                    .foregroundColor(.red)
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

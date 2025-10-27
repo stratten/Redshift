@@ -20,7 +20,7 @@ const PlaylistService = require('./services/PlaylistService');
 const WindowManager = require('./services/WindowManager');
 const MediaKeysService = require('./services/MediaKeysService');
 const RedShiftUSBSyncService = require('./services/RedShiftUSBSyncService');
-const { registerIpc, attachEventForwarders } = require('./services/AppBridge');
+const { registerAllIpc, attachEventForwarders } = require('./services/ipc');
 const { initializeDatabase } = require('./services/Database');
 const FileWatcher = require('./services/FileWatcher');
 const AppSettingsService = require('./services/AppSettingsService');
@@ -164,7 +164,7 @@ class RedshiftSyncManager extends EventEmitter {
     this.mediaKeysService = new MediaKeysService(this);
     
     // Initialize USB sync service
-    this.redshiftUSBSyncService = new RedShiftUSBSyncService(this.db, this.musicLibraryCache, this.deviceMonitorService);
+    this.redshiftUSBSyncService = new RedShiftUSBSyncService(this.db, this.musicLibraryCache, this.deviceMonitorService, this.playlistService);
     
     // Set up event listeners for services via consolidated bridge
     attachEventForwarders(this);
@@ -298,7 +298,7 @@ class RedshiftSyncManager extends EventEmitter {
     
     // Ensure IPC handlers are registered before renderer loads/preload invokes
     if (!this.ipcHandlersSetup) {
-      registerIpc(ipcMain, this);
+      registerAllIpc(ipcMain, this);
       this.ipcHandlersSetup = true;
     }
     

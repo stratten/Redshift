@@ -12,6 +12,26 @@ struct RedShiftMobileApp: App {
     init() {
         // Setup audio session for background playback
         AudioPlayerService.setupAudioSession()
+        
+        // Create necessary directories
+        setupDirectories()
+    }
+    
+    private func setupDirectories() {
+        guard let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            return
+        }
+        
+        // Create artist-images directory
+        let artistImagesURL = documentsURL.appendingPathComponent("artist-images")
+        try? FileManager.default.createDirectory(at: artistImagesURL, withIntermediateDirectories: true)
+        
+        // Create Playlists directory
+        let playlistsURL = documentsURL.appendingPathComponent("Playlists")
+        try? FileManager.default.createDirectory(at: playlistsURL, withIntermediateDirectories: true)
+        
+        print("📁 Created artist-images directory at: \(artistImagesURL.path)")
+        print("📁 Created Playlists directory at: \(playlistsURL.path)")
     }
     
     var body: some Scene {
@@ -20,6 +40,9 @@ struct RedShiftMobileApp: App {
                 .environmentObject(audioPlayer)
                 .environmentObject(libraryManager)
                 .onAppear {
+                    // Connect audio player to library manager for play count tracking
+                    audioPlayer.libraryManager = libraryManager
+                    
                     // Load existing library on app launch
                     Task {
                         await libraryManager.loadLibraryFromDatabase()
@@ -30,13 +53,21 @@ struct RedShiftMobileApp: App {
                         }
                     }
                 }
-        }
-        .onChange(of: scenePhase) { oldPhase, newPhase in
-            if newPhase == .background {
-                // Export sync status when app goes to background
-                print("📱 App entering background - exporting sync status...")
-                SyncStatusService.shared.exportOnBackground()
-            }
+                .onChange(of: scenePhase) { oldPhase, newPhase in
+                    if newPhase == .background {
+                        // Export playlists when app goes to background (in case of sync)
+                        Task {
+                            await libraryManager.exportPlaylistsForSync()
+                        }
+                    } else if newPhase == .active && oldPhase == .background {
+                        // When coming back from background (after potential sync):
+                        // 1. Reload library from database (picks up new synced tracks)
+                        // 2. Import any new playlists
+                        Task {
+                            await libraryManager.loadLibraryFromDatabase()
+                        }
+                    }
+                }
         }
     }
 }

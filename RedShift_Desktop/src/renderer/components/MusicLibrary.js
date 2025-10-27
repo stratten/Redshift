@@ -69,6 +69,27 @@ class MusicLibrary {
       }
     });
     
+    // Listen for immediate play count increment event (from AudioPlayerPlayback)
+    window.addEventListener('play-count-incremented', (event) => {
+      const { filePath } = event.detail;
+      this.ui.logBoth('info', `🔔 Play count increment event received for: ${filePath}`);
+      
+      // Immediately increment the play count in our local Map
+      const currentCount = this.playCountByPath.get(filePath) || 0;
+      const newCount = currentCount + 1;
+      this.playCountByPath.set(filePath, newCount);
+      this.ui.logBoth('success', `📊 Updated playCountByPath Map: ${currentCount} → ${newCount}`);
+      
+      // Update the UI immediately
+      const librarySubtab = document.getElementById('librarySubtab');
+      const libraryVisible = librarySubtab && librarySubtab.style.display !== 'none';
+      
+      if (libraryVisible) {
+        this.ui.logBoth('info', '🔄 Updating play count in UI...');
+        this.updateTrackPlayCountInUI(filePath);
+      }
+    });
+    
     this.ui.logBoth('success', '✅ Playback listeners initialized for auto-refresh');
   }
   

@@ -30,6 +30,13 @@ class AudioPlayerPlayback {
         const result = await window.electronAPI.invoke('audio-track-ended-notify', trackPath);
         if (result) {
           this.player.ui.logBoth('success', `✅ Main process confirmed play count update for: ${trackName}`);
+          
+          // Dispatch custom event to immediately update UI
+          const event = new CustomEvent('play-count-incremented', {
+            detail: { filePath: trackPath }
+          });
+          window.dispatchEvent(event);
+          this.player.ui.logBoth('info', `📤 Dispatched play-count-incremented event for UI update`);
         } else {
           this.player.ui.logBoth('warning', `⚠️ Main process returned false for: ${trackName}`);
         }
@@ -127,11 +134,14 @@ class AudioPlayerPlayback {
       
       // Ensure currentTrack always has path and name for play count tracking
       const fileName = filePath.split('/').pop();
+      const trackName = track?.name || track?.metadata?.common?.title || fileName;
+      
+      // Spread track properties first, then FORCE overwrite path and name to guarantee they're set
       this.player.audioPlayerState.currentTrack = {
-        ...(track || {}),  // Spread any additional properties from the track object FIRST
-        path: filePath,    // Then GUARANTEE these essential properties are set
-        name: track?.name || fileName
-      };
+        ...(track || {}),         // Spread any additional properties FIRST
+        path: filePath,           // Then FORCE path (overwrites any track.path)
+        name: trackName           // Then FORCE name (overwrites any track.name)
+      }
       
       this.player.ui.logBoth('info', `   Set currentTrack - path: ${this.player.audioPlayerState.currentTrack.path ? 'SET' : 'MISSING'}, name: ${this.player.audioPlayerState.currentTrack.name || 'MISSING'}`);
       

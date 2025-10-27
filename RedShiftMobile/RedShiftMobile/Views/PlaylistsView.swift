@@ -224,7 +224,7 @@ struct PlaylistDetailView: View {
                                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                     Button(role: .destructive) {
                                         Task {
-                                            await libraryManager.removeTrackFromPlaylist(trackID: track.id, playlistID: playlist.id)
+                                            await libraryManager.removeTrackFromPlaylist(trackStableID: track.stableID, playlistID: playlist.id)
                                         }
                                     } label: {
                                         Label("Remove", systemImage: "trash")
@@ -261,8 +261,8 @@ struct AddTracksToPlaylistSheet: View {
     @State private var selectedTrackIDs: Set<UUID> = []
     
     var availableTracks: [Track] {
-        let playlistTrackIDs = Set(playlist.trackIDs)
-        var tracks = libraryManager.tracks.filter { !playlistTrackIDs.contains($0.id) }
+        let playlistTrackStableIDs = Set(playlist.trackStableIDs)
+        var tracks = libraryManager.tracks.filter { !playlistTrackStableIDs.contains($0.stableID) }
         
         if !searchText.isEmpty {
             tracks = tracks.filter {
@@ -339,7 +339,9 @@ struct AddTracksToPlaylistSheet: View {
                     Button("Add (\(selectedTrackIDs.count))") {
                         Task {
                             for trackID in selectedTrackIDs {
-                                await libraryManager.addTrackToPlaylist(trackID: trackID, playlistID: playlist.id)
+                                if let track = libraryManager.tracks.first(where: { $0.id == trackID }) {
+                                    await libraryManager.addTrackToPlaylist(trackStableID: track.stableID, playlistID: playlist.id)
+                                }
                             }
                             isPresented = false
                         }

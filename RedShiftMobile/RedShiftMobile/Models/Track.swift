@@ -98,4 +98,14 @@ extension Track {
         let seconds = Int(duration) % 60
         return String(format: "%d:%02d", minutes, seconds)
     }
+    
+    /// Stable identifier based on metadata (survives file moves/renames)
+    /// Uses: title + artist + album + duration as composite key
+    var stableID: String {
+        let title = self.title ?? self.fileName
+        let artist = self.artist ?? "Unknown"
+        let album = self.album ?? "Unknown"
+        let durationInt = Int(self.duration)
+        return "\(title)|\(artist)|\(album)|\(durationInt)"
+    }
 }
