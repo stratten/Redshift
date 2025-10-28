@@ -32,6 +32,12 @@ class AlbumsView {
    * Set up event listeners
    */
   setupEventListeners() {
+    // Listen for play count updates
+    window.addEventListener('play-count-incremented', (event) => {
+      const { filePath } = event.detail;
+      this.updateTrackPlayCountInUI(filePath);
+    });
+    
     // Local album search filter
     const albumSearchInput = document.getElementById('albumSearchInput');
     if (albumSearchInput) {
@@ -470,12 +476,16 @@ class AlbumsView {
         </div>
         
         <div class="album-tracks">
-          <table class="album-tracks-table">
+          <table class="album-tracks-table music-table">
             <thead>
               <tr>
                 <th class="track-no">#</th>
                 <th class="track-name">Track</th>
                 <th class="track-duration">Duration</th>
+                <th class="col-playcount">Plays</th>
+                <th class="col-favourite">Favorite</th>
+                <th class="col-rating">Rating</th>
+                <th class="col-actions">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -483,7 +493,7 @@ class AlbumsView {
 
     // Render each track
     sortedTracks.forEach((track, index) => {
-      html += this.renderTrackRow(track, index + 1);
+      html += this.renderTrackRow(track, index);
     });
 
     html += `
@@ -502,31 +512,42 @@ class AlbumsView {
   /**
    * Render a single track row
    */
-  renderTrackRow(track, trackNo) {
+  renderTrackRow(track, index) {
     const title = track.metadata?.common?.title || track.name?.replace(/\.\w+$/, '') || 'Unknown Track';
     const duration = track.metadata?.format?.duration || 0;
-    const displayTrackNo = track.metadata?.common?.track?.no || trackNo;
+    const displayTrackNo = track.metadata?.common?.track?.no || (index + 1);
+    
+    // Get favorite, rating, and play count from music library
+    const favoriteByPath = this.ui.musicLibrary?.favoriteByPath || new Map();
+    const ratingByPath = this.ui.musicLibrary?.ratingByPath || new Map();
+    const playCountByPath = this.ui.musicLibrary?.playCountByPath || new Map();
     
     return `
-      <tr class="track-row" data-path="${this.escapeHtml(track.path)}">
+      <tr class="track-row" data-index="${index}" data-path="${this.escapeHtml(track.path)}">
         <td class="track-no">${displayTrackNo}</td>
         <td class="track-name">${this.escapeHtml(title)}</td>
         <td class="track-duration">${this.formatDuration(duration)}</td>
+        ${renderTrackInteractiveColumns(index, track, favoriteByPath, ratingByPath, playCountByPath)}
       </tr>
     `;
   }
 
   /**
-   * Set up track table listeners for playback
+   * Set up track table listeners for playback and actions
    */
   setupTrackTableListeners() {
     const trackRows = this.container.querySelectorAll('.track-row');
     
+    // Build track list by index for action button handlers
+    const tracksByIndex = Array.from(trackRows).map(row => {
+      const path = row.dataset.path;
+      return this.selectedAlbum.tracks.find(t => t.path === path);
+    });
+    
+    // Double-click to play
     trackRows.forEach((row, index) => {
       row.addEventListener('dblclick', async () => {
         const path = row.dataset.path;
-        
-        // Find the track in the selected album's tracks
         const track = this.selectedAlbum.tracks.find(t => t.path === path);
         
         if (!track) {
@@ -547,6 +568,27 @@ class AlbumsView {
         }
       });
     });
+    
+    // Setup all interactive track action handlers using shared functions
+    setupAllTrackActionHandlers({
+      container: this.container,
+      getTrackByIndex: (index) => tracksByIndex[index],
+      musicLibrary: this.ui.musicLibrary,
+      audioPlayer: this.ui.audioPlayer,
+      playlistManager: { openAddTracksModal: (tracks) => {
+        // Use showPlaylistPickerModal for adding tracks to playlists
+        const track = tracks[0];
+        const button = event.target.closest('.add-to-playlist-btn');
+        if (button && track) {
+          showPlaylistPickerModal(button, track.path, track.name, this.ui.logger.logBoth.bind(this.ui.logger));
+        }
+      }},
+      contextTracks: this.selectedAlbum.tracks,
+      contextType: 'album',
+      setFavoriteStatusFn: this.ui.songsMetadata.toggleFavorite.bind(this.ui.songsMetadata),
+      setRatingFn: this.ui.songsMetadata.setRating.bind(this.ui.songsMetadata),
+      logFn: this.ui.logger.logBoth.bind(this.ui.logger)
+    });
   }
 
   /**
@@ -565,6 +607,20 @@ class AlbumsView {
     this.processAlbums(tracks);
     this.filteredAlbums = [...this.albums];
     this.sortAndRenderAlbums();
+  }
+
+  /**
+   * Update play count display in UI for a specific track
+   * @param {string} filePath - Path to the track file
+   */
+  updateTrackPlayCountInUI(filePath) {
+    // Only update if we're in detail view
+    if (this.currentView !== 'detail' || !this.selectedAlbum || !this.container) {
+      return;
+    }
+
+    // Use shared utility to update the UI
+    updateTrackPlayCountInUI(this.container, filePath, this.ui.musicLibrary.playCountByPath);
   }
 
   /**

@@ -3,9 +3,14 @@
 /* Import base styles first */
 @import 'base.css';
 
+/* Import shared components used across multiple views */
+@import 'shared-components.css';
+
 /* Import component stylesheets */
 @import 'sidebar.css';
-@import 'music-library.css';
+@import 'artists-view.css';
+@import 'albums-view.css';
+@import 'music-library-view.css';
 @import 'player.css';
 @import 'playlists.css';
 @import 'doppler-sync.css';

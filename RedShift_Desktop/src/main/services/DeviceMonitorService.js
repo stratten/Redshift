@@ -464,10 +464,22 @@ class DeviceMonitorService {
       const { exec } = require('child_process');
       const { promisify } = require('util');
       const path = require('path');
+      const { app } = require('electron');
       const execAsync = promisify(exec);
       
-      const scriptPath = path.join(__dirname, '../../../scripts/get-device-udids.py');
-      const pythonPath = path.join(__dirname, '../../../resources/python/python/bin/python3');
+      // Use correct paths for packaged vs dev
+      const isPackaged = app.isPackaged;
+      
+      const scriptPath = isPackaged
+        ? path.join(process.resourcesPath, 'scripts', 'get-device-udids.py')
+        : path.join(__dirname, '../../../scripts', 'get-device-udids.py');
+      
+      const pythonPath = isPackaged
+        ? path.join(process.resourcesPath, 'python', 'python', 'bin', 'python3')
+        : path.join(__dirname, '../../../resources', 'python', 'python', 'bin', 'python3');
+      
+      console.log(`  🐍 Using Python: ${pythonPath}`);
+      console.log(`  📜 Using script: ${scriptPath}`);
       
       const { stdout } = await execAsync(`"${pythonPath}" "${scriptPath}"`);
       const result = JSON.parse(stdout);
@@ -490,10 +502,22 @@ class DeviceMonitorService {
       const { exec } = require('child_process');
       const { promisify } = require('util');
       const path = require('path');
+      const { app } = require('electron');
       const execAsync = promisify(exec);
       
-      const scriptPath = path.join(__dirname, '../../../scripts/get-device-name.py');
-      const pythonPath = path.join(__dirname, '../../../resources/python/python/bin/python3');
+      // Use correct paths for packaged vs dev
+      const isPackaged = app.isPackaged;
+      
+      const scriptPath = isPackaged
+        ? path.join(process.resourcesPath, 'scripts', 'get-device-name.py')
+        : path.join(__dirname, '../../../scripts', 'get-device-name.py');
+      
+      const pythonPath = isPackaged
+        ? path.join(process.resourcesPath, 'python', 'python', 'bin', 'python3')
+        : path.join(__dirname, '../../../resources', 'python', 'python', 'bin', 'python3');
+      
+      console.log(`  🐍 Using Python: ${pythonPath}`);
+      console.log(`  📜 Using script: ${scriptPath}`);
       
       const { stdout } = await execAsync(`"${pythonPath}" "${scriptPath}" "${udid}"`);
       const result = JSON.parse(stdout);

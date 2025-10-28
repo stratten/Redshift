@@ -64,8 +64,17 @@ class DeviceScanManager {
     try {
       console.log(`🔍 Scanning device ${deviceId} (${deviceInfo.deviceName || 'iOS Device'})...`);
       
-      const scriptPath = path.join(__dirname, '../../../../scripts/list-device-files.py');
-      const pythonPath = path.join(__dirname, '../../../../resources/python/python/bin/python3');
+      // Use correct paths for packaged vs dev
+      const { app } = require('electron');
+      const isPackaged = app.isPackaged;
+      
+      const scriptPath = isPackaged
+        ? path.join(process.resourcesPath, 'scripts', 'list-device-files.py')
+        : path.join(__dirname, '../../../../scripts', 'list-device-files.py');
+      
+      const pythonPath = isPackaged
+        ? path.join(process.resourcesPath, 'python', 'python', 'bin', 'python3')
+        : path.join(__dirname, '../../../../resources', 'python', 'python', 'bin', 'python3');
       
       // Pass UDID to Python script to query specific device (if available)
       // UDID is needed by pymobiledevice3 to target the right device
@@ -76,6 +85,8 @@ class DeviceScanManager {
         : `"${pythonPath}" "${scriptPath}"`;
       
       console.log(`  📱 Querying productId ${deviceId} via${udid ? ` UDID ${udid.substr(0, 8)}...` : ' default connection'}`);
+      console.log(`  🐍 Using Python: ${pythonPath}`);
+      console.log(`  📜 Using script: ${scriptPath}`);
       const { stdout } = await execAsync(command);
       const result = JSON.parse(stdout);
       
@@ -198,8 +209,21 @@ class DeviceScanManager {
   async scanDeviceFiles(getConnectedDeviceInfo) {
     try {
       console.log('🔍 Scanning device files...');
-      const scriptPath = path.join(__dirname, '../../../../scripts/list-device-files.py');
-      const pythonPath = path.join(__dirname, '../../../../resources/python/python/bin/python3');
+      
+      // Use correct paths for packaged vs dev
+      const { app } = require('electron');
+      const isPackaged = app.isPackaged;
+      
+      const scriptPath = isPackaged
+        ? path.join(process.resourcesPath, 'scripts', 'list-device-files.py')
+        : path.join(__dirname, '../../../../scripts', 'list-device-files.py');
+      
+      const pythonPath = isPackaged
+        ? path.join(process.resourcesPath, 'python', 'python', 'bin', 'python3')
+        : path.join(__dirname, '../../../../resources', 'python', 'python', 'bin', 'python3');
+      
+      console.log(`  🐍 Using Python: ${pythonPath}`);
+      console.log(`  📜 Using script: ${scriptPath}`);
       
       const { stdout } = await execAsync(`"${pythonPath}" "${scriptPath}"`);
       const result = JSON.parse(stdout);

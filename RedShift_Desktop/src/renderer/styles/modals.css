@@ -663,9 +663,10 @@
 }
 
 .output-device-dropdown {
-    position: absolute;
-    top: calc(100% + 8px);
-    right: 0;
+    position: fixed; /* Changed from absolute to fixed to break out of parent stacking context */
+    /* Position will be set dynamically by JS, but fallback positioning: */
+    top: auto;
+    right: 20px;
     min-width: 280px;
     background: white;
     border: 1px solid #e2e8f0;
@@ -674,8 +675,8 @@
     opacity: 0;
     visibility: hidden;
     transform: translateY(-10px);
-    transition: all 0.2s ease;
-    z-index: 1000;
+    transition: opacity 0.2s ease, visibility 0.2s ease, transform 0.2s ease;
+    z-index: 10000; /* High z-index to appear above sticky table headers */
 }
 
 .output-device-dropdown.show {

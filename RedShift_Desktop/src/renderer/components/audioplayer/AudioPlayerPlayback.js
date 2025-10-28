@@ -17,8 +17,8 @@ class AudioPlayerPlayback {
 
   // Handle when a track ends - auto-advance to next track
   async handleTrackEnded() {
-    const trackName = this.player.audioPlayerState.currentTrack?.name || 'Unknown';
-    const trackPath = this.player.audioPlayerState.currentTrack?.path;
+    const trackName = this.player.audioPlayerState.currentTrack?.name || this.player.audioPlayerState.currentTrack?.filename || 'Unknown';
+    const trackPath = this.player.audioPlayerState.currentTrack?.filePath || this.player.audioPlayerState.currentTrack?.path;
     
     this.player.ui.logBoth('info', `🎵 Track ended handler called for: ${trackName}`);
     this.player.ui.logBoth('info', `   Context: ${this.player.audioPlayerState.currentContext}, Repeat: ${this.player.audioPlayerState.repeatMode}`);

@@ -273,10 +273,16 @@ class RedshiftSyncManager extends EventEmitter {
   
   sendToRenderer(channel, data = null) {
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-      console.log(`📤 Sending to renderer: ${channel}`, data);
+      // Skip logging for high-frequency events to reduce noise
+      if (channel !== 'audio-position-changed') {
+        console.log(`📤 Sending to renderer: ${channel}`, data);
+      }
       this.mainWindow.webContents.send(channel, data);
     } else {
-      console.warn(`⚠️  Cannot send ${channel} - window not ready or destroyed`);
+      // Skip warning for position updates when window is closed (expected behavior)
+      if (channel !== 'audio-position-changed') {
+        console.warn(`⚠️  Cannot send ${channel} - window not ready or destroyed`);
+      }
     }
   }
   
@@ -294,6 +300,13 @@ class RedshiftSyncManager extends EventEmitter {
       minHeight: 600,
       titleBarStyle: 'hiddenInset',
       showOnReady: true
+    });
+    
+    // Stop audio position tracking when window closes to prevent sending updates to destroyed window
+    this.mainWindow.on('close', () => {
+      if (this.audioPlayerService) {
+        this.audioPlayerService.stopPositionTracking();
+      }
     });
     
     // Ensure IPC handlers are registered before renderer loads/preload invokes

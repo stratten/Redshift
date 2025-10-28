@@ -43,8 +43,6 @@ class FileWatcher {
       const ext = path.extname(filePath).toLowerCase();
       const allowed = this.manager?.audioExtensions || [];
       if (!allowed.includes(ext)) return;
-      this.manager?.sendToRenderer?.('file-added', { path: filePath });
-      this.manager?.sendToRenderer?.('log', { type: 'info', message: `New file detected: ${path.basename(filePath)}` });
     } catch (err) {
       console.warn('FileWatcher onAdd error:', err?.message || err);
     }

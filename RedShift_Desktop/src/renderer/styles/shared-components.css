@@ -1,0 +1,281 @@
+/* Shared Components CSS
+ * Common UI elements used across Artists, Albums, Music Library, and Playlists views
+ */
+
+/* ===== SEARCH INPUT ===== */
+.search-input {
+    width: 100%;
+    padding: 6px 32px 6px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 12px;
+    background: white;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    height: 28px;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+}
+
+.search-icon {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+    pointer-events: none;
+    width: 14px;
+    height: 14px;
+}
+
+/* ===== SORT CONTROLS ===== */
+.sort-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sort-controls label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151;
+}
+
+.sort-select {
+    padding: 6px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: white;
+    font-size: 14px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.sort-select:hover {
+    border-color: #9ca3af;
+}
+
+.sort-select:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.sort-direction {
+    padding: 6px 8px;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sort-direction:hover {
+    background: #f3f4f6;
+    border-color: #9ca3af;
+}
+
+.sort-direction svg {
+    stroke: #374151;
+}
+
+/* ===== BACK BUTTON ===== */
+.btn-back {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 20px;
+}
+
+.btn-back:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.btn-back svg {
+    stroke: white;
+}
+
+/* ===== TRACK/CELL TEXT STYLING (for table cells only) ===== */
+/* These styles are scoped to table contexts to avoid conflicts with card/list views */
+.music-table .track-name,
+.artist-tracks-table .track-name,
+.album-tracks-table .track-name {
+    font-weight: 400;
+    color: #111827;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 11px;
+    margin: 0;
+}
+
+.music-table .artist-name,
+.music-table .album-name,
+.artist-tracks-table .artist-name,
+.artist-tracks-table .album-name,
+.album-tracks-table .artist-name,
+.album-tracks-table .album-name {
+    font-weight: 400;
+    color: #4b5563;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 11px;
+    margin: 0;
+}
+
+.duration {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 11px;
+    font-weight: 400;
+    color: #6b7280;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    vertical-align: middle;
+}
+
+.track-duration {
+    text-align: right;
+    color: #6b7280;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 11px;
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+    vertical-align: middle;
+}
+
+/* ===== TRACK ACTIONS (Play, Queue, Playlist buttons) ===== */
+.track-actions {
+    display: flex;
+    gap: 2px;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+/* Show action buttons on hover for all track row types */
+.music-row:hover .track-actions,
+.track-row:hover .track-actions,
+.playlist-track-item:hover .track-actions {
+    opacity: 1;
+}
+
+.action-btn {
+    width: 20px;
+    height: 20px;
+    border: none;
+    border-radius: 3px;
+    background: transparent;
+    color: #9ca3af;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.1s;
+}
+
+.action-btn:hover {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+.action-btn.primary {
+    background: #6366f1;
+    color: white;
+}
+
+.action-btn.primary:hover {
+    background: #4f46e5;
+}
+
+.action-btn.danger:hover {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+/* ===== FAVORITE & RATING CONTROLS ===== */
+.favorite-control, .rating-control {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.rating-select {
+    width: 48px;
+    text-align: center;
+}
+
+.fav-filter-btn {
+    width: 22px;
+    height: 18px;
+    border: 1px solid #d1d5db;
+    border-radius: 3px;
+    background: #ffffff;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.fav-filter-btn[aria-pressed="true"] svg { 
+    stroke: #f59e0b; 
+    fill: #f59e0b; 
+}
+
+.fav-filter-btn[aria-pressed="false"] svg { 
+    stroke: #9ca3af; 
+    fill: none; 
+}
+
+.rating-filter {
+    height: 18px;
+    font-size: 10px;
+}
+
+/* ===== EMPTY STATE ===== */
+.empty-state-row td {
+    padding: 40px 20px;
+    text-align: center;
+}
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    color: #a0aec0;
+}
+
+.empty-state svg {
+    width: 48px;
+    height: 48px;
+    color: #cbd5e0;
+}
+
+.empty-state h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #4a5568;
+}
+
+.empty-state p {
+    font-size: 13px;
+    color: #718096;
+    max-width: 400px;
+}
+

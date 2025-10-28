@@ -69,24 +69,39 @@ class RedshiftSyncUI {
     navItems.forEach(item => {
       item.addEventListener('click', () => {
         const tabId = item.dataset.tab;
+        const subtabId = item.dataset.subtab; // For music subtabs
         
         // Update active nav item
         navItems.forEach(nav => nav.classList.remove('active'));
         item.classList.add('active');
         
-        // Update page title
+        // Update page title based on subtab or tab
         const titles = {
-          dashboard: 'Dashboard',
-          music: 'Music Player',
-          sync: 'Doppler Sync',
-          history: 'Transfer History',
-          settings: 'Settings'
+          'usb-sync': 'USB Sync',
+          'doppler-sync': 'Doppler Sync',
+          'history': 'Transfer History',
+          'settings': 'Settings'
         };
-        document.getElementById('pageTitle').textContent = titles[tabId];
+        
+        const subtabTitles = {
+          'library': 'All Music',
+          'artists': 'Artists',
+          'albums': 'Albums',
+          'playlists': 'Playlists',
+          'recentlyPlayed': 'Recently Played'
+        };
+        
+        if (subtabId && subtabTitles[subtabId]) {
+          document.getElementById('pageTitle').textContent = subtabTitles[subtabId];
+        } else {
+          document.getElementById('pageTitle').textContent = titles[tabId] || 'Music Player';
+        }
         
         // Show/hide tab-specific header actions
-        document.getElementById('dashboardActions').style.display = tabId === 'dashboard' ? 'flex' : 'none';
-        document.getElementById('musicActions').style.display = tabId === 'music' ? 'flex' : 'none';
+        const usbSyncActions = document.getElementById('usbSyncActions');
+        const musicActions = document.getElementById('musicActions');
+        if (usbSyncActions) usbSyncActions.style.display = tabId === 'usb-sync' ? 'flex' : 'none';
+        if (musicActions) musicActions.style.display = tabId === 'music' ? 'flex' : 'none';
         
         // Show/hide tab content
         tabContents.forEach(content => {
@@ -94,15 +109,41 @@ class RedshiftSyncUI {
         });
         document.getElementById(`${tabId}Tab`).style.display = 'block';
         
-        // Load tab-specific data
-        if (tabId === 'history') {
+        // Handle music subtabs from sidebar
+        if (tabId === 'music' && subtabId) {
+          this.switchMusicSubtab(subtabId);
+        } else if (tabId === 'history') {
           this.syncManager.loadTransferHistory();
-        } else if (tabId === 'music') {
-          // Initialize subtabs for music tab
-          this.setupMusicSubtabs();
         }
       });
     });
+  }
+  
+  switchMusicSubtab(subtabId) {
+    const subtabContents = document.querySelectorAll('.subtab-content');
+    
+    // Show/hide subtab content
+    subtabContents.forEach(content => {
+      content.style.display = 'none';
+    });
+    document.getElementById(`${subtabId}Subtab`).style.display = 'block';
+    
+    // Load subtab-specific data
+    if (subtabId === 'playlists') {
+      // Playlists are automatically loaded by PlaylistManager
+    } else if (subtabId === 'recentlyPlayed') {
+      this.musicLibrary.loadRecentlyPlayed();
+    } else if (subtabId === 'artists') {
+      // Refresh artists view with current library data
+      if (this.musicLibrary && this.musicLibrary.musicLibrary) {
+        this.artistsView.refresh(this.musicLibrary.musicLibrary);
+      }
+    } else if (subtabId === 'albums') {
+      // Refresh albums view with current library data
+      if (this.musicLibrary && this.musicLibrary.musicLibrary) {
+        this.albumsView.refresh(this.musicLibrary.musicLibrary);
+      }
+    }
   }
     
   setupMusicSubtabs() {
@@ -388,7 +429,7 @@ class RedshiftSyncUI {
 
 // Initialize the UI when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-  new RedshiftSyncUI();
+  window.redshiftUI = new RedshiftSyncUI();
 });
 
 // Handle window close prevention during transfers

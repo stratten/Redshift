@@ -175,6 +175,11 @@ class AudioPlayerOutputDevice {
     const dropdown = document.getElementById('outputDeviceDropdown');
     const btn = document.getElementById('outputDeviceBtn');
     if (dropdown && btn) {
+      // Calculate position relative to viewport since dropdown is now position: fixed
+      const btnRect = btn.getBoundingClientRect();
+      dropdown.style.top = `${btnRect.bottom + 8}px`;
+      dropdown.style.right = `${window.innerWidth - btnRect.right}px`;
+      
       this.refreshOutputDevices();
       dropdown.classList.add('show');
       btn.classList.add('active');

@@ -213,14 +213,4 @@
     min-width: 80px;
 }
 
-.track-actions {
-    display: flex;
-    gap: 4px;
-    opacity: 0;
-    transition: opacity 0.15s ease;
-}
-
-.playlist-track-item:hover .track-actions,
-.music-row:hover .track-actions {
-    opacity: 1;
-}
+/* track-actions styles moved to music-library.css for consistency across all views */
