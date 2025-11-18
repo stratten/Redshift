@@ -19,12 +19,14 @@ class AudioPlayerQueue {
     const nextTracks = this.getUpcomingTracks(2);
     
     if (nextTracks.length === 0) {
-      upNextPreview.style.display = 'none';
+      upNextPreview.style.visibility = 'hidden';
+      upNextPreview.style.opacity = '0';
       return;
     }
     
     // Show the preview
-    upNextPreview.style.display = 'block';
+    upNextPreview.style.visibility = 'visible';
+    upNextPreview.style.opacity = '1';
     
     // Render the tracks
     upNextTracks.innerHTML = nextTracks.map((track, index) => {

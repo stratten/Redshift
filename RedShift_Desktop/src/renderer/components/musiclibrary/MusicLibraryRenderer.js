@@ -16,9 +16,11 @@
  * @param {Map} playCountByPath - Map of play counts by file path
  * @param {Function} formatTime - Function to format duration
  * @param {Function} logBoth - Logging function
+ * @param {string|null} currentTrackPath - Path of currently playing track (optional)
+ * @param {boolean} isPlaying - Whether audio is currently playing (optional)
  * @returns {Object} - Object with tableHTML and metadata
  */
-function renderMusicTableHTML(filteredTracks, musicLibrary, favoriteByPath, ratingByPath, playCountByPath, formatTime, logBoth) {
+function renderMusicTableHTML(filteredTracks, musicLibrary, favoriteByPath, ratingByPath, playCountByPath, formatTime, logBoth, currentTrackPath = null, isPlaying = false) {
   logBoth('info', `🎵 renderMusicTable called with ${filteredTracks.length} filtered tracks`);
   
   if (filteredTracks.length === 0) {
@@ -42,9 +44,17 @@ function renderMusicTableHTML(filteredTracks, musicLibrary, favoriteByPath, rati
     const album = track.metadata?.common?.album || 'Unknown Album';
     const duration = track.metadata?.format?.duration ? formatTime(track.metadata.format.duration) : '--:--';
     const originalIndex = musicLibrary.indexOf(track); // Get original index for data references
+    
+    // Check if this is the currently playing track
+    const isCurrentTrack = currentTrackPath && track.path === currentTrackPath;
+    const nowPlayingIcon = isCurrentTrack ? (isPlaying 
+      ? '<span class="now-playing-icon playing">♫</span>' 
+      : '<span class="now-playing-icon paused">❙❙</span>') 
+      : '';
 
     return `
-      <tr class="music-row" data-index="${originalIndex}">
+      <tr class="music-row ${isCurrentTrack ? 'now-playing' : ''}" data-index="${originalIndex}">
+        <td class="col-nowplaying">${nowPlayingIcon}</td>
         <td>
           <div class="track-name" title="${trackName}">${trackName}</div>
         </td>

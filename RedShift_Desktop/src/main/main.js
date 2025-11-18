@@ -1,5 +1,5 @@
 // src/main/main.js - Electron Main Process
-const { app, BrowserWindow, ipcMain, dialog, shell, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, screen, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs-extra');
 const crypto = require('crypto');
@@ -293,9 +293,14 @@ class RedshiftSyncManager extends EventEmitter {
     } else {
       this.windowManager.settings = this.settings; // keep in sync
     }
+    
+    // Use app logo for window icon (works in dev mode)
+    const iconPath = path.join(__dirname, '../../Assets/Redshift Logo - 1024.png');
+    
     this.mainWindow = this.windowManager.createMainWindow({
       indexPath: path.join(__dirname, '../renderer/index.built.html'),
       preloadPath: path.join(__dirname, 'preload.js'),
+      iconPath: iconPath,
       minWidth: 800,
       minHeight: 600,
       titleBarStyle: 'hiddenInset',
@@ -333,6 +338,19 @@ class RedshiftSyncManager extends EventEmitter {
 const syncManager = new RedshiftSyncManager();
 
 app.whenReady().then(async () => {
+  // Set dock icon on macOS (works in dev mode too)
+  if (process.platform === 'darwin') {
+    try {
+      const iconPath = path.join(__dirname, '../../Assets/Redshift Logo - 1024.png');
+      if (fs.existsSync(iconPath)) {
+        const icon = nativeImage.createFromPath(iconPath);
+        app.dock.setIcon(icon);
+      }
+    } catch (err) {
+      console.log('Could not set dock icon:', err.message);
+    }
+  }
+  
   // Ensure settings are loaded before window creation
   if (syncManager.initPromise) {
     try { await syncManager.initPromise; } catch (_) {}

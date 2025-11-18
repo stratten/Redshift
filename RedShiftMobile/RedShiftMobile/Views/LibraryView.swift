@@ -138,6 +138,32 @@ struct LibraryView: View {
                                 .onTapGesture {
                                     audioPlayer.playQueue(filteredTracks, startingAt: filteredTracks.firstIndex(where: { $0.id == track.id }) ?? 0)
                                 }
+                                .swipeActions(edge: .leading) {
+                                    Button {
+                                        Task {
+                                            await libraryManager.toggleFavorite(for: track)
+                                        }
+                                    } label: {
+                                        Label("Favorite", systemImage: track.isFavorite ? "star.slash" : "star.fill")
+                                    }
+                                    .tint(track.isFavorite ? .gray : .purple)
+                                    
+                                    Button {
+                                        audioPlayer.addToQueue(track)
+                                    } label: {
+                                        Label("Add to Queue", systemImage: "text.badge.plus")
+                                    }
+                                    .tint(.blue)
+                                }
+                                .swipeActions(edge: .trailing) {
+                                    Button(role: .destructive) {
+                                        Task {
+                                            try? await libraryManager.deleteTrack(track)
+                                        }
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
+                                }
                                 .contextMenu {
                                     Button(action: {
                                         audioPlayer.playQueue(filteredTracks, startingAt: filteredTracks.firstIndex(where: { $0.id == track.id }) ?? 0)
@@ -254,7 +280,7 @@ struct TrackRow: View {
     
     var body: some View {
         HStack(spacing: 10) {
-            // Album art
+            // Album art with shadow
             if let albumArtData = track.albumArtData {
                 if let uiImage = UIImage(data: albumArtData) {
                     Image(uiImage: uiImage)
@@ -263,6 +289,7 @@ struct TrackRow: View {
                         .frame(width: 48, height: 48)
                         .clipped()
                         .cornerRadius(4)
+                        .shadow(color: .black.opacity(0.15), radius: 3, x: 0, y: 1)
                 } else {
                     // Data exists but UIImage can't decode it - show gray with warning
                     RoundedRectangle(cornerRadius: 4)
@@ -273,6 +300,7 @@ struct TrackRow: View {
                                 .font(.caption)
                                 .foregroundColor(.white)
                         }
+                        .shadow(color: .black.opacity(0.1), radius: 3, x: 0, y: 1)
                 }
             } else {
                 // No album art data
@@ -283,6 +311,7 @@ struct TrackRow: View {
                         Image(systemName: "music.note")
                             .foregroundColor(.purple)
                     }
+                    .shadow(color: .black.opacity(0.1), radius: 3, x: 0, y: 1)
             }
             
             // Track info - takes up all available space
@@ -317,14 +346,28 @@ struct TrackRow: View {
                 .padding(.trailing, 4)
             }
             
-            // Favorite button - closer to duration
+            // Play count badge (if played)
+            if track.playCount > 0 {
+                Text("\(track.playCount)")
+                    .font(.caption2)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(
+                        Capsule()
+                            .fill(Color.purple.opacity(0.8))
+                    )
+            }
+            
+            // Favorite button with gold color
             Button(action: {
                 Task {
                     await libraryManager.toggleFavorite(for: track)
                 }
             }) {
                 Image(systemName: track.isFavorite ? "star.fill" : "star")
-                    .foregroundColor(track.isFavorite ? .purple : .gray)
+                    .foregroundColor(track.isFavorite ? .yellow : .gray)
                     .font(.body)
                     .frame(width: 24, height: 24)
             }

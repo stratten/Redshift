@@ -218,13 +218,14 @@ class DeviceMonitorService {
       
       // Check if it's an Apple device
       if (idVendor === this.APPLE_VENDOR_ID) {
-        const deviceInfo = this.getDeviceInfo(idProduct);
         const deviceKey = `${idVendor}:${idProduct}`;
         
         // Check if this device is already tracked (to prevent duplicate events during polling)
         if (this.connectedDevices.has(deviceKey)) {
           return; // Already tracking this device, skip (silent)
         }
+        
+        const deviceInfo = this.getDeviceInfo(idProduct);
         
         console.log(`  ✨ New ${deviceInfo.type} detected: ${deviceKey}`);
         
@@ -369,7 +370,10 @@ class DeviceMonitorService {
    * Use ideviceinfo to get ACTUAL device type (iPhone vs iPad)
    */
   getDeviceInfo(productId) {
-    // Always use ideviceinfo for accurate detection - USB product IDs are unreliable
+    // Check if this is a known iOS device by product ID
+    const isKnownIOSDevice = this.IOS_DEVICE_PRODUCT_IDS.hasOwnProperty(productId);
+    
+    // Always try ideviceinfo for accurate detection
     try {
       const { execSync } = require('child_process');
       const output = execSync('ideviceinfo -k DeviceClass -k ProductType -k DeviceName', { 
@@ -407,12 +411,24 @@ class DeviceMonitorService {
       console.error('   Device may be locked or not trusted');
     }
     
-    // Last resort: Generic iOS device
-    // Don't guess iPhone vs iPad - we don't know
+    // If ideviceinfo failed, check if it's a known iOS device by product ID
+    if (isKnownIOSDevice) {
+      // Known iOS device (probably locked or not trusted yet)
+      const deviceTypeName = this.IOS_DEVICE_PRODUCT_IDS[productId];
+      console.log(`  ℹ️  Using fallback: Known ${deviceTypeName} (Product ID: 0x${productId.toString(16)})`);
+      return {
+        name: 'iOS Device',
+        type: 'iOS Device',
+        isIOS: true // Still treat as iOS device - it's just locked/not trusted
+      };
+    }
+    
+    // Unknown Apple device that failed ideviceinfo (likely accessories like headphones)
+    console.log(`  ℹ️  Unknown Apple device (Product ID: 0x${productId.toString(16)}) - ignoring`);
     return {
-      name: 'iOS Device',
-      type: 'iOS Device',
-      isIOS: true
+      name: 'Apple Device',
+      type: 'Apple Device',
+      isIOS: false
     };
   }
   

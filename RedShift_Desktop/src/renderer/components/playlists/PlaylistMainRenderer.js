@@ -113,15 +113,18 @@ function renderPlaylistDetailsHTML(currentPlaylist) {
  * @param {Map} playCountByPath - Map of play counts by file path
  * @param {Map} favoriteByPath - Map of favorite status by file path
  * @param {Map} ratingByPath - Map of ratings by file path
+ * @param {string|null} currentTrackPath - Path of currently playing track
+ * @param {boolean} isPlaying - Whether audio is currently playing
  * @returns {string} HTML string for track row
  */
-function renderPlaylistTrackRow(playlistTrack, track, formatTime, playCountByPath, favoriteByPath, ratingByPath) {
+function renderPlaylistTrackRow(playlistTrack, track, formatTime, playCountByPath, favoriteByPath, ratingByPath, currentTrackPath, isPlaying) {
   if (!track) {
     // Fallback if track not in library
     const fileName = playlistTrack.file_path.split('/').pop().split('\\').pop();
     const trackName = fileName.replace(/\.[^/.]+$/, '');
     return `
-      <tr class="music-row" data-track-id="${playlistTrack.id}">
+      <tr class="music-row playlist-track-row" draggable="true" data-track-id="${playlistTrack.id}" data-position="${playlistTrack.position}">
+        <td class="col-nowplaying"></td>
         <td><div class="track-name">${trackName}</div></td>
         <td><div class="artist-name">Unknown</div></td>
         <td><div class="album-name">Unknown</div></td>
@@ -180,8 +183,16 @@ function renderPlaylistTrackRow(playlistTrack, track, formatTime, playCountByPat
       <option value="5" ${rating === 5 ? 'selected' : ''}>5</option>
     </select>`;
   
+  // Check if this is the currently playing track
+  const isCurrentTrack = currentTrackPath && track.path === currentTrackPath;
+  const nowPlayingIcon = isCurrentTrack ? (isPlaying 
+    ? '<span class="now-playing-icon playing">♫</span>' 
+    : '<span class="now-playing-icon paused">❙❙</span>') 
+    : '';
+  
   return `
-    <tr class="music-row" data-track-id="${playlistTrack.id}" data-file-path="${track.path}">
+    <tr class="music-row playlist-track-row ${isCurrentTrack ? 'now-playing' : ''}" draggable="true" data-track-id="${playlistTrack.id}" data-file-path="${track.path}" data-position="${playlistTrack.position}">
+      <td class="col-nowplaying">${nowPlayingIcon}</td>
       <td><div class="track-name" title="${trackName}">${trackName}</div></td>
       <td><div class="artist-name" title="${artist}">${artist}</div></td>
       <td><div class="album-name" title="${album}">${album}</div></td>
@@ -217,9 +228,11 @@ function renderPlaylistTrackRow(playlistTrack, track, formatTime, playCountByPat
  * @param {Map} playCountByPath - Map of play counts by file path
  * @param {Map} favoriteByPath - Map of favorite status by file path
  * @param {Map} ratingByPath - Map of ratings by file path
+ * @param {string|null} currentTrackPath - Path of currently playing track
+ * @param {boolean} isPlaying - Whether audio is currently playing
  * @returns {string} HTML string for tracks table
  */
-function renderPlaylistTracksHTML(currentPlaylist, currentPlaylistTracks, musicLibrary, formatTime, playCountByPath, favoriteByPath, ratingByPath) {
+function renderPlaylistTracksHTML(currentPlaylist, currentPlaylistTracks, musicLibrary, formatTime, playCountByPath, favoriteByPath, ratingByPath, currentTrackPath = null, isPlaying = false) {
   if (!currentPlaylist || currentPlaylistTracks.length === 0) {
     return `
       <div class="empty-state">
@@ -232,13 +245,14 @@ function renderPlaylistTracksHTML(currentPlaylist, currentPlaylistTracks, musicL
   const tracksHTML = currentPlaylistTracks.map((playlistTrack, index) => {
     // Find the full track object from the music library
     const track = musicLibrary.find(t => t.path === playlistTrack.file_path);
-    return renderPlaylistTrackRow(playlistTrack, track, formatTime, playCountByPath, favoriteByPath, ratingByPath);
+    return renderPlaylistTrackRow(playlistTrack, track, formatTime, playCountByPath, favoriteByPath, ratingByPath, currentTrackPath, isPlaying);
   }).join('');
   
   return `
     <table class="music-table">
       <thead>
         <tr>
+          <th class="col-nowplaying"></th>
           <th class="col-track"><span>Track</span></th>
           <th class="col-artist"><span>Artist</span></th>
           <th class="col-album"><span>Album</span></th>

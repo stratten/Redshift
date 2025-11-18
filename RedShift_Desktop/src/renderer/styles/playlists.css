@@ -1,5 +1,25 @@
 /* Playlists Styles */
 
+/* Drag and Drop Styles */
+.playlist-track-row {
+    cursor: move;
+    transition: opacity 0.2s ease, background-color 0.2s ease;
+}
+
+.playlist-track-row.dragging {
+    opacity: 0.4;
+    background-color: #f1f5f9;
+}
+
+.playlist-track-row.drag-over {
+    background-color: #dbeafe;
+    border-top: 2px solid #3b82f6;
+}
+
+.playlist-track-row:active {
+    cursor: grabbing;
+}
+
 /* Playlists Layout */
 .playlists-layout {
     display: flex;

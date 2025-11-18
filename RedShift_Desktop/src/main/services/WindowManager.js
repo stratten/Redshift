@@ -75,6 +75,7 @@ class WindowManager {
     const {
       indexPath, // required: absolute path to index.html
       preloadPath, // required: absolute path to preload.js
+      iconPath, // optional: path to app icon
       minWidth = 800,
       minHeight = 600,
       titleBarStyle = 'hiddenInset',
@@ -83,7 +84,7 @@ class WindowManager {
 
     console.log('[WindowManager] restoring', JSON.stringify({ initialBounds: initial, isMaximized: this.settings?.isMaximized }));
 
-    this.mainWindow = new BrowserWindow({
+    const windowConfig = {
       ...(typeof initial.x === 'number' && typeof initial.y === 'number' ? { x: initial.x, y: initial.y } : {}),
       width: initial.width,
       height: initial.height,
@@ -97,7 +98,14 @@ class WindowManager {
       },
       titleBarStyle,
       show: false
-    });
+    };
+
+    // Add icon if provided (works in dev mode)
+    if (iconPath) {
+      windowConfig.icon = iconPath;
+    }
+
+    this.mainWindow = new BrowserWindow(windowConfig);
 
     // Load UI
     if (!indexPath) throw new Error('WindowManager.createMainWindow requires indexPath');

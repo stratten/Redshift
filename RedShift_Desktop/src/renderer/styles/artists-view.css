@@ -399,8 +399,40 @@
     background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
     border-bottom: 1px solid #e5e7eb;
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    gap: 16px;
+}
+
+.album-group-art {
+    width: 60px;
+    height: 60px;
+    border-radius: 6px;
+    object-fit: cover;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    flex-shrink: 0;
+}
+
+.album-group-art-placeholder {
+    width: 60px;
+    height: 60px;
+    border-radius: 6px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    flex-shrink: 0;
+}
+
+.album-group-art-placeholder svg {
+    color: #6366f1;
+}
+
+.album-group-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
 }
 
 .album-group-name {

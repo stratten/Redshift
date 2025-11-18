@@ -121,7 +121,7 @@ async function addTracksToPlaylist(playlistId, playlistName, filePaths, viewPlay
   }
 }
 
-function setupPlaylistTrackListeners(tracksArea, playTrackCallback, removeTrackCallback) {
+function setupPlaylistTrackListeners(tracksArea, playTrackCallback, removeTrackCallback, reorderTracksCallback) {
   // Clone and replace to remove all old event listeners
   const newTracksArea = tracksArea.cloneNode(true);
   tracksArea.parentNode.replaceChild(newTracksArea, tracksArea);
@@ -144,6 +144,64 @@ function setupPlaylistTrackListeners(tracksArea, playTrackCallback, removeTrackC
     if (playBtn) {
       const filePath = playBtn.dataset.filePath;
       await playTrackCallback(filePath);
+    }
+  });
+  
+  // Drag and drop for reordering
+  let draggedRow = null;
+  let draggedPosition = null;
+  
+  newTracksArea.addEventListener('dragstart', (e) => {
+    const row = e.target.closest('.playlist-track-row');
+    if (!row) return;
+    
+    draggedRow = row;
+    draggedPosition = parseInt(row.dataset.position);
+    row.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', row.innerHTML);
+  });
+  
+  newTracksArea.addEventListener('dragend', (e) => {
+    const row = e.target.closest('.playlist-track-row');
+    if (row) {
+      row.classList.remove('dragging');
+    }
+    // Remove all drag-over classes
+    newTracksArea.querySelectorAll('.drag-over').forEach(r => r.classList.remove('drag-over'));
+    draggedRow = null;
+    draggedPosition = null;
+  });
+  
+  newTracksArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    
+    const row = e.target.closest('.playlist-track-row');
+    if (!row || row === draggedRow) return;
+    
+    // Remove drag-over from all rows
+    newTracksArea.querySelectorAll('.drag-over').forEach(r => r.classList.remove('drag-over'));
+    
+    // Add drag-over to current row
+    row.classList.add('drag-over');
+  });
+  
+  newTracksArea.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const dropRow = e.target.closest('.playlist-track-row');
+    if (!dropRow || !draggedRow || dropRow === draggedRow) return;
+    
+    const dropPosition = parseInt(dropRow.dataset.position);
+    
+    // Remove drag-over class
+    dropRow.classList.remove('drag-over');
+    
+    // Call the reorder callback with the source and target positions
+    if (reorderTracksCallback) {
+      await reorderTracksCallback(draggedPosition, dropPosition);
     }
   });
 }

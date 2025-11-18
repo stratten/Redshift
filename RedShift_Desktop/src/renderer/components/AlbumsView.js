@@ -479,6 +479,7 @@ class AlbumsView {
           <table class="album-tracks-table music-table">
             <thead>
               <tr>
+                <th class="col-nowplaying"></th>
                 <th class="track-no">#</th>
                 <th class="track-name">Track</th>
                 <th class="track-duration">Duration</th>
@@ -522,8 +523,21 @@ class AlbumsView {
     const ratingByPath = this.ui.musicLibrary?.ratingByPath || new Map();
     const playCountByPath = this.ui.musicLibrary?.playCountByPath || new Map();
     
+    // Get current track info for now-playing indicator
+    const currentTrack = this.ui.audioPlayer?.audioPlayerState?.currentTrack;
+    const currentTrackPath = currentTrack?.filePath || currentTrack?.path || null;
+    const isPlaying = this.ui.audioPlayer?.audioPlayerState?.isPlaying || false;
+    
+    // Check if this is the currently playing track
+    const isCurrentTrack = currentTrackPath && track.path === currentTrackPath;
+    const nowPlayingIcon = isCurrentTrack ? (isPlaying 
+      ? '<span class="now-playing-icon playing">♫</span>' 
+      : '<span class="now-playing-icon paused">❙❙</span>') 
+      : '';
+    
     return `
-      <tr class="track-row" data-index="${index}" data-path="${this.escapeHtml(track.path)}">
+      <tr class="track-row ${isCurrentTrack ? 'now-playing' : ''}" data-index="${index}" data-path="${this.escapeHtml(track.path)}">
+        <td class="col-nowplaying">${nowPlayingIcon}</td>
         <td class="track-no">${displayTrackNo}</td>
         <td class="track-name">${this.escapeHtml(title)}</td>
         <td class="track-duration">${this.formatDuration(duration)}</td>

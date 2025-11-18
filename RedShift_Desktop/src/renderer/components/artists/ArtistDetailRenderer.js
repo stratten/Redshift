@@ -11,9 +11,11 @@
  * @param {Map} favoriteByPath - Map of path -> favorite status
  * @param {Map} ratingByPath - Map of path -> rating value
  * @param {Map} playCountByPath - Map of path -> play count
+ * @param {string|null} currentTrackPath - Path of currently playing track
+ * @param {boolean} isPlaying - Whether audio is currently playing
  * @returns {string} HTML string for detail view
  */
-function renderArtistDetailView(artist, displayGroups, selectedAlbum, favoriteByPath = new Map(), ratingByPath = new Map(), playCountByPath = new Map()) {
+function renderArtistDetailView(artist, displayGroups, selectedAlbum, favoriteByPath = new Map(), ratingByPath = new Map(), playCountByPath = new Map(), currentTrackPath = null, isPlaying = false) {
   const totalTracks = displayGroups.reduce((sum, g) => sum + g.tracks.length, 0);
   const songText = totalTracks === 1 ? 'song' : 'songs';
   
@@ -61,7 +63,7 @@ function renderArtistDetailView(artist, displayGroups, selectedAlbum, favoriteBy
 
   // Render each album group
   displayGroups.forEach(({ album, tracks }) => {
-    html += renderArtistAlbumGroup(album, tracks, favoriteByPath, ratingByPath, playCountByPath);
+    html += renderArtistAlbumGroup(album, tracks, favoriteByPath, ratingByPath, playCountByPath, currentTrackPath, isPlaying);
   });
 
   html += `
@@ -79,22 +81,46 @@ function renderArtistDetailView(artist, displayGroups, selectedAlbum, favoriteBy
  * @param {Map} favoriteByPath - Map of path -> favorite status
  * @param {Map} ratingByPath - Map of path -> rating value
  * @param {Map} playCountByPath - Map of path -> play count
+ * @param {string|null} currentTrackPath - Path of currently playing track
+ * @param {boolean} isPlaying - Whether audio is currently playing
  * @returns {string} HTML string for album group
  */
-function renderArtistAlbumGroup(album, tracks, favoriteByPath, ratingByPath, playCountByPath) {
+function renderArtistAlbumGroup(album, tracks, favoriteByPath, ratingByPath, playCountByPath, currentTrackPath, isPlaying) {
   const trackCount = tracks.length;
   const trackText = trackCount === 1 ? 'track' : 'tracks';
+  
+  // Get album art from first track that has it (use same approach as AlbumsView and ArtistAlbumsRenderer)
+  let albumArt = null;
+  for (const track of tracks) {
+    if (track.metadata?.albumArt?.thumbnail) {
+      albumArt = track.metadata.albumArt.thumbnail;
+      break;
+    }
+  }
+  
+  const albumArtHTML = albumArt 
+    ? `<img src="${albumArt}" alt="${escapeHtml(album)}" class="album-group-art" />`
+    : `<div class="album-group-art-placeholder">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="12" cy="12" r="10"></circle>
+          <circle cx="12" cy="12" r="3"></circle>
+        </svg>
+      </div>`;
   
   return `
     <div class="album-group">
       <div class="album-group-header">
-        <h3 class="album-group-name">${escapeHtml(album)}</h3>
-        <span class="album-group-count">${trackCount} ${trackText}</span>
+        ${albumArtHTML}
+        <div class="album-group-info">
+          <h3 class="album-group-name">${escapeHtml(album)}</h3>
+          <span class="album-group-count">${trackCount} ${trackText}</span>
+        </div>
       </div>
       
       <table class="artist-tracks-table music-table">
         <thead>
           <tr>
+            <th class="col-nowplaying"></th>
             <th class="track-col">Track</th>
             <th class="artist-col">Artist</th>
             <th class="album-col">Album</th>
@@ -106,7 +132,7 @@ function renderArtistAlbumGroup(album, tracks, favoriteByPath, ratingByPath, pla
           </tr>
         </thead>
         <tbody>
-          ${tracks.map((track, index) => renderArtistTrackRow(track, index, favoriteByPath, ratingByPath, playCountByPath)).join('')}
+          ${tracks.map((track, index) => renderArtistTrackRow(track, index, favoriteByPath, ratingByPath, playCountByPath, currentTrackPath, isPlaying)).join('')}
         </tbody>
       </table>
     </div>
@@ -120,17 +146,27 @@ function renderArtistAlbumGroup(album, tracks, favoriteByPath, ratingByPath, pla
  * @param {Map} favoriteByPath - Map of path -> favorite status
  * @param {Map} ratingByPath - Map of path -> rating value
  * @param {Map} playCountByPath - Map of path -> play count
+ * @param {string|null} currentTrackPath - Path of currently playing track
+ * @param {boolean} isPlaying - Whether audio is currently playing
  * @returns {string} HTML string for track row
  */
-function renderArtistTrackRow(track, index, favoriteByPath, ratingByPath, playCountByPath) {
+function renderArtistTrackRow(track, index, favoriteByPath, ratingByPath, playCountByPath, currentTrackPath, isPlaying) {
   // Extract data from metadata (same way MusicLibrary does)
   const title = track.metadata?.common?.title || track.name?.replace(/\.\w+$/, '') || 'Unknown Track';
   const artist = track.metadata?.common?.artist || 'Unknown Artist';
   const album = track.metadata?.common?.album || 'Unknown Album';
   const duration = track.metadata?.format?.duration || 0;
   
+  // Check if this is the currently playing track
+  const isCurrentTrack = currentTrackPath && track.path === currentTrackPath;
+  const nowPlayingIcon = isCurrentTrack ? (isPlaying 
+    ? '<span class="now-playing-icon playing">♫</span>' 
+    : '<span class="now-playing-icon paused">❙❙</span>') 
+    : '';
+  
   return `
-    <tr class="track-row" data-index="${index}" data-path="${escapeHtml(track.path)}">
+    <tr class="track-row ${isCurrentTrack ? 'now-playing' : ''}" data-index="${index}" data-path="${escapeHtml(track.path)}">
+      <td class="col-nowplaying">${nowPlayingIcon}</td>
       <td class="track-name">${escapeHtml(title)}</td>
       <td class="track-artist">${escapeHtml(artist)}</td>
       <td class="track-album">${escapeHtml(album)}</td>

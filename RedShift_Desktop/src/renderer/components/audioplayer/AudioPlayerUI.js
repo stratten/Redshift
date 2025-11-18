@@ -75,6 +75,20 @@ class AudioPlayerUI {
         `;
       }
     }
+    
+    // Update now-playing indicator in all visible track lists
+    if (this.player.ui.musicLibrary) {
+      this.player.ui.musicLibrary.renderMusicTable();
+    }
+    if (this.player.ui.albumsView && this.player.ui.albumsView.selectedAlbum) {
+      this.player.ui.albumsView.renderDetailView();
+    }
+    if (this.player.ui.artistsView && this.player.ui.artistsView.selectedArtist) {
+      this.player.ui.artistsView.renderDetailView();
+    }
+    if (this.player.ui.playlistManager && this.player.ui.playlistManager.currentPlaylist) {
+      this.player.ui.playlistManager.renderPlaylistTracks();
+    }
   }
   
   showAlbumArtModal(track) {
@@ -139,6 +153,20 @@ class AudioPlayerUI {
       playIcon.style.display = 'block';
       pauseIcon.style.display = 'none';
       playPauseBtn.title = 'Play';
+    }
+    
+    // Update now-playing indicator in all visible track lists
+    if (this.player.ui.musicLibrary) {
+      this.player.ui.musicLibrary.renderMusicTable();
+    }
+    if (this.player.ui.albumsView && this.player.ui.albumsView.selectedAlbum) {
+      this.player.ui.albumsView.renderDetailView();
+    }
+    if (this.player.ui.artistsView && this.player.ui.artistsView.selectedArtist) {
+      this.player.ui.artistsView.renderDetailView();
+    }
+    if (this.player.ui.playlistManager && this.player.ui.playlistManager.currentPlaylist) {
+      this.player.ui.playlistManager.renderPlaylistTracks();
     }
   }
   

@@ -155,6 +155,11 @@ class MusicLibrary {
       return;
     }
     
+    // Get current track info from audio player
+    const currentTrack = this.ui.audioPlayer?.audioPlayerState?.currentTrack;
+    const currentTrackPath = currentTrack?.filePath || currentTrack?.path || null;
+    const isPlaying = this.ui.audioPlayer?.audioPlayerState?.isPlaying || false;
+    
     // Use the renderer module to generate HTML
     const result = renderMusicTableHTML(
       this.filteredTracks,
@@ -163,7 +168,9 @@ class MusicLibrary {
       this.ratingByPath,
       this.playCountByPath,
       this.formatTime.bind(this),
-      this.ui.logBoth.bind(this.ui)
+      this.ui.logBoth.bind(this.ui),
+      currentTrackPath,
+      isPlaying
     );
     
     tableBody.innerHTML = result.tableHTML;

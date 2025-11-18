@@ -39,7 +39,7 @@ struct MiniPlayerView: View {
                     
                     Text(currentTrack.displayArtist)
                         .font(.caption)
-                        .foregroundColor(.gray)
+                        .foregroundColor(Color(red: 0.35, green: 0.35, blue: 0.38))
                         .lineLimit(1)
                 }
                 
@@ -68,9 +68,20 @@ struct MiniPlayerView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .background(
-                Color(UIColor.secondarySystemBackground)
-                    .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: -2)
+                Color(red: 0.85, green: 0.85, blue: 0.87)
             )
+            .overlay(
+                VStack(spacing: 0) {
+                    Rectangle()
+                        .fill(Color.black.opacity(0.15))
+                        .frame(height: 1)
+                    Spacer()
+                    Rectangle()
+                        .fill(Color.black.opacity(0.15))
+                        .frame(height: 1)
+                }
+            )
+            .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: -2)
         }
     }
 }

@@ -68,6 +68,27 @@ struct ContentView: View {
             previousTab = newValue
         }
         .onAppear {
+            // Configure white tab bar
+            let appearance = UITabBarAppearance()
+            appearance.configureWithOpaqueBackground()
+            appearance.backgroundColor = UIColor.white
+            
+            UITabBar.appearance().standardAppearance = appearance
+            UITabBar.appearance().scrollEdgeAppearance = appearance
+            
+            // Add top padding by adjusting the tab bar's content insets
+            DispatchQueue.main.async {
+                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                   let tabBarController = windowScene.windows.first?.rootViewController as? UITabBarController {
+                    // Adjust tab bar items to have top padding using image insets
+                    tabBarController.tabBar.items?.forEach { item in
+                        item.imageInsets = UIEdgeInsets(top: 6, left: 0, bottom: -6, right: 0)
+                        item.titlePositionAdjustment = UIOffset(horizontal: 0, vertical: 6)
+                    }
+                }
+            }
+            
+            // Setup audio player
             audioPlayer.setupRemoteCommandCenter()
         }
     }

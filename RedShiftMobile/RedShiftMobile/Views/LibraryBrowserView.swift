@@ -27,30 +27,20 @@ struct LibraryBrowserView: View {
     
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            List {
-                ForEach(LibraryCategory.allCases, id: \.self) { category in
-                    NavigationLink(destination: destinationView(for: category)) {
-                        HStack(spacing: 16) {
-                            Image(systemName: category.icon)
-                                .font(.title2)
-                                .foregroundColor(.purple)
-                                .frame(width: 44, height: 44)
-                                .background(Color.purple.opacity(0.1))
-                                .cornerRadius(8)
-                            
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(category.rawValue)
-                                    .font(.headline)
-                                
-                                Text(itemCount(for: category))
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
-                            }
+            ScrollView {
+                VStack(spacing: 16) {
+                    ForEach(LibraryCategory.allCases, id: \.self) { category in
+                        NavigationLink(destination: destinationView(for: category)) {
+                            LibraryCategoryCard(category: category, itemCount: itemCount(for: category))
                         }
-                        .padding(.vertical, 8)
+                        .buttonStyle(PlainButtonStyle())
                     }
                 }
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                .padding(.bottom, 20)
             }
+            .background(Color(red: 0.88, green: 0.88, blue: 0.90))
             .navigationTitle("Library")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
@@ -60,10 +50,18 @@ struct LibraryBrowserView: View {
                             await libraryManager.scanLibrary()
                         }
                     }) {
-                        Image(systemName: "arrow.clockwise")
+                        if libraryManager.isScanning {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle())
+                        } else {
+                            Image(systemName: "arrow.clockwise")
+                        }
                     }
                     .disabled(libraryManager.isScanning)
                 }
+            }
+            .refreshable {
+                await libraryManager.scanLibrary()
             }
         }
     }
@@ -104,11 +102,72 @@ struct LibraryBrowserView: View {
     }
 }
 
+// MARK: - Library Category Card
+struct LibraryCategoryCard: View {
+    let category: LibraryCategory
+    let itemCount: String
+    
+    var body: some View {
+        HStack(spacing: 14) {
+            // Icon with gradient background
+            ZStack {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                Color.purple.opacity(0.7),
+                                Color.purple.opacity(0.5)
+                            ]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 50, height: 50)
+                    .shadow(color: .purple.opacity(0.25), radius: 6, x: 0, y: 3)
+                
+                Image(systemName: category.icon)
+                    .font(.system(size: 22))
+                    .foregroundColor(.white)
+            }
+            
+            // Text info
+            VStack(alignment: .leading, spacing: 4) {
+                Text(category.rawValue)
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                
+                Text(itemCount)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.systemBackground))
+                .shadow(color: .black.opacity(0.08), radius: 6, x: 0, y: 2)
+        )
+    }
+}
+
 // MARK: - Artists List View
 struct ArtistsListView: View {
     @EnvironmentObject var libraryManager: MusicLibraryManager
     @State private var sortAscending = true
     @State private var searchText = ""
+    @State private var viewMode: ArtistViewMode = .list
+    
+    enum ArtistViewMode {
+        case list
+        case grid
+    }
     
     private var artists: [String] {
         let artistSet = Set(libraryManager.tracks.compactMap { $0.artist })
@@ -123,24 +182,11 @@ struct ArtistsListView: View {
     }
     
     var body: some View {
-        List {
-            ForEach(artists, id: \.self) { artist in
-                NavigationLink(destination: ArtistDetailView(artist: artist)) {
-                    HStack(spacing: 12) {
-                        ArtistImageView(artistName: artist)
-                            .frame(width: 50, height: 50)
-                        
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(artist)
-                                .font(.headline)
-                            
-                            let trackCount = libraryManager.tracks.filter { $0.artist == artist }.count
-                            Text("\(trackCount) song\(trackCount == 1 ? "" : "s")")
-                                .font(.caption)
-                                .foregroundColor(.gray)
-                        }
-                    }
-                }
+        Group {
+            if viewMode == .list {
+                listView
+            } else {
+                gridView
             }
         }
         .navigationTitle("Artists")
@@ -148,9 +194,147 @@ struct ArtistsListView: View {
         .searchable(text: $searchText, prompt: "Search artists")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: { sortAscending.toggle() }) {
-                    Image(systemName: sortAscending ? "arrow.up" : "arrow.down")
-                        .font(.subheadline)
+                HStack(spacing: 16) {
+                    // View mode toggle
+                    Button(action: { 
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            viewMode = viewMode == .list ? .grid : .list
+                        }
+                    }) {
+                        Image(systemName: viewMode == .list ? "square.grid.2x2" : "list.bullet")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    // Sort toggle
+                    Button(action: { sortAscending.toggle() }) {
+                        Image(systemName: sortAscending ? "arrow.up" : "arrow.down")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+        }
+    }
+    
+    private var listView: some View {
+        List {
+            ForEach(artists, id: \.self) { artist in
+                NavigationLink(destination: ArtistDetailView(artist: artist)) {
+                    ArtistRowView(artist: artist)
+                }
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+            }
+        }
+        .listStyle(.plain)
+    }
+    
+    private var gridView: some View {
+        ScrollView {
+            LazyVGrid(columns: [
+                GridItem(.flexible(), spacing: 16),
+                GridItem(.flexible(), spacing: 16)
+            ], spacing: 20) {
+                ForEach(artists, id: \.self) { artist in
+                    NavigationLink(destination: ArtistDetailView(artist: artist)) {
+                        ArtistGridItemView(artist: artist)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+        }
+    }
+}
+
+// MARK: - Artist Row View (Enhanced List Item)
+struct ArtistRowView: View {
+    @EnvironmentObject var libraryManager: MusicLibraryManager
+    let artist: String
+    
+    private var tracks: [Track] {
+        libraryManager.tracks.filter { $0.artist == artist }
+    }
+    
+    private var albumCount: Int {
+        Set(tracks.compactMap { $0.album }).count
+    }
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            // Artist image with shadow
+            ArtistImageView(artistName: artist)
+                .frame(width: 50, height: 50)
+                .clipShape(Circle())
+                .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
+            
+            VStack(alignment: .leading, spacing: 6) {
+                Text(artist)
+                    .font(.headline)
+                    .lineLimit(2)
+                    .foregroundColor(.primary)
+                
+                HStack(spacing: 10) {
+                    // Album count badge
+                    Label("\(albumCount)", systemImage: "square.stack")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    // Track count
+                    Label("\(tracks.count)", systemImage: "music.note")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+// MARK: - Artist Grid Item View
+struct ArtistGridItemView: View {
+    @EnvironmentObject var libraryManager: MusicLibraryManager
+    let artist: String
+    
+    private var tracks: [Track] {
+        libraryManager.tracks.filter { $0.artist == artist }
+    }
+    
+    private var albumCount: Int {
+        Set(tracks.compactMap { $0.album }).count
+    }
+    
+    var body: some View {
+        VStack(spacing: 12) {
+            // Artist image
+            ArtistImageView(artistName: artist)
+                .frame(maxWidth: .infinity)
+                .aspectRatio(1, contentMode: .fill)
+                .clipShape(Circle())
+                .shadow(color: .black.opacity(0.25), radius: 8, x: 0, y: 4)
+            
+            VStack(spacing: 4) {
+                Text(artist)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+                    .foregroundColor(.primary)
+                
+                HStack(spacing: 8) {
+                    Text("\(albumCount) album\(albumCount == 1 ? "" : "s")")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    
+                    Text("•")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    
+                    Text("\(tracks.count) song\(tracks.count == 1 ? "" : "s")")
+                        .font(.caption2)
                         .foregroundColor(.secondary)
                 }
             }
@@ -239,6 +423,12 @@ struct AlbumsListView: View {
     @EnvironmentObject var libraryManager: MusicLibraryManager
     @State private var sortAscending = true
     @State private var searchText = ""
+    @State private var viewMode: AlbumViewMode = .list
+    
+    enum AlbumViewMode {
+        case list
+        case grid
+    }
     
     private var albums: [String] {
         let albumSet = Set(libraryManager.tracks.compactMap { $0.album })
@@ -253,51 +443,11 @@ struct AlbumsListView: View {
     }
     
     var body: some View {
-        List {
-            ForEach(albums, id: \.self) { album in
-                NavigationLink(destination: AlbumDetailView(album: album)) {
-                    HStack {
-                        // Album art
-                        let tracks = libraryManager.tracks.filter { $0.album == album }
-                        let albumArtData = tracks.first?.albumArtData
-                        
-                        Group {
-                            if let artData = albumArtData,
-                               let uiImage = UIImage(data: artData) {
-                                Image(uiImage: uiImage)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 60, height: 60)
-                                    .clipped()
-                                    .cornerRadius(8)
-                            } else {
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(Color.purple.opacity(0.3))
-                                    .frame(width: 60, height: 60)
-                                    .overlay(
-                                        Image(systemName: "music.note")
-                                            .foregroundColor(.purple)
-                                    )
-                            }
-                        }
-                        
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(album)
-                                .font(.headline)
-                            
-                            let tracks = libraryManager.tracks.filter { $0.album == album }
-                            if let artist = tracks.first?.albumArtist ?? tracks.first?.artist {
-                                Text(artist)
-                                    .font(.subheadline)
-                                    .foregroundColor(.gray)
-                            }
-                            
-                            Text("\(tracks.count) song\(tracks.count == 1 ? "" : "s")")
-                                .font(.caption)
-                                .foregroundColor(.gray)
-                        }
-                    }
-                }
+        Group {
+            if viewMode == .list {
+                listView
+            } else {
+                gridView
             }
         }
         .navigationTitle("Albums")
@@ -305,11 +455,215 @@ struct AlbumsListView: View {
         .searchable(text: $searchText, prompt: "Search albums")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: { sortAscending.toggle() }) {
-                    Image(systemName: sortAscending ? "arrow.up" : "arrow.down")
-                        .font(.subheadline)
+                HStack(spacing: 16) {
+                    // View mode toggle
+                    Button(action: { 
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            viewMode = viewMode == .list ? .grid : .list
+                        }
+                    }) {
+                        Image(systemName: viewMode == .list ? "square.grid.2x2" : "list.bullet")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    // Sort toggle
+                    Button(action: { sortAscending.toggle() }) {
+                        Image(systemName: sortAscending ? "arrow.up" : "arrow.down")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+        }
+    }
+    
+    private var listView: some View {
+        List {
+            ForEach(albums, id: \.self) { album in
+                NavigationLink(destination: AlbumDetailView(album: album)) {
+                    AlbumRowView(album: album)
+                }
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+            }
+        }
+        .listStyle(.plain)
+    }
+    
+    private var gridView: some View {
+        ScrollView {
+            LazyVGrid(columns: [
+                GridItem(.flexible(), spacing: 16),
+                GridItem(.flexible(), spacing: 16)
+            ], spacing: 20) {
+                ForEach(albums, id: \.self) { album in
+                    NavigationLink(destination: AlbumDetailView(album: album)) {
+                        AlbumGridItemView(album: album)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+        }
+    }
+}
+
+// MARK: - Album Row View (Enhanced List Item)
+struct AlbumRowView: View {
+    @EnvironmentObject var libraryManager: MusicLibraryManager
+    let album: String
+    
+    private var tracks: [Track] {
+        libraryManager.tracks.filter { $0.album == album }
+    }
+    
+    private var albumArtData: Data? {
+        tracks.first?.albumArtData
+    }
+    
+    private var artist: String {
+        tracks.first?.albumArtist ?? tracks.first?.artist ?? "Unknown Artist"
+    }
+    
+    private var year: Int? {
+        tracks.first?.year
+    }
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            // Album art with shadow
+            Group {
+                if let artData = albumArtData,
+                   let uiImage = UIImage(data: artData) {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 60, height: 60)
+                        .clipped()
+                        .cornerRadius(8)
+                        .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
+                } else {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(
+                            LinearGradient(
+                                gradient: Gradient(colors: [Color.purple.opacity(0.4), Color.purple.opacity(0.2)]),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 60, height: 60)
+                        .overlay(
+                            Image(systemName: "music.note")
+                                .font(.title2)
+                                .foregroundColor(.purple)
+                        )
+                        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+                }
+            }
+            
+            VStack(alignment: .leading, spacing: 6) {
+                Text(album)
+                    .font(.headline)
+                    .lineLimit(2)
+                    .foregroundColor(.primary)
+                
+                Text(artist)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                
+                HStack(spacing: 10) {
+                    // Year badge
+                    if let year = year {
+                        Text(String(year))
+                            .font(.caption2)
+                            .fontWeight(.medium)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .background(Color.purple.opacity(0.15))
+                            .foregroundColor(.purple)
+                            .cornerRadius(5)
+                    }
+                    
+                    // Track count
+                    Label("\(tracks.count)", systemImage: "music.note")
+                        .font(.caption)
                         .foregroundColor(.secondary)
                 }
+            }
+            
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+// MARK: - Album Grid Item View
+struct AlbumGridItemView: View {
+    @EnvironmentObject var libraryManager: MusicLibraryManager
+    let album: String
+    
+    private var tracks: [Track] {
+        libraryManager.tracks.filter { $0.album == album }
+    }
+    
+    private var albumArtData: Data? {
+        tracks.first?.albumArtData
+    }
+    
+    private var artist: String {
+        tracks.first?.albumArtist ?? tracks.first?.artist ?? "Unknown Artist"
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // Album art
+            Group {
+                if let artData = albumArtData,
+                   let uiImage = UIImage(data: artData) {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(maxWidth: .infinity)
+                        .aspectRatio(1, contentMode: .fill)
+                        .clipped()
+                        .cornerRadius(12)
+                        .shadow(color: .black.opacity(0.25), radius: 8, x: 0, y: 4)
+                } else {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(
+                            LinearGradient(
+                                gradient: Gradient(colors: [Color.purple.opacity(0.4), Color.purple.opacity(0.2)]),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .aspectRatio(1, contentMode: .fill)
+                        .overlay(
+                            Image(systemName: "music.note")
+                                .font(.system(size: 40))
+                                .foregroundColor(.purple.opacity(0.7))
+                        )
+                        .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
+                }
+            }
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(album)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .lineLimit(2)
+                    .foregroundColor(.primary)
+                
+                Text(artist)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                
+                Text("\(tracks.count) song\(tracks.count == 1 ? "" : "s")")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
             }
         }
     }

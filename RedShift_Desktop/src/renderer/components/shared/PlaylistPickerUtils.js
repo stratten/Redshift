@@ -95,8 +95,9 @@ function showQuickPlaylistCreationDialog(onSuccess, logFn) {
  * @param {string} filePath - Path to the track file
  * @param {string} displayName - Display name of the track
  * @param {Function} logBoth - Logging function
+ * @param {Object} mouseCoords - Optional mouse coordinates { x, y } for positioning when no anchor
  */
-async function showPlaylistPickerModal(anchorEl, filePath, displayName, logBoth) {
+async function showPlaylistPickerModal(anchorEl, filePath, displayName, logBoth, mouseCoords = null) {
   // Remove existing picker if any
   const existing = document.getElementById('playlistPicker');
   if (existing) existing.remove();
@@ -260,6 +261,47 @@ async function showPlaylistPickerModal(anchorEl, filePath, displayName, logBoth)
     if (top < padding) {
       top = padding;
     }
+    
+    picker.style.top = `${top}px`;
+    picker.style.left = `${left}px`;
+  } else if (mouseCoords) {
+    // Position at mouse coordinates (e.g., from context menu)
+    const padding = 8;
+    const width = picker.offsetWidth || 260;
+    const height = picker.offsetHeight || 220;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    
+    let left = mouseCoords.x;
+    let top = mouseCoords.y + 6; // Slightly below cursor
+    
+    // Clamp horizontally
+    if (left + width + padding > vw) {
+      left = Math.max(padding, vw - width - padding);
+    }
+    if (left < padding) {
+      left = padding;
+    }
+    
+    // Clamp vertically
+    if (top + height + padding > vh) {
+      top = Math.max(padding, vh - height - padding);
+    }
+    if (top < padding) {
+      top = padding;
+    }
+    
+    picker.style.top = `${top}px`;
+    picker.style.left = `${left}px`;
+  } else {
+    // No anchor or coordinates, center on screen
+    const width = picker.offsetWidth || 260;
+    const height = picker.offsetHeight || 220;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    
+    const left = Math.round((vw - width) / 2);
+    const top = Math.round((vh - height) / 2);
     
     picker.style.top = `${top}px`;
     picker.style.left = `${left}px`;

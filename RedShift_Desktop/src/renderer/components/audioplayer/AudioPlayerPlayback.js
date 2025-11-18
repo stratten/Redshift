@@ -166,6 +166,20 @@ class AudioPlayerPlayback {
       // Update queue preview after track starts playing
       this.player.queueManager.updateQueuePreview();
       
+      // Update now-playing indicator in all visible track lists
+      if (this.player.ui.musicLibrary) {
+        this.player.ui.musicLibrary.renderMusicTable();
+      }
+      if (this.player.ui.albumsView && this.player.ui.albumsView.selectedAlbum) {
+        this.player.ui.albumsView.renderDetailView();
+      }
+      if (this.player.ui.artistsView && this.player.ui.artistsView.selectedArtist) {
+        this.player.ui.artistsView.renderDetailView();
+      }
+      if (this.player.ui.playlistManager && this.player.ui.playlistManager.currentPlaylist) {
+        this.player.ui.playlistManager.renderPlaylistTracks();
+      }
+      
       this.player.ui.logBoth('success', `Track loaded and playing: ${track ? track.name : filePath}`);
     } catch (error) {
       this.player.ui.logBoth('error', `Error playing track: ${error.message}`);

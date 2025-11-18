@@ -163,14 +163,26 @@ struct PlaylistDetailView: View {
     
     let playlist: Playlist
     @State private var showingAddTracks = false
+    @State private var searchText = ""
     
     var playlistTracks: [Track] {
-        libraryManager.getTracksForPlaylist(playlist)
+        var tracks = libraryManager.getTracksForPlaylist(playlist)
+        
+        // Apply search filter
+        if !searchText.isEmpty {
+            tracks = tracks.filter { track in
+                track.displayTitle.localizedCaseInsensitiveContains(searchText) ||
+                track.displayArtist.localizedCaseInsensitiveContains(searchText) ||
+                (track.album?.localizedCaseInsensitiveContains(searchText) ?? false)
+            }
+        }
+        
+        return tracks
     }
     
     var body: some View {
         VStack {
-            if playlistTracks.isEmpty {
+            if playlistTracks.isEmpty && searchText.isEmpty {
                 // Empty playlist
                 VStack(spacing: 20) {
                     Image(systemName: "music.note")
@@ -189,6 +201,23 @@ struct PlaylistDetailView: View {
                             .foregroundColor(.white)
                             .cornerRadius(8)
                     }
+                }
+                .frame(maxHeight: .infinity)
+                
+            } else if playlistTracks.isEmpty && !searchText.isEmpty {
+                // No search results
+                VStack(spacing: 20) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 60))
+                        .foregroundColor(.gray)
+                    
+                    Text("No results found")
+                        .font(.headline)
+                        .foregroundColor(.gray)
+                    
+                    Text("Try a different search term")
+                        .font(.body)
+                        .foregroundColor(.gray)
                 }
                 .frame(maxHeight: .infinity)
                 
@@ -221,6 +250,23 @@ struct PlaylistDetailView: View {
                                 .onTapGesture {
                                     audioPlayer.playQueue(playlistTracks, startingAt: playlistTracks.firstIndex(where: { $0.id == track.id }) ?? 0)
                                 }
+                                .swipeActions(edge: .leading) {
+                                    Button {
+                                        Task {
+                                            await libraryManager.toggleFavorite(for: track)
+                                        }
+                                    } label: {
+                                        Label("Favorite", systemImage: track.isFavorite ? "star.slash" : "star.fill")
+                                    }
+                                    .tint(track.isFavorite ? .gray : .purple)
+                                    
+                                    Button {
+                                        audioPlayer.addToQueue(track)
+                                    } label: {
+                                        Label("Add to Queue", systemImage: "text.badge.plus")
+                                    }
+                                    .tint(.blue)
+                                }
                                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                     Button(role: .destructive) {
                                         Task {
@@ -238,6 +284,7 @@ struct PlaylistDetailView: View {
         }
         .navigationTitle(playlist.name)
         .navigationBarTitleDisplayMode(.large)
+        .searchable(text: $searchText, prompt: "Search tracks")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: { showingAddTracks = true }) {

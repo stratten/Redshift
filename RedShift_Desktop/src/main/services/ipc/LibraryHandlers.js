@@ -2,6 +2,7 @@
 // IPC handlers for library scanning and file operations
 
 const path = require('path');
+const { shell } = require('electron');
 
 function registerLibraryHandlers(ipcMain, manager, waitReady) {
   const h = (fn) => async (...args) => { await waitReady(); return fn(...args); };
@@ -11,6 +12,39 @@ function registerLibraryHandlers(ipcMain, manager, waitReady) {
   ipcMain.handle('scan-music-library', h(async () => manager.scanMusicLibrary()));
   ipcMain.handle('transfer-files', async (event, files, method) => manager.transferFiles(files, method));
   ipcMain.handle('get-transfer-history', async () => manager.getTransferHistory());
+  
+  // File system operations
+  ipcMain.handle('show-in-finder', async (event, filePath) => {
+    console.log(`📂 Show in Finder: ${filePath}`);
+    shell.showItemInFolder(filePath);
+    return { success: true };
+  });
+  
+  ipcMain.handle('get-file-info', async (event, filePath) => {
+    console.log(`ℹ️  Get File Info: ${filePath}`);
+    const { exec } = require('child_process');
+    const os = require('os');
+    
+    try {
+      if (os.platform() === 'darwin') {
+        // macOS: Open Get Info panel using AppleScript
+        const script = `tell application "Finder" to open information window of (POSIX file "${filePath}" as alias)`;
+        exec(`osascript -e '${script}'`);
+      } else if (os.platform() === 'win32') {
+        // Windows: Open file properties
+        exec(`powershell -command "Get-Item '${filePath}' | Show-ItemProperty"`);
+      } else {
+        // Linux: fallback to opening file manager
+        shell.showItemInFolder(filePath);
+      }
+      return { success: true };
+    } catch (error) {
+      console.error('Failed to open file info:', error);
+      // Fallback to showing in folder
+      shell.showItemInFolder(filePath);
+      return { success: false, error: error.message };
+    }
+  });
   
   ipcMain.handle('add-files-to-library', async (event, { paths }) => {
     const fs = require('fs').promises;

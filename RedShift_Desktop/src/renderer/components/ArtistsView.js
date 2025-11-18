@@ -379,8 +379,13 @@ class ArtistsView {
     const ratingByPath = this.ui.musicLibrary?.ratingByPath || new Map();
     const playCountByPath = this.ui.musicLibrary?.playCountByPath || new Map();
     
+    // Get current track info for now-playing indicator
+    const currentTrack = this.ui.audioPlayer?.audioPlayerState?.currentTrack;
+    const currentTrackPath = currentTrack?.filePath || currentTrack?.path || null;
+    const isPlaying = this.ui.audioPlayer?.audioPlayerState?.isPlaying || false;
+    
     // Delegate to global renderer
-    const html = renderArtistDetailView(artist, displayGroups, this.selectedAlbum, favoriteByPath, ratingByPath, playCountByPath);
+    const html = renderArtistDetailView(artist, displayGroups, this.selectedAlbum, favoriteByPath, ratingByPath, playCountByPath, currentTrackPath, isPlaying);
     this.container.innerHTML = html;
     
     // Setup track table interactions

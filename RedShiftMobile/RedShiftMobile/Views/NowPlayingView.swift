@@ -180,9 +180,9 @@ struct NowPlayingView: View {
                                         await libraryManager.toggleFavorite(for: track)
                                     }
                                 }) {
-                                    Image(systemName: track.isFavorite ? "heart.fill" : "heart")
+                                    Image(systemName: track.isFavorite ? "star.fill" : "star")
                                         .font(.system(size: 24))
-                                        .foregroundColor(track.isFavorite ? .red : .white.opacity(0.7))
+                                        .foregroundColor(track.isFavorite ? .yellow : .white.opacity(0.7))
                                 }
                                 
                                 // Repeat

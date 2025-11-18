@@ -11,7 +11,7 @@
     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
     backdrop-filter: blur(10px);
     -webkit-app-region: drag; /* Make header draggable */
-    min-height: 70px;
+    min-height: 105px; /* Tall enough for queue preview */
 }
 
 .header-left, .header-center, .header-right {
@@ -54,6 +54,7 @@
     display: flex;
     justify-content: flex-end;
     align-items: center;
+    min-height: 85px; /* Reserve space for queue preview */
 }
 
 /* Music Player Header */
@@ -62,10 +63,12 @@
     flex-direction: column;
     gap: 8px;
     max-width: 650px;
+    min-height: 95px; /* Expand to match full header height */
     background: rgba(0, 0, 0, 0.05);
     border-radius: 12px;
     padding: 8px 12px;
     backdrop-filter: blur(10px);
+    justify-content: center; /* Center content vertically */
 }
 
 /* Player Layout Rows */
@@ -340,21 +343,11 @@
 .up-next-preview {
     width: 100%;
     max-width: 240px;
+    min-height: 85px; /* Always reserve full height */
     background: rgba(0, 0, 0, 0.02);
     border-radius: 8px;
-    padding: 6px 8px;
-    animation: fadeIn 0.2s ease-out;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateX(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
+    padding: 8px;
+    transition: opacity 0.2s ease-out, visibility 0.2s ease-out;
 }
 
 .up-next-header {

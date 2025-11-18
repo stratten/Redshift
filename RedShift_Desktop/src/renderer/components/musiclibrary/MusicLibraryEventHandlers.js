@@ -152,7 +152,7 @@ function setupMusicTableEventListeners(tableBody, context) {
       onAddToQueue: () => context.audioPlayer.addToQueue(track),
       onGetInfo: () => context.getFileInfo(track.path),
       onShowInFinder: () => context.showInFinder(track.path),
-      onAddToPlaylist: () => showPlaylistPickerModal(null, track.path, track.name, context.logBoth),
+      onAddToPlaylist: () => showPlaylistPickerModal(null, track.path, track.name, context.logBoth, { x: e.clientX, y: e.clientY }),
       onDelete: () => context.confirmDelete(track, index)
     });
   });

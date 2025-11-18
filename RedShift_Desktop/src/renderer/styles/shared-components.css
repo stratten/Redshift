@@ -124,6 +124,49 @@
     margin: 0;
 }
 
+/* Now Playing Indicator Column */
+.col-nowplaying {
+    width: 28px !important;
+    min-width: 28px !important;
+    max-width: 28px !important;
+    padding: 0 4px !important;
+    text-align: center !important;
+    border-right: none !important;
+    vertical-align: middle !important;
+}
+
+.now-playing-icon {
+    display: inline-block;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.now-playing-icon.playing {
+    color: #5a67d8;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+.now-playing-icon.paused {
+    color: #9ca3af;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.music-row.now-playing {
+    background-color: rgba(90, 103, 216, 0.05);
+}
+
+.music-row.now-playing:hover {
+    background-color: rgba(90, 103, 216, 0.08);
+}
+
 .music-table .artist-name,
 .music-table .album-name,
 .artist-tracks-table .artist-name,

@@ -201,6 +201,11 @@ class PlaylistManager {
   renderPlaylistTracks() {
     const tracksArea = document.getElementById('playlistTracks');
     
+    // Get current track info for now-playing indicator
+    const currentTrack = this.ui.audioPlayer?.audioPlayerState?.currentTrack;
+    const currentTrackPath = currentTrack?.filePath || currentTrack?.path || null;
+    const isPlaying = this.ui.audioPlayer?.audioPlayerState?.isPlaying || false;
+    
     // Delegate to global renderer
     const html = renderPlaylistTracksHTML(
       this.currentPlaylist,
@@ -209,7 +214,9 @@ class PlaylistManager {
       this.formatTime.bind(this),
       this.ui.musicLibrary.playCountByPath,
       this.ui.musicLibrary.favoriteByPath,
-      this.ui.musicLibrary.ratingByPath
+      this.ui.musicLibrary.ratingByPath,
+      currentTrackPath,
+      isPlaying
     );
     
     tracksArea.innerHTML = html;
@@ -374,8 +381,47 @@ class PlaylistManager {
     setupPlaylistTrackListeners(
       tracksArea,
       (filePath) => this.playTrackFromPlaylist(filePath),
-      (trackId) => this.removeTrackFromPlaylist(trackId)
+      (trackId) => this.removeTrackFromPlaylist(trackId),
+      (fromPosition, toPosition) => this.reorderPlaylistTracks(fromPosition, toPosition)
     );
+  }
+  
+  async reorderPlaylistTracks(fromPosition, toPosition) {
+    if (!this.currentPlaylist) return;
+    
+    try {
+      // Get all current tracks sorted by position
+      const tracks = this.currentPlaylistTracks.slice().sort((a, b) => a.position - b.position);
+      
+      // Find the track being moved
+      const fromIndex = tracks.findIndex(t => t.position === fromPosition);
+      const toIndex = tracks.findIndex(t => t.position === toPosition);
+      
+      if (fromIndex === -1 || toIndex === -1) {
+        this.ui.logBoth('error', 'Invalid track positions');
+        return;
+      }
+      
+      // Remove the track from its current position
+      const [movedTrack] = tracks.splice(fromIndex, 1);
+      
+      // Insert it at the new position
+      tracks.splice(toIndex, 0, movedTrack);
+      
+      // Create array of track IDs in the new order
+      const trackOrder = tracks.map(track => track.id);
+      
+      // Call backend to reorder
+      await window.electronAPI.invoke('playlist-reorder-tracks', this.currentPlaylist.id, trackOrder);
+      
+      this.ui.logBoth('success', 'Playlist tracks reordered');
+      
+      // Reload the playlist to show new order
+      await this.viewPlaylist(this.currentPlaylist.id);
+      
+    } catch (error) {
+      this.ui.logBoth('error', `Failed to reorder tracks: ${error.message}`);
+    }
   }
   
   async playTrackFromPlaylist(filePath) {
