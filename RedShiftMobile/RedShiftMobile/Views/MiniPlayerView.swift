@@ -68,7 +68,7 @@ struct MiniPlayerView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .background(
-                Color(red: 0.85, green: 0.85, blue: 0.87)
+                Color(red: 0.97, green: 0.97, blue: 0.97)
             )
             .overlay(
                 VStack(spacing: 0) {

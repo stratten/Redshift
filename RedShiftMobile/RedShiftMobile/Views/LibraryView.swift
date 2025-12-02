@@ -316,9 +316,8 @@ struct TrackRow: View {
             
             // Track info - takes up all available space
             VStack(alignment: .leading, spacing: 3) {
-                Text(track.displayTitle)
-                    .font(.body)
-                    .lineLimit(1)
+                MarqueeText(text: track.displayTitle, font: .body)
+                    .frame(height: 20)
                 
                 Text(track.displayArtist)
                     .font(.caption)
@@ -344,20 +343,6 @@ struct TrackRow: View {
                     }
                 }
                 .padding(.trailing, 4)
-            }
-            
-            // Play count badge (if played)
-            if track.playCount > 0 {
-                Text("\(track.playCount)")
-                    .font(.caption2)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 3)
-                    .background(
-                        Capsule()
-                            .fill(Color.purple.opacity(0.8))
-                    )
             }
             
             // Favorite button with gold color

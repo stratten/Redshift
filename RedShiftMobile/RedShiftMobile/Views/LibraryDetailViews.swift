@@ -3,6 +3,53 @@
 
 import SwiftUI
 
+// MARK: - Marquee Text Component
+struct MarqueeText: View {
+    let text: String
+    let font: Font
+    @State private var animate = false
+    
+    var body: some View {
+        GeometryReader { geometry in
+            Text(text)
+                .font(font)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .offset(x: animate ? -textWidth(text: text, font: font) - 20 : 0)
+                .animation(
+                    animate ? Animation.linear(duration: Double(text.count) * 0.2).repeatForever(autoreverses: false) : .default,
+                    value: animate
+                )
+                .onAppear {
+                    let textWidth = textWidth(text: text, font: font)
+                    if textWidth > geometry.size.width {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                            animate = true
+                        }
+                    }
+                }
+                .frame(width: geometry.size.width, alignment: .leading)
+                .clipped()
+        }
+    }
+    
+    private func textWidth(text: String, font: Font) -> CGFloat {
+        let uiFont: UIFont
+        switch font {
+        case .body:
+            uiFont = UIFont.preferredFont(forTextStyle: .body)
+        case .caption:
+            uiFont = UIFont.preferredFont(forTextStyle: .caption1)
+        default:
+            uiFont = UIFont.preferredFont(forTextStyle: .body)
+        }
+        
+        let attributes = [NSAttributedString.Key.font: uiFont]
+        let size = (text as NSString).size(withAttributes: attributes)
+        return size.width
+    }
+}
+
 // MARK: - Artist Detail View (shows albums + all tracks option)
 struct ArtistDetailView: View {
     @EnvironmentObject var libraryManager: MusicLibraryManager
@@ -402,9 +449,9 @@ struct AlbumDetailView: View {
                                 }
                                 
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text(track.displayTitle)
-                                        .font(.body)
+                                    MarqueeText(text: track.displayTitle, font: .body)
                                         .foregroundColor(.primary)
+                                        .frame(height: 20)
                                     
                                     Text(track.formattedDuration)
                                         .font(.caption)

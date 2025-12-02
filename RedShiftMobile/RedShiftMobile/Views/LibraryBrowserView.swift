@@ -19,6 +19,20 @@ enum LibraryCategory: String, CaseIterable {
         case .recentlyPlayed: return "clock.fill"
         }
     }
+    
+    var color: Color {
+        switch self {
+        case .artists: return Color(red: 1.0, green: 0.5, blue: 0.5)
+        case .albums: return Color.purple
+        case .songs: return Color(red: 0.5, green: 0.9, blue: 0.5)
+        case .genres: return Color.orange
+        case .recentlyPlayed: return Color.blue
+        }
+    }
+    
+    var lightBackgroundColor: Color {
+        return color.opacity(0.08)
+    }
 }
 
 struct LibraryBrowserView: View {
@@ -39,8 +53,12 @@ struct LibraryBrowserView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
                 .padding(.bottom, 20)
+                .background(Color.white)
+                .cornerRadius(12)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
             }
-            .background(Color(red: 0.88, green: 0.88, blue: 0.90))
+            .background(Color(red: 0.96, green: 0.96, blue: 0.96))
             .navigationTitle("Library")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
@@ -115,15 +133,15 @@ struct LibraryCategoryCard: View {
                     .fill(
                         LinearGradient(
                             gradient: Gradient(colors: [
-                                Color.purple.opacity(0.7),
-                                Color.purple.opacity(0.5)
+                                category.color.opacity(0.7),
+                                category.color.opacity(0.5)
                             ]),
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
                     .frame(width: 50, height: 50)
-                    .shadow(color: .purple.opacity(0.25), radius: 6, x: 0, y: 3)
+                    .shadow(color: category.color.opacity(0.25), radius: 6, x: 0, y: 3)
                 
                 Image(systemName: category.icon)
                     .font(.system(size: 22))
@@ -151,7 +169,7 @@ struct LibraryCategoryCard: View {
         .padding(.vertical, 12)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.systemBackground))
+                .fill(category.lightBackgroundColor)
                 .shadow(color: .black.opacity(0.08), radius: 6, x: 0, y: 2)
         )
     }
