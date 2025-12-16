@@ -1,48 +1,43 @@
-# Redshift 
+# Redshift Desktop
 
-Desktop application for syncing music libraries between Mac and iPhone Doppler apps without manual file selection.
+Music library manager for macOS that actually lets you manage your local music collection.
 
 ## Overview
 
-RedShift eliminates the pain of manually syncing music between your Mac and iPhone Doppler apps. It automatically detects new or modified files in your master library, prevents duplicates through SHA-256 hashing, and offers multiple transfer methods including direct iPhone filesystem access.
+Redshift is a full-featured music player and library manager that treats your local music collection with the respect it deserves. Built because Apple Music is garbage and the alternatives either don't work or charge monthly subscriptions for features iTunes had 20 years ago.
+
+Plays music. Manages your library. Syncs to iPhone. Pulls music from iPhone to desktop. No cloud dependency. No subscriptions. Free and open-source.
 
 ## Features
 
-- **🎯 One-Click Sync**: Plug in iPhone → Scan → Sync with a single button press
-- **🚀 Direct Transfer**: Bypass Doppler Transfer app entirely with direct filesystem access
-- **🔍 Smart Detection**: Automatically finds new and modified files using file system monitoring
-- **🛡️ Duplicate Prevention**: SHA-256 hashing ensures no duplicate transfers
-- **📊 Transfer History**: Complete logging of all sync sessions with timestamps
-- **📱 Multiple Methods**: libimobiledevice, pymobiledevice3, iTunes protocol, or Files app
-- **⚡ Real-time Monitoring**: Detects new music as you add it to your library
+- Full music player (MP3, WAV, FLAC support)
+- Library management with metadata editing
+- Automatic album art and artist image retrieval from MusicBrainz/Cover Art Archive
+- Playlist management with queue control
+- Bi-directional sync to iPhone via USB or Wi-Fi
+- Scans and imports music FROM your iPhone's library TO desktop
+- Bi-directional playlist sync
+- Bi-directional play count/favorites/ratings sync
+- Real-time library monitoring
+- SQLite-based library database with sync history
 
 ## Requirements
 
 - macOS 10.14 or later
-- Doppler app installed on both Mac and iPhone
-- USB cable for iPhone connection
-- Node.js 16 or later
+- ~200MB disk space
+- USB cable or Wi-Fi network for iPhone sync (optional)
+- Doppler mobile app on iPhone (or RedShift mobile when released)
 
 ## Installation
 
-### Prerequisites
+Download the latest DMG from [Releases](https://github.com/stratten/Redshift_Desktop/releases), drag to Applications folder, and open.
 
-Install required system dependencies:
-
-```bash
-# Install libimobiledevice (for direct transfer)
-brew install libimobiledevice ifuse
-
-# Or install pymobiledevice3 (alternative method)
-pip3 install pymobiledevice3
-```
-
-### App Installation
+### For Developers
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/doppler-sync-manager.git
-cd doppler-sync-manager
+git clone https://github.com/stratten/Redshift_Desktop.git
+cd Redshift_Desktop
 
 # Install dependencies
 npm install
@@ -50,127 +45,139 @@ npm install
 # Run in development mode
 npm run dev
 
-# Or build for production
+# Build for production
 npm run build
+```
+
+### Optional: USB Sync Dependencies
+
+USB sync requires libimobiledevice. Wi-Fi sync works without it.
+
+```bash
+brew install libimobiledevice ifuse
 ```
 
 ## Setup
 
-1. **Configure Master Library**: Set your music library path (default: `~/Music/DopplerMaster`)
-2. **Trust Your Mac**: Connect iPhone and tap "Trust" when prompted
-3. **Choose Transfer Method**: Select your preferred sync method in Settings
-4. **Start Syncing**: Click "Scan Library" then "Start Sync"
+1. Open Redshift
+2. Point it at your music folder (Settings tab)
+3. It scans and builds your library
+4. Start playing music
+
+For iPhone sync:
+1. Connect iPhone via USB or Wi-Fi
+2. Trust your Mac when prompted on iPhone
+3. Go to USB Sync tab
+4. Scan device, then sync
 
 ## Usage
 
-### Basic Workflow
+### Playing Music
 
-1. **Add music** to your master library folder on Mac
-2. **Connect iPhone** via USB
-3. **Click "Scan Library"** to detect changes
-4. **Review files** to be synced in the dashboard
-5. **Click "Start Sync"** and choose transfer method
-6. **Monitor progress** in real-time
+Standard music player. Library view, albums view, artists view, playlists. Search works. Queue management. Metadata editing.
 
-### Transfer Methods
+### Syncing to iPhone
 
-- **Direct Transfer (libimobiledevice)** - Fastest, requires brew install
-- **Direct Transfer (pymobiledevice3)** - Modern Python approach, iOS 17+ optimized  
-- **iTunes File Sharing Protocol** - Uses same protocol as iTunes
-- **iOS Files App** - Manual import fallback method
+**Push music TO iPhone:**
+1. USB Sync or Doppler Sync tab
+2. Connect iPhone (USB or Wi-Fi)
+3. Click "Sync"
+4. It transfers files not already on device
 
-## Directory Structure
+**Pull music FROM iPhone:**
+1. USB Sync tab
+2. Connect iPhone via USB
+3. Click "Import from Device"
+4. It scans iPhone's music library and imports files you don't have
 
-```
-doppler-sync-manager/
-├── package.json              # Project configuration
-├── src/
-│   ├── main/
-│   │   ├── main.js           # Electron main process
-│   │   └── preload.js        # IPC security bridge
-│   └── renderer/
-│       ├── index.html        # Main UI
-│       ├── renderer.js       # Frontend logic
-│       └── styles/
-│           └── main.css      # Application styles
-├── build/                    # Build assets
-└── docs/                     # Documentation
-```
+### Sync Methods
+
+- **USB via libimobiledevice** - Most reliable, requires brew install
+- **Wi-Fi via WebSocket** - Pairs with QR code, no cables
+- **Doppler sync** - Works with Doppler mobile app (can't detect duplicates due to iOS sandboxing)
+
+## Architecture
+
+Built with Electron. Cross-platform without maintaining three native codebases.
+
+**Main process:**
+- File system watching (chokidar)
+- SQLite database (library state, sync history, playlists, play counts)
+- Audio playback service
+- USB device monitoring
+- iPhone sync services (libimobiledevice, pymobiledevice3, WebSocket)
+- MusicBrainz integration for automatic artist images and album artwork
+
+**Renderer:**
+- Vanilla JavaScript with custom component system
+- No React/Vue - doesn't need the overhead
+- UI bundle under 200KB
+
+**Sync architecture:**
+- USB sync via libimobiledevice (direct filesystem access)
+- Wi-Fi sync via WebSocket (QR code pairing)
+- AFC (Apple File Conduit) for device music library access
+- Pre-indexing with metadata matching (artist + title + album)
+- SHA-256 hashing for duplicate detection
+
+**Database:**
+- Tracks, playlists, sync history, play counts
+- Bi-directional sync merges data from both sides
 
 ## Development
 
 ```bash
-# Development with hot reload
+# Run in development
 npm run dev
 
-# Build for distribution
+# Build DMG for distribution
 npm run build
 
-# Package for macOS
-npm run pack
+# The build process handles code signing and notarization
+# See build/ directory for signing setup
 ```
 
-## Architecture
+## Known Issues
 
-- **Electron Main Process**: Handles file system operations, database, USB monitoring
-- **SQLite Database**: Tracks transferred files and sync history
-- **File System Watcher**: Real-time detection of library changes
-- **USB Monitor**: Automatic iPhone detection
-- **Transfer Engines**: Multiple methods for iPhone file transfer
+**iPhone sync:**
+- libimobiledevice can break with iOS updates (reverse-engineered protocol)
+- USB sync more reliable than Wi-Fi
+- Doppler mobile sync can't detect duplicates (iOS sandboxing blocks access to Doppler's app folder)
+
+**General:**
+- No Windows/Linux builds yet (code should work, just haven't packaged them)
+- No smart playlists
+- Large file size (~66MB) due to bundled Python and dependencies
 
 ## Troubleshooting
 
-### iPhone Not Detected
-- Ensure iPhone is unlocked and trusted
+**iPhone not detected:**
+- Unlock iPhone and tap "Trust" when prompted
 - Try different USB cable/port
-- Check USB permissions in macOS Security & Privacy
+- Install libimobiledevice: `brew install libimobiledevice ifuse`
 
-### Transfer Failed
-- Verify Doppler app is installed on iPhone
-- Check that transfer dependencies are installed (`brew list libimobiledevice`)
-- Try alternative transfer method in modal
+**Sync fails:**
+- Make sure Doppler (or RedShift mobile) is installed on iPhone
+- Try Wi-Fi sync if USB fails
+- Check Settings tab for sync method options
 
-### Library Not Scanning
-- Check library path permissions
-- Ensure path contains audio files (.mp3, .m4a, .flac, etc.)
-- Restart file system watcher in Settings
+**Library not loading:**
+- Check that library path points to folder with music files
+- Supported formats: MP3, WAV, FLAC, M4A
+- Check console for error messages
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Fork it, fix it, send a PR. Code is MIT licensed.
 
 ## Acknowledgments
 
-- [libimobiledevice](https://libimobiledevice.org/) - iOS communication library
-- [pymobiledevice3](https://github.com/doronz88/pymobiledevice3) - Modern Python iOS tools
-- [Doppler](https://brushedtype.co/doppler/) - Excellent music player that inspired this tool
+- [libimobiledevice](https://libimobiledevice.org/) - iOS communication
+- [pymobiledevice3](https://github.com/doronz88/pymobiledevice3) - Modern iOS tools
+- [MusicBrainz](https://musicbrainz.org/) - Free metadata and artist image API
+- [Cover Art Archive](https://coverartarchive.org/) - Free album artwork API
+- [Doppler](https://brushedtype.co/doppler/) - The mobile app that doesn't sync properly, which is why this exists
 
-## Support
+---
 
-- 📖 [Documentation](docs/)
-- 🐛 [Report Bug](https://github.com/your-username/doppler-sync-manager/issues)
-- 💡 [Request Feature](https://github.com/your-username/doppler-sync-manager/issues)
-
-RedShift/
-├── package.json
-├── README.md
-├── .gitignore
-├── src/
-│   ├── main/
-│   │   ├── main.js
-│   │   └── preload.js
-│   └── renderer/
-│       ├── index.html
-│       ├── renderer.js
-│       └── styles/
-│           └── main.css
-└── reference/
-    └── sync_script.py
+App #1 of 27 by 2027.
