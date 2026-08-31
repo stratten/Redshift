@@ -11,7 +11,7 @@ struct PlaylistsView: View {
     @State private var newPlaylistName = ""
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack {
                 if libraryManager.playlists.isEmpty {
                     // Empty state
@@ -123,7 +123,7 @@ struct CreatePlaylistSheet: View {
     @Binding var playlistName: String
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 Section {
                     TextField("Playlist Name", text: $playlistName)
@@ -168,13 +168,10 @@ struct PlaylistDetailView: View {
     var playlistTracks: [Track] {
         var tracks = libraryManager.getTracksForPlaylist(playlist)
         
-        // Apply search filter
+        // Apply search filter using the shared predicate (title/artist/album
+        // artist/album/genre/filename) for the same behavior as everywhere else.
         if !searchText.isEmpty {
-            tracks = tracks.filter { track in
-                track.displayTitle.localizedCaseInsensitiveContains(searchText) ||
-                track.displayArtist.localizedCaseInsensitiveContains(searchText) ||
-                (track.album?.localizedCaseInsensitiveContains(searchText) ?? false)
-            }
+            tracks = tracks.filter { $0.matches(searchText) }
         }
         
         return tracks
@@ -312,18 +309,14 @@ struct AddTracksToPlaylistSheet: View {
         var tracks = libraryManager.tracks.filter { !playlistTrackStableIDs.contains($0.stableID) }
         
         if !searchText.isEmpty {
-            tracks = tracks.filter {
-                $0.displayTitle.localizedCaseInsensitiveContains(searchText) ||
-                $0.displayArtist.localizedCaseInsensitiveContains(searchText) ||
-                $0.displayAlbum.localizedCaseInsensitiveContains(searchText)
-            }
+            tracks = tracks.filter { $0.matches(searchText) }
         }
         
         return tracks
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 0) {
                 // Search
                 HStack {

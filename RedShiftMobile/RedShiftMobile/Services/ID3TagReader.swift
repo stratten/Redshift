@@ -12,6 +12,10 @@ struct ID3Tag {
     let year: String?
     let comment: String?
     let albumArt: Data?
+    /// Raw TRCK/TRK text, e.g. "3" or "3/12". Callers should parse the leading integer.
+    let trackNumber: String?
+    /// Raw TPOS/TPA text, e.g. "1" or "1/2". Callers should parse the leading integer.
+    let discNumber: String?
 }
 
 final class ID3TagReader {
@@ -57,6 +61,8 @@ final class ID3TagReader {
         var year: String?
         var comment: String?
         var albumArt: Data?
+        var trackNumber: String?
+        var discNumber: String?
 
         if header.versionMajor == 2 {
             // ID3v2.2: frames have 3-byte IDs and 3-byte sizes, no flags
@@ -91,6 +97,10 @@ final class ID3TagReader {
                             if genre == nil { genre = text }
                         case "TYE":
                             if year == nil { year = text }
+                        case "TRK":
+                            if trackNumber == nil { trackNumber = text }
+                        case "TPA":
+                            if discNumber == nil { discNumber = text }
                         default:
                             break
                         }
@@ -147,6 +157,10 @@ final class ID3TagReader {
                             if genre == nil { genre = text }
                         case "TYER", "TDRC":
                             if year == nil { year = text }
+                        case "TRCK":
+                            if trackNumber == nil { trackNumber = text }
+                        case "TPOS":
+                            if discNumber == nil { discNumber = text }
                         default:
                             break
                         }
@@ -170,11 +184,22 @@ final class ID3TagReader {
             }
         }
 
-        if title == nil && artist == nil && album == nil && albumArtist == nil && genre == nil && year == nil && comment == nil && albumArt == nil {
+        if title == nil && artist == nil && album == nil && albumArtist == nil && genre == nil && year == nil && comment == nil && albumArt == nil && trackNumber == nil && discNumber == nil {
             return nil
         }
 
-        return ID3Tag(title: title, artist: artist, album: album, albumArtist: albumArtist, genre: genre, year: year, comment: comment, albumArt: albumArt)
+        return ID3Tag(title: title, artist: artist, album: album, albumArtist: albumArtist, genre: genre, year: year, comment: comment, albumArt: albumArt, trackNumber: trackNumber, discNumber: discNumber)
+    }
+
+    // MARK: - Number Frame Helpers
+
+    /// Parses the leading integer out of ID3 track/disc number text, which is
+    /// commonly formatted as "N" or "N/TOTAL" (e.g. "3" or "3/12").
+    static func leadingInt(from string: String?) -> Int? {
+        guard let string = string else { return nil }
+        let digits = string.prefix { $0.isNumber }
+        guard !digits.isEmpty, let value = Int(digits) else { return nil }
+        return value
     }
 
     // MARK: - Parsing Helpers

@@ -2,15 +2,15 @@
 <div id="doppler-syncTab" class="tab-content" style="display: none;">
     <div style="max-width: 1200px; margin: 0 auto;">
         <!-- Info Banner -->
-        <div style="background: #e3f2fd; border-left: 4px solid #2196F3; padding: 15px; margin-bottom: 20px; border-radius: 4px; display: flex; gap: 12px; align-items: flex-start;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2196F3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;">
+        <div style="background: var(--rs-info-bg); border-left: 4px solid var(--rs-info-border); padding: 15px; margin-bottom: 20px; border-radius: 4px; display: flex; gap: 12px; align-items: flex-start;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--rs-info-border)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;">
                 <circle cx="12" cy="12" r="10"></circle>
                 <line x1="12" y1="16" x2="12" y2="12"></line>
                 <line x1="12" y1="8" x2="12.01" y2="8"></line>
             </svg>
             <div>
-                <strong>Doppler Mobile App Sync</strong>
-                <p style="margin: 5px 0 0 0; color: #666;">
+                <strong style="color: var(--rs-text-primary);">Doppler Mobile App Sync</strong>
+                <p style="margin: 5px 0 0 0; color: var(--rs-text-secondary);">
                     This page syncs your music library to the <strong>Doppler mobile app</strong> via Wi-Fi. 
                     If you're using <strong>RedShift Mobile</strong>, use the Dashboard tab instead.
                 </p>
@@ -22,20 +22,20 @@
             <div class="stat-card">
                 <h3 style="margin-bottom: 15px;">Library Overview</h3>
                 <div style="display: flex; flex-direction: column; gap: 10px;">
-                    <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
-                        <span style="color: #666;">Local Files:</span>
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--rs-border-color);">
+                        <span style="color: var(--rs-text-secondary);">Local Files:</span>
                         <span id="localFilesCount" style="font-weight: 600;">-</span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
-                        <span style="color: #666;">Synced to Doppler:</span>
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--rs-border-color);">
+                        <span style="color: var(--rs-text-secondary);">Synced to Doppler:</span>
                         <span id="transferredFilesCount" style="font-weight: 600;">-</span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
-                        <span style="color: #666;">New Files:</span>
-                        <span id="newFilesCount" style="font-weight: 600; color: #2196F3;">-</span>
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--rs-border-color);">
+                        <span style="color: var(--rs-text-secondary);">New Files:</span>
+                        <span id="newFilesCount" style="font-weight: 600; color: var(--rs-info-border);">-</span>
                     </div>
                     <div style="display: flex; justify-content: space-between; padding: 8px 0;">
-                        <span style="color: #666;">Orphaned:</span>
+                        <span style="color: var(--rs-text-secondary);">Orphaned:</span>
                         <span id="orphanedFilesCount" style="font-weight: 600; color: #ff9800;">-</span>
                     </div>
                 </div>
@@ -44,20 +44,20 @@
             <div class="stat-card">
                 <h3 style="margin-bottom: 15px;">Sync Status</h3>
                 <div style="display: flex; flex-direction: column; gap: 10px;">
-                    <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
-                        <span style="color: #666;">Sync Health:</span>
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--rs-border-color);">
+                        <span style="color: var(--rs-text-secondary);">Sync Health:</span>
                         <span id="syncHealthIndicator" style="font-weight: 600; color: #4caf50;">--%</span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
-                        <span style="color: #666;">Last Sync:</span>
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--rs-border-color);">
+                        <span style="color: var(--rs-text-secondary);">Last Sync:</span>
                         <span id="lastSyncDate" style="font-weight: 600;">Never</span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
-                        <span style="color: #666;">New Size:</span>
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--rs-border-color);">
+                        <span style="color: var(--rs-text-secondary);">New Size:</span>
                         <span id="newFilesSize" style="font-weight: 600;">0 MB</span>
                     </div>
                     <div style="display: flex; justify-content: space-between; padding: 8px 0;">
-                        <span style="color: #666;">Total Synced:</span>
+                        <span style="color: var(--rs-text-secondary);">Total Synced:</span>
                         <span id="totalTransferredCount" style="font-weight: 600;">-</span>
                     </div>
                 </div>
@@ -101,10 +101,10 @@
             <div id="syncProgressContainer" style="display: none;">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
                     <span style="font-weight: 500;">Sync Progress</span>
-                    <span id="syncProgressText" style="color: #666;">0/0</span>
+                    <span id="syncProgressText" style="color: var(--rs-text-secondary);">0/0</span>
                 </div>
-                <div style="height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
-                    <div id="syncProgressBar" style="height: 100%; background: #5a67d8; width: 0%; transition: width 0.3s;"></div>
+                <div style="height: 8px; background: var(--rs-border-color); border-radius: 4px; overflow: hidden;">
+                    <div id="syncProgressBar" style="height: 100%; background: var(--rs-accent); width: 0%; transition: width 0.3s;"></div>
                 </div>
             </div>
         </div>
@@ -114,14 +114,14 @@
             <div class="stat-card">
                 <h3 style="margin-bottom: 15px;">New Files to Sync</h3>
                 <div id="newFilesList" style="max-height: 400px; overflow-y: auto;">
-                    <p style="color: #999; text-align: center; padding: 20px;">No new files</p>
+                    <p style="color: var(--rs-text-muted); text-align: center; padding: 20px;">No new files</p>
                 </div>
             </div>
             
             <div class="stat-card">
                 <h3 style="margin-bottom: 15px;">Orphaned Files</h3>
                 <div id="orphanedFilesList" style="max-height: 400px; overflow-y: auto;">
-                    <p style="color: #999; text-align: center; padding: 20px;">No orphaned files</p>
+                    <p style="color: var(--rs-text-muted); text-align: center; padding: 20px;">No orphaned files</p>
                 </div>
             </div>
         </div>

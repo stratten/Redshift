@@ -1,5 +1,136 @@
 /* Base Styles - Global resets and layout */
 
+/* ===== THEME VARIABLES =====
+ * Light theme is the default (no attribute needed).
+ * Dark theme activates via [data-theme="dark"] on <html>.
+ * Every other stylesheet should reference these variables instead of
+ * hardcoding colors, so both themes stay in sync from one source.
+ */
+:root {
+    --rs-gradient-start: #667eea;
+    --rs-gradient-end: #764ba2;
+
+    /* Surfaces */
+    --rs-bg-app-container: rgba(255, 255, 255, 0.95);
+    --rs-bg-sidebar: rgba(255, 255, 255, 0.9);
+    --rs-bg-header: rgba(255, 255, 255, 0.95);
+    --rs-bg-surface: #ffffff;
+    --rs-bg-surface-alt: #f9fafb;
+    --rs-bg-surface-sunken: #f7fafc;
+    --rs-bg-surface-tertiary: #f3f4f6;
+    --rs-bg-hover: #edf2f7;
+    --rs-bg-log: #1a202c;
+
+    /* Text */
+    --rs-text-primary: #2d3748;
+    --rs-text-heading: #1f2937;
+    --rs-text-secondary: #718096;
+    --rs-text-muted: #a0aec0;
+    --rs-text-faint: #cbd5e0;
+    --rs-text-on-accent: #ffffff;
+
+    /* Borders */
+    --rs-border-color: #e2e8f0;
+    --rs-border-color-strong: #d1d5db;
+    --rs-border-color-soft: #f1f5f9;
+
+    /* Accent (brand purple) */
+    --rs-accent: #5a67d8;
+    --rs-accent-hover: #4c51bf;
+    --rs-accent-soft: rgba(90, 103, 216, 0.1);
+    --rs-accent-soft-strong: rgba(90, 103, 216, 0.15);
+    --rs-accent-soft-stronger: rgba(90, 103, 216, 0.25);
+    --rs-accent-alt: #6366f1;
+    --rs-accent-alt-hover: #4f46e5;
+
+    /* Shadows */
+    --rs-shadow-color: rgba(0, 0, 0, 0.1);
+    --rs-overlay-scrim: rgba(0, 0, 0, 0.5);
+
+    /* Semantic status tints (badges, health indicators) */
+    --rs-success-bg: #c6f6d5;
+    --rs-success-text: #22543d;
+    --rs-success-bg-soft: #f0fff4;
+    --rs-success-border-soft: #bbf7d0;
+    --rs-warning-bg: #fef5e7;
+    --rs-warning-text: #b7791f;
+    --rs-warning-bg-soft: #fffbeb;
+    --rs-warning-border-soft: #fed7aa;
+    --rs-danger-bg-soft: #fef2f2;
+    --rs-danger-border-soft: #fecaca;
+    --rs-info-bg: #e3f2fd;
+    --rs-info-border: #2196f3;
+    --rs-up-next-item-bg: rgba(255, 255, 255, 0.5);
+    --rs-up-next-item-hover-bg: rgba(90, 103, 216, 0.08);
+
+    /* Relative-to-surface overlays (slider/progress tracks, subtle panels, hover dimming) */
+    --rs-track-bg: rgba(0, 0, 0, 0.1);
+    --rs-control-hover-bg: rgba(0, 0, 0, 0.1);
+    --rs-subtle-overlay-weak: rgba(0, 0, 0, 0.02);
+    --rs-subtle-overlay: rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="dark"] {
+    /* Surfaces */
+    --rs-bg-app-container: rgba(23, 25, 35, 0.97);
+    --rs-bg-sidebar: rgba(17, 19, 28, 0.95);
+    --rs-bg-header: rgba(23, 25, 35, 0.95);
+    --rs-bg-surface: #1a1d2b;
+    --rs-bg-surface-alt: #262b3d;
+    --rs-bg-surface-sunken: #2a2f44;
+    --rs-bg-surface-tertiary: #333952;
+    --rs-bg-hover: #3b4260;
+    --rs-bg-log: #0f1119;
+
+    /* Text */
+    --rs-text-primary: #e8eaf2;
+    --rs-text-heading: #f5f6fa;
+    --rs-text-secondary: #a4aac2;
+    --rs-text-muted: #7d84a3;
+    --rs-text-faint: #5b6284;
+    --rs-text-on-accent: #ffffff;
+
+    /* Borders */
+    --rs-border-color: #363b52;
+    --rs-border-color-strong: #454b68;
+    --rs-border-color-soft: #2a2e42;
+
+    /* Accent (brightened for contrast on dark surfaces) */
+    --rs-accent: #7c8aef;
+    --rs-accent-hover: #909dfa;
+    --rs-accent-soft: rgba(124, 138, 239, 0.18);
+    --rs-accent-soft-strong: rgba(124, 138, 239, 0.26);
+    --rs-accent-soft-stronger: rgba(124, 138, 239, 0.38);
+    --rs-accent-alt: #818cf8;
+    --rs-accent-alt-hover: #a5b4fc;
+
+    /* Shadows */
+    --rs-shadow-color: rgba(0, 0, 0, 0.4);
+    --rs-overlay-scrim: rgba(0, 0, 0, 0.7);
+
+    /* Semantic status tints (badges, health indicators) */
+    --rs-success-bg: rgba(72, 187, 120, 0.22);
+    --rs-success-text: #7fe3a4;
+    --rs-success-bg-soft: rgba(34, 197, 94, 0.12);
+    --rs-success-border-soft: rgba(34, 197, 94, 0.35);
+    --rs-warning-bg: rgba(237, 137, 54, 0.22);
+    --rs-warning-text: #f6ad55;
+    --rs-warning-bg-soft: rgba(245, 158, 11, 0.12);
+    --rs-warning-border-soft: rgba(245, 158, 11, 0.35);
+    --rs-danger-bg-soft: rgba(239, 68, 68, 0.12);
+    --rs-danger-border-soft: rgba(239, 68, 68, 0.35);
+    --rs-info-bg: rgba(33, 150, 243, 0.15);
+    --rs-info-border: #4fa8f5;
+    --rs-up-next-item-bg: rgba(255, 255, 255, 0.06);
+    --rs-up-next-item-hover-bg: rgba(124, 138, 239, 0.16);
+
+    /* Relative-to-surface overlays (slider/progress tracks, subtle panels, hover dimming) */
+    --rs-track-bg: rgba(255, 255, 255, 0.18);
+    --rs-control-hover-bg: rgba(255, 255, 255, 0.1);
+    --rs-subtle-overlay-weak: rgba(255, 255, 255, 0.03);
+    --rs-subtle-overlay: rgba(255, 255, 255, 0.06);
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -8,15 +139,15 @@
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: #333;
+    background: linear-gradient(135deg, var(--rs-gradient-start) 0%, var(--rs-gradient-end) 100%);
+    color: var(--rs-text-primary);
     overflow: hidden;
 }
 
 .app-container {
     display: flex;
     height: 100vh;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--rs-bg-app-container);
     backdrop-filter: blur(10px);
 }
 
@@ -28,8 +159,8 @@ body {
 }
 
 .header {
-    background: white;
-    border-bottom: 1px solid #e2e8f0;
+    background: var(--rs-bg-surface);
+    border-bottom: 1px solid var(--rs-border-color);
     padding: 20px 30px;
     display: flex;
     justify-content: space-between;
@@ -37,7 +168,7 @@ body {
 }
 
 .header h2 {
-    color: #2d3748;
+    color: var(--rs-text-heading);
     font-size: 24px;
 }
 

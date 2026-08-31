@@ -26,9 +26,15 @@ actor DatabaseService {
         }
         
         self.createTablesSync()
+        self.migrateSchemaIfNeeded()
     }
     
     private func createTablesSync() {
+        // disc_number is appended last (after modified_date) rather than inline
+        // next to track_number, so its column index is identical whether a
+        // database was created fresh with this column or migrated into it via
+        // ALTER TABLE (which always appends). parseTrackRow relies on that fixed
+        // positional index.
         let tracksTable = """
         CREATE TABLE IF NOT EXISTS tracks (
             id TEXT PRIMARY KEY,
@@ -49,7 +55,9 @@ actor DatabaseService {
             rating INTEGER DEFAULT 0,
             file_size INTEGER,
             added_date INTEGER,
-            modified_date INTEGER
+            modified_date INTEGER,
+            disc_number INTEGER DEFAULT 0,
+            file_fingerprint TEXT DEFAULT ''
         );
         """
         
@@ -64,6 +72,16 @@ actor DatabaseService {
         );
         """
         
+        // Small key/value table for sync bookkeeping (currently just the last
+        // accepted desktop manifest revision). A key/value shape avoids another
+        // migration if future reconciliation state needs to be tracked.
+        let syncStateTable = """
+        CREATE TABLE IF NOT EXISTS sync_state (
+            key TEXT PRIMARY KEY,
+            value TEXT
+        );
+        """
+        
         let indexTracks = """
         CREATE INDEX IF NOT EXISTS idx_tracks_artist ON tracks(artist);
         CREATE INDEX IF NOT EXISTS idx_tracks_album ON tracks(album);
@@ -73,7 +91,37 @@ actor DatabaseService {
         
         executeSQL(tracksTable)
         executeSQL(playlistsTable)
+        executeSQL(syncStateTable)
         executeSQL(indexTracks)
+    }
+    
+    /// Adds columns/tables to pre-existing databases that were created before
+    /// they existed. Safe to call on every launch: it only issues ALTER TABLE
+    /// when the column is actually missing, and CREATE TABLE IF NOT EXISTS for
+    /// sync_state is already idempotent from createTablesSync.
+    private func migrateSchemaIfNeeded() {
+        if !columnExists(table: "tracks", column: "disc_number") {
+            executeSQL("ALTER TABLE tracks ADD COLUMN disc_number INTEGER DEFAULT 0;")
+        }
+        if !columnExists(table: "tracks", column: "file_fingerprint") {
+            executeSQL("ALTER TABLE tracks ADD COLUMN file_fingerprint TEXT DEFAULT '';")
+        }
+    }
+    
+    private func columnExists(table: String, column: String) -> Bool {
+        var statement: OpaquePointer?
+        var exists = false
+        let sql = "PRAGMA table_info(\(table));"
+        if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
+            while sqlite3_step(statement) == SQLITE_ROW {
+                if let namePtr = sqlite3_column_text(statement, 1), String(cString: namePtr) == column {
+                    exists = true
+                    break
+                }
+            }
+        }
+        sqlite3_finalize(statement)
+        return exists
     }
     
     // MARK: - Database Setup
@@ -108,8 +156,8 @@ actor DatabaseService {
         let sql = """
         INSERT OR REPLACE INTO tracks 
         (id, file_path, file_name, title, artist, album, album_artist, year, track_number, genre, 
-         duration, album_art, play_count, last_played, is_favorite, rating, file_size, added_date, modified_date)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+         duration, album_art, play_count, last_played, is_favorite, rating, file_size, added_date, modified_date, disc_number, file_fingerprint)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         """
         
         var statement: OpaquePointer?
@@ -142,6 +190,8 @@ actor DatabaseService {
             sqlite3_bind_int64(statement, 17, track.fileSize)
             sqlite3_bind_int64(statement, 18, Int64(track.addedDate.timeIntervalSince1970))
             sqlite3_bind_int64(statement, 19, Int64(track.modifiedDate.timeIntervalSince1970))
+            sqlite3_bind_int(statement, 20, Int32(track.discNumber ?? 0))
+            bind(statement, 21, track.fileFingerprint)
             
             if sqlite3_step(statement) != SQLITE_DONE {
                 let error = String(cString: sqlite3_errmsg(db)!)
@@ -152,6 +202,94 @@ actor DatabaseService {
         } else {
             let error = String(cString: sqlite3_errmsg(db)!)
             print("❌ Failed to prepare statement: \(error)")
+        }
+        sqlite3_finalize(statement)
+    }
+    
+    /// Lightweight scan of just file_path/file_fingerprint (no title/artist/BLOB
+    /// columns) so reconciliation can decide which on-disk files changed without
+    /// paying the cost of hydrating full Track rows including album art.
+    func loadFileFingerprints() async throws -> [String: String] {
+        var result: [String: String] = [:]
+        let sql = "SELECT file_path, file_fingerprint FROM tracks;"
+        var statement: OpaquePointer?
+        if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
+            while sqlite3_step(statement) == SQLITE_ROW {
+                guard let pathPtr = sqlite3_column_text(statement, 0) else { continue }
+                let filePath = String(cString: pathPtr)
+                let fingerprint = sqlite3_column_text(statement, 1) != nil ? String(cString: sqlite3_column_text(statement, 1)) : ""
+                result[filePath] = fingerprint
+            }
+        }
+        sqlite3_finalize(statement)
+        return result
+    }
+    
+    /// Applies an incremental reconciliation pass (upserts + deletions) in a
+    /// single transaction, so a crash or thrown error midway leaves the
+    /// database exactly as it was before reconciliation started rather than
+    /// partially applied.
+    func applyReconciliation(upserts: [Track], deleteFilePaths: [String]) async throws {
+        var errorMessage: UnsafeMutablePointer<CChar>?
+        guard sqlite3_exec(db, "BEGIN IMMEDIATE TRANSACTION;", nil, nil, &errorMessage) == SQLITE_OK else {
+            let error = errorMessage != nil ? String(cString: errorMessage!) : "unknown error"
+            sqlite3_free(errorMessage)
+            throw NSError(domain: "DatabaseService", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to begin reconciliation transaction: \(error)"])
+        }
+        
+        do {
+            for track in upserts {
+                try await saveTrack(track)
+            }
+            for filePath in deleteFilePaths {
+                try await deleteTrack(byFilePath: filePath)
+            }
+        } catch {
+            sqlite3_exec(db, "ROLLBACK;", nil, nil, nil)
+            throw error
+        }
+        
+        if sqlite3_exec(db, "COMMIT;", nil, nil, &errorMessage) != SQLITE_OK {
+            let error = errorMessage != nil ? String(cString: errorMessage!) : "unknown error"
+            sqlite3_free(errorMessage)
+            sqlite3_exec(db, "ROLLBACK;", nil, nil, nil)
+            throw NSError(domain: "DatabaseService", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to commit reconciliation transaction: \(error)"])
+        }
+    }
+    
+    private func deleteTrack(byFilePath filePath: String) async throws {
+        let sql = "DELETE FROM tracks WHERE file_path = ?;"
+        var statement: OpaquePointer?
+        if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
+            bind(statement, 1, filePath)
+            sqlite3_step(statement)
+        }
+        sqlite3_finalize(statement)
+    }
+    
+    // MARK: - Sync State (manifest revision bookkeeping)
+    
+    func getSyncStateValue(_ key: String) async throws -> String? {
+        let sql = "SELECT value FROM sync_state WHERE key = ?;"
+        var statement: OpaquePointer?
+        var value: String?
+        if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
+            bind(statement, 1, key)
+            if sqlite3_step(statement) == SQLITE_ROW, let textPtr = sqlite3_column_text(statement, 0) {
+                value = String(cString: textPtr)
+            }
+        }
+        sqlite3_finalize(statement)
+        return value
+    }
+    
+    func setSyncStateValue(_ key: String, value: String) async throws {
+        let sql = "INSERT OR REPLACE INTO sync_state (key, value) VALUES (?, ?);"
+        var statement: OpaquePointer?
+        if sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK {
+            bind(statement, 1, key)
+            bind(statement, 2, value)
+            sqlite3_step(statement)
         }
         sqlite3_finalize(statement)
     }
@@ -238,6 +376,11 @@ actor DatabaseService {
         let fileSize = sqlite3_column_int64(statement, 16)
         let addedDate = Date(timeIntervalSince1970: TimeInterval(sqlite3_column_int64(statement, 17)))
         let modifiedDate = Date(timeIntervalSince1970: TimeInterval(sqlite3_column_int64(statement, 18)))
+        // Column 19 (disc_number) may not exist on databases created before this
+        // migration ran within the current process; sqlite3_column_int returns 0
+        // for out-of-range indices, which maps to "no disc number" below anyway.
+        let discNumber = Int(sqlite3_column_int(statement, 19))
+        let fileFingerprint = sqlite3_column_text(statement, 20) != nil ? String(cString: sqlite3_column_text(statement, 20)) : nil
         
         return Track(
             id: id,
@@ -249,6 +392,7 @@ actor DatabaseService {
             albumArtist: albumArtist,
             year: year > 0 ? year : nil,
             trackNumber: trackNumber > 0 ? trackNumber : nil,
+            discNumber: discNumber > 0 ? discNumber : nil,
             genre: genre,
             duration: duration,
             albumArtData: albumArtData,
@@ -258,7 +402,8 @@ actor DatabaseService {
             rating: rating,
             fileSize: fileSize,
             addedDate: addedDate,
-            modifiedDate: modifiedDate
+            modifiedDate: modifiedDate,
+            fileFingerprint: (fileFingerprint?.isEmpty ?? true) ? nil : fileFingerprint
         )
     }
     

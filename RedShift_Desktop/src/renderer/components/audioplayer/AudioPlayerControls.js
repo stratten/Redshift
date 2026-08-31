@@ -18,14 +18,14 @@ class AudioPlayerControls {
           case 'play-pause':
             if (this.player.audioPlayerState.isPlaying) {
               await window.electronAPI.invoke('audio-pause');
-              this.player.audioElement.pause();
+              this.player.crossfade.pauseActive();
             } else {
               if (!this.player.audioElement.src && !this.player.audioPlayerState.currentTrack) {
                 this.player.ui.logBoth('warning', 'No track loaded');
                 return;
               }
               await window.electronAPI.invoke('audio-play');
-              await this.player.audioElement.play();
+              await this.player.crossfade.resumeActive();
             }
             break;
           
@@ -39,7 +39,7 @@ class AudioPlayerControls {
           
           case 'stop':
             await window.electronAPI.invoke('audio-pause');
-            this.player.audioElement.pause();
+            this.player.crossfade.pauseActive();
             break;
         }
       } catch (error) {
@@ -60,7 +60,7 @@ class AudioPlayerControls {
         if (this.player.audioPlayerState.isPlaying) {
           this.player.ui.logBoth('info', 'Pausing audio...');
           await window.electronAPI.invoke('audio-pause');
-          this.player.audioElement.pause();
+          this.player.crossfade.pauseActive();
         } else {
           if (!this.player.audioElement.src && !this.player.audioPlayerState.currentTrack) {
             this.player.ui.logBoth('warning', 'No track loaded. Please select a track first.');
@@ -68,7 +68,7 @@ class AudioPlayerControls {
           }
           this.player.ui.logBoth('info', 'Playing audio...');
           await window.electronAPI.invoke('audio-play');
-          await this.player.audioElement.play();
+          await this.player.crossfade.resumeActive();
         }
       } catch (error) {
         this.player.ui.logBoth('error', `Playback error: ${error.message}`);
@@ -104,6 +104,8 @@ class AudioPlayerControls {
         // Update UI immediately (optimistic update)
         this.player.audioPlayerState.shuffleMode = newShuffleMode;
         this.player.updateShuffleButton(newShuffleMode);
+        this.player.crossfade.invalidatePreload();
+        this.player.crossfade.prepareNextTrack();
       } catch (error) {
         this.player.ui.logBoth('error', `Shuffle error: ${error.message}`);
       }
@@ -118,6 +120,8 @@ class AudioPlayerControls {
         // Update UI immediately (optimistic update)
         this.player.audioPlayerState.repeatMode = nextMode;
         this.player.updateRepeatButton(nextMode);
+        this.player.crossfade.invalidatePreload();
+        this.player.crossfade.prepareNextTrack();
       } catch (error) {
         this.player.ui.logBoth('error', `Repeat mode error: ${error.message}`);
       }
@@ -138,14 +142,17 @@ class AudioPlayerControls {
     volumeSlider.addEventListener('input', (e) => {
       const volume = e.target.value / 100;
       this.player.ui.logBoth('info', `Volume changed to: ${Math.round(volume * 100)}%`);
-      this.player.audioElement.volume = volume;
+      this.player.audioElementA.volume = volume;
+      this.player.audioElementB.volume = volume;
     });
     
     // Mute toggle
     document.getElementById('muteBtn').addEventListener('click', () => {
       this.player.ui.logBoth('info', 'Mute button clicked');
-      this.player.audioElement.muted = !this.player.audioElement.muted;
-      this.player.ui.logBoth('info', `Audio ${this.player.audioElement.muted ? 'muted' : 'unmuted'}`);
+      const muted = !this.player.audioElement.muted;
+      this.player.audioElementA.muted = muted;
+      this.player.audioElementB.muted = muted;
+      this.player.ui.logBoth('info', `Audio ${muted ? 'muted' : 'unmuted'}`);
     });
     
     // Progress slider
@@ -154,6 +161,7 @@ class AudioPlayerControls {
     // Handle seeking start
     progressSlider.addEventListener('mousedown', () => {
       this.player.isSeeking = true;
+      this.player.crossfade.cancelTransition();
     });
     
     // Handle seeking end
@@ -166,6 +174,7 @@ class AudioPlayerControls {
     // Handle touch start (for mobile/touch devices)
     progressSlider.addEventListener('touchstart', () => {
       this.player.isSeeking = true;
+      this.player.crossfade.cancelTransition();
     });
     
     // Handle touch end
@@ -222,17 +231,18 @@ class AudioPlayerControls {
             e.preventDefault();
             if (this.player.audioPlayerState.isPlaying) {
               await window.electronAPI.invoke('audio-pause');
-              this.player.audioElement.pause();
+              this.player.crossfade.pauseActive();
             } else {
               if (!this.player.audioElement.src && !this.player.audioPlayerState.currentTrack) return;
               await window.electronAPI.invoke('audio-play');
-              await this.player.audioElement.play();
+              await this.player.crossfade.resumeActive();
             }
             break;
           }
           case 'ArrowRight': { // Seek forward
             const step = e.shiftKey ? 10 : 5;
             if (this.player.audioElement.duration > 0) {
+              this.player.crossfade.cancelTransition();
               const nextTime = clamp((this.player.audioElement.currentTime || 0) + step, 0, this.player.audioElement.duration);
               this.player.audioElement.currentTime = nextTime;
               this.player.updateProgress(nextTime, this.player.audioElement.duration);
@@ -242,6 +252,7 @@ class AudioPlayerControls {
           case 'ArrowLeft': { // Seek backward
             const step = e.shiftKey ? 10 : 5;
             if (this.player.audioElement.duration > 0) {
+              this.player.crossfade.cancelTransition();
               const nextTime = clamp((this.player.audioElement.currentTime || 0) - step, 0, this.player.audioElement.duration);
               this.player.audioElement.currentTime = nextTime;
               this.player.updateProgress(nextTime, this.player.audioElement.duration);
@@ -251,18 +262,22 @@ class AudioPlayerControls {
           case 'ArrowUp': { // Volume up
             e.preventDefault();
             const newVol = clamp((this.player.audioElement.volume || 0) + 0.05, 0, 1);
-            this.player.audioElement.volume = newVol;
+            this.player.audioElementA.volume = newVol;
+            this.player.audioElementB.volume = newVol;
             break;
           }
           case 'ArrowDown': { // Volume down
             e.preventDefault();
             const newVol = clamp((this.player.audioElement.volume || 0) - 0.05, 0, 1);
-            this.player.audioElement.volume = newVol;
+            this.player.audioElementA.volume = newVol;
+            this.player.audioElementB.volume = newVol;
             break;
           }
           case 'm':
           case 'M': { // Mute toggle
-            this.player.audioElement.muted = !this.player.audioElement.muted;
+            const muted = !this.player.audioElement.muted;
+            this.player.audioElementA.muted = muted;
+            this.player.audioElementB.muted = muted;
             break;
           }
           case 's':
@@ -270,6 +285,8 @@ class AudioPlayerControls {
             await window.electronAPI.invoke('audio-toggle-shuffle');
             this.player.audioPlayerState.shuffleMode = !this.player.audioPlayerState.shuffleMode;
             this.player.updateShuffleButton(this.player.audioPlayerState.shuffleMode);
+            this.player.crossfade.invalidatePreload();
+            this.player.crossfade.prepareNextTrack();
             break;
           }
           case 'r':
@@ -278,6 +295,8 @@ class AudioPlayerControls {
             await window.electronAPI.invoke('audio-set-repeat', nextMode);
             this.player.audioPlayerState.repeatMode = nextMode;
             this.player.updateRepeatButton(nextMode);
+            this.player.crossfade.invalidatePreload();
+            this.player.crossfade.prepareNextTrack();
             break;
           }
           case '[': { // Previous
@@ -291,6 +310,7 @@ class AudioPlayerControls {
           default: {
             // Number keys 0-9: jump to percentage of track
             if (/^[0-9]$/.test(e.key) && this.player.audioElement.duration > 0) {
+              this.player.crossfade.cancelTransition();
               const pct = parseInt(e.key, 10) / 10; // 0 -> 0%, 9 -> 90%
               const nextTime = this.player.audioElement.duration * pct;
               this.player.audioElement.currentTime = nextTime;
@@ -317,7 +337,8 @@ class AudioPlayerControls {
     const nextSpeed = speeds[nextIndex];
     
     this.player.audioPlayerState.playbackSpeed = nextSpeed;
-    this.player.audioElement.playbackRate = nextSpeed;
+    this.player.audioElementA.playbackRate = nextSpeed;
+    this.player.audioElementB.playbackRate = nextSpeed;
     this.updateSpeedButton(nextSpeed);
     
     this.player.ui.logBoth('info', `🎵 Playback speed: ${nextSpeed}x`);

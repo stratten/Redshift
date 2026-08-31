@@ -187,16 +187,12 @@ struct ArtistsListView: View {
         case grid
     }
     
-    private var artists: [String] {
-        let artistSet = Set(libraryManager.tracks.compactMap { $0.artist })
-        let sortedArtists = sortAscending ? artistSet.sorted() : artistSet.sorted(by: >)
-        
-        // Filter by search text if not empty
-        if searchText.isEmpty {
-            return sortedArtists
-        } else {
-            return sortedArtists.filter { $0.localizedCaseInsensitiveContains(searchText) }
-        }
+    // Sourced from the pre-built index (one sort at index-build time) instead of
+    // re-collecting a Set from the full track array on every render/keystroke.
+    private var artists: [ArtistGroup] {
+        let base = libraryManager.libraryIndex.artists
+        let filtered = searchText.isEmpty ? base : base.filter { $0.matches(searchText) }
+        return sortAscending ? filtered : filtered.reversed()
     }
     
     var body: some View {
@@ -237,8 +233,8 @@ struct ArtistsListView: View {
     
     private var listView: some View {
         List {
-            ForEach(artists, id: \.self) { artist in
-                NavigationLink(destination: ArtistDetailView(artist: artist)) {
+            ForEach(artists) { artist in
+                NavigationLink(destination: ArtistDetailView(artist: artist.name)) {
                     ArtistRowView(artist: artist)
                 }
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
@@ -253,8 +249,8 @@ struct ArtistsListView: View {
                 GridItem(.flexible(), spacing: 16),
                 GridItem(.flexible(), spacing: 16)
             ], spacing: 20) {
-                ForEach(artists, id: \.self) { artist in
-                    NavigationLink(destination: ArtistDetailView(artist: artist)) {
+                ForEach(artists) { artist in
+                    NavigationLink(destination: ArtistDetailView(artist: artist.name)) {
                         ArtistGridItemView(artist: artist)
                     }
                     .buttonStyle(PlainButtonStyle())
@@ -268,39 +264,30 @@ struct ArtistsListView: View {
 
 // MARK: - Artist Row View (Enhanced List Item)
 struct ArtistRowView: View {
-    @EnvironmentObject var libraryManager: MusicLibraryManager
-    let artist: String
-    
-    private var tracks: [Track] {
-        libraryManager.tracks.filter { $0.artist == artist }
-    }
-    
-    private var albumCount: Int {
-        Set(tracks.compactMap { $0.album }).count
-    }
+    let artist: ArtistGroup
     
     var body: some View {
         HStack(spacing: 12) {
             // Artist image with shadow
-            ArtistImageView(artistName: artist)
+            ArtistImageView(artistName: artist.name)
                 .frame(width: 50, height: 50)
                 .clipShape(Circle())
                 .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
             
             VStack(alignment: .leading, spacing: 6) {
-                Text(artist)
+                Text(artist.name)
                     .font(.headline)
                     .lineLimit(2)
                     .foregroundColor(.primary)
                 
                 HStack(spacing: 10) {
                     // Album count badge
-                    Label("\(albumCount)", systemImage: "square.stack")
+                    Label("\(artist.albumCount)", systemImage: "square.stack")
                         .font(.caption)
                         .foregroundColor(.secondary)
                     
                     // Track count
-                    Label("\(tracks.count)", systemImage: "music.note")
+                    Label("\(artist.tracks.count)", systemImage: "music.note")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -314,28 +301,19 @@ struct ArtistRowView: View {
 
 // MARK: - Artist Grid Item View
 struct ArtistGridItemView: View {
-    @EnvironmentObject var libraryManager: MusicLibraryManager
-    let artist: String
-    
-    private var tracks: [Track] {
-        libraryManager.tracks.filter { $0.artist == artist }
-    }
-    
-    private var albumCount: Int {
-        Set(tracks.compactMap { $0.album }).count
-    }
+    let artist: ArtistGroup
     
     var body: some View {
         VStack(spacing: 12) {
             // Artist image
-            ArtistImageView(artistName: artist)
+            ArtistImageView(artistName: artist.name)
                 .frame(maxWidth: .infinity)
                 .aspectRatio(1, contentMode: .fill)
                 .clipShape(Circle())
                 .shadow(color: .black.opacity(0.25), radius: 8, x: 0, y: 4)
             
             VStack(spacing: 4) {
-                Text(artist)
+                Text(artist.name)
                     .font(.subheadline)
                     .fontWeight(.semibold)
                     .lineLimit(2)
@@ -343,7 +321,7 @@ struct ArtistGridItemView: View {
                     .foregroundColor(.primary)
                 
                 HStack(spacing: 8) {
-                    Text("\(albumCount) album\(albumCount == 1 ? "" : "s")")
+                    Text("\(artist.albumCount) album\(artist.albumCount == 1 ? "" : "s")")
                         .font(.caption2)
                         .foregroundColor(.secondary)
                     
@@ -351,7 +329,7 @@ struct ArtistGridItemView: View {
                         .font(.caption2)
                         .foregroundColor(.secondary)
                     
-                    Text("\(tracks.count) song\(tracks.count == 1 ? "" : "s")")
+                    Text("\(artist.tracks.count) song\(artist.tracks.count == 1 ? "" : "s")")
                         .font(.caption2)
                         .foregroundColor(.secondary)
                 }
@@ -448,16 +426,13 @@ struct AlbumsListView: View {
         case grid
     }
     
-    private var albums: [String] {
-        let albumSet = Set(libraryManager.tracks.compactMap { $0.album })
-        let sortedAlbums = sortAscending ? albumSet.sorted() : albumSet.sorted(by: >)
-        
-        // Filter by search text if not empty
-        if searchText.isEmpty {
-            return sortedAlbums
-        } else {
-            return sortedAlbums.filter { $0.localizedCaseInsensitiveContains(searchText) }
-        }
+    // An album is a search match when its name OR any of its artists match (see
+    // AlbumGroup.matches), so searching "Album list on mobile ... by artist" now
+    // works the same way it does on desktop.
+    private var albums: [AlbumGroup] {
+        let base = libraryManager.libraryIndex.albums
+        let filtered = searchText.isEmpty ? base : base.filter { $0.matches(searchText) }
+        return sortAscending ? filtered : filtered.reversed()
     }
     
     var body: some View {
@@ -498,8 +473,8 @@ struct AlbumsListView: View {
     
     private var listView: some View {
         List {
-            ForEach(albums, id: \.self) { album in
-                NavigationLink(destination: AlbumDetailView(album: album)) {
+            ForEach(albums) { album in
+                NavigationLink(destination: AlbumDetailView(album: album.album)) {
                     AlbumRowView(album: album)
                 }
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
@@ -514,8 +489,8 @@ struct AlbumsListView: View {
                 GridItem(.flexible(), spacing: 16),
                 GridItem(.flexible(), spacing: 16)
             ], spacing: 20) {
-                ForEach(albums, id: \.self) { album in
-                    NavigationLink(destination: AlbumDetailView(album: album)) {
+                ForEach(albums) { album in
+                    NavigationLink(destination: AlbumDetailView(album: album.album)) {
                         AlbumGridItemView(album: album)
                     }
                     .buttonStyle(PlainButtonStyle())
@@ -529,30 +504,13 @@ struct AlbumsListView: View {
 
 // MARK: - Album Row View (Enhanced List Item)
 struct AlbumRowView: View {
-    @EnvironmentObject var libraryManager: MusicLibraryManager
-    let album: String
-    
-    private var tracks: [Track] {
-        libraryManager.tracks.filter { $0.album == album }
-    }
-    
-    private var albumArtData: Data? {
-        tracks.first?.albumArtData
-    }
-    
-    private var artist: String {
-        tracks.first?.albumArtist ?? tracks.first?.artist ?? "Unknown Artist"
-    }
-    
-    private var year: Int? {
-        tracks.first?.year
-    }
+    let album: AlbumGroup
     
     var body: some View {
         HStack(spacing: 12) {
             // Album art with shadow
             Group {
-                if let artData = albumArtData,
+                if let artData = album.albumArtData,
                    let uiImage = UIImage(data: artData) {
                     Image(uiImage: uiImage)
                         .resizable()
@@ -581,19 +539,19 @@ struct AlbumRowView: View {
             }
             
             VStack(alignment: .leading, spacing: 6) {
-                Text(album)
+                Text(album.album)
                     .font(.headline)
                     .lineLimit(2)
                     .foregroundColor(.primary)
                 
-                Text(artist)
+                Text(album.albumArtist)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .lineLimit(1)
                 
                 HStack(spacing: 10) {
                     // Year badge
-                    if let year = year {
+                    if let year = album.year {
                         Text(String(year))
                             .font(.caption2)
                             .fontWeight(.medium)
@@ -605,7 +563,7 @@ struct AlbumRowView: View {
                     }
                     
                     // Track count
-                    Label("\(tracks.count)", systemImage: "music.note")
+                    Label("\(album.tracks.count)", systemImage: "music.note")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -619,26 +577,13 @@ struct AlbumRowView: View {
 
 // MARK: - Album Grid Item View
 struct AlbumGridItemView: View {
-    @EnvironmentObject var libraryManager: MusicLibraryManager
-    let album: String
-    
-    private var tracks: [Track] {
-        libraryManager.tracks.filter { $0.album == album }
-    }
-    
-    private var albumArtData: Data? {
-        tracks.first?.albumArtData
-    }
-    
-    private var artist: String {
-        tracks.first?.albumArtist ?? tracks.first?.artist ?? "Unknown Artist"
-    }
+    let album: AlbumGroup
     
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             // Album art
             Group {
-                if let artData = albumArtData,
+                if let artData = album.albumArtData,
                    let uiImage = UIImage(data: artData) {
                     Image(uiImage: uiImage)
                         .resizable()
@@ -668,18 +613,18 @@ struct AlbumGridItemView: View {
             }
             
             VStack(alignment: .leading, spacing: 4) {
-                Text(album)
+                Text(album.album)
                     .font(.subheadline)
                     .fontWeight(.semibold)
                     .lineLimit(2)
                     .foregroundColor(.primary)
                 
-                Text(artist)
+                Text(album.albumArtist)
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .lineLimit(1)
                 
-                Text("\(tracks.count) song\(tracks.count == 1 ? "" : "s")")
+                Text("\(album.tracks.count) song\(album.tracks.count == 1 ? "" : "s")")
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
@@ -700,16 +645,18 @@ struct SongsListView: View {
 struct GenresListView: View {
     @EnvironmentObject var libraryManager: MusicLibraryManager
     @State private var sortAscending = true
+    @State private var searchText = ""
     
-    private var genres: [String] {
-        let genreSet = Set(libraryManager.tracks.compactMap { $0.genre })
-        return sortAscending ? genreSet.sorted() : genreSet.sorted(by: >)
+    private var genres: [GenreGroup] {
+        let base = libraryManager.libraryIndex.genres
+        let filtered = searchText.isEmpty ? base : base.filter { $0.matches(searchText) }
+        return sortAscending ? filtered : filtered.reversed()
     }
     
     var body: some View {
         List {
-            ForEach(genres, id: \.self) { genre in
-                NavigationLink(destination: GenreDetailView(genre: genre)) {
+            ForEach(genres) { genre in
+                NavigationLink(destination: GenreDetailView(genre: genre.genre)) {
                     HStack {
                         Image(systemName: "music.quarternote.3")
                             .font(.title2)
@@ -719,11 +666,10 @@ struct GenresListView: View {
                             .cornerRadius(8)
                         
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(genre)
+                            Text(genre.genre)
                                 .font(.headline)
                             
-                            let trackCount = libraryManager.tracks.filter { $0.genre == genre }.count
-                            Text("\(trackCount) song\(trackCount == 1 ? "" : "s")")
+                            Text("\(genre.tracks.count) song\(genre.tracks.count == 1 ? "" : "s")")
                                 .font(.caption)
                                 .foregroundColor(.gray)
                         }
@@ -733,6 +679,7 @@ struct GenresListView: View {
         }
         .navigationTitle("Genres")
         .navigationBarTitleDisplayMode(.large)
+        .searchable(text: $searchText, prompt: "Search genres")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: { sortAscending.toggle() }) {
@@ -754,15 +701,7 @@ struct RecentlyPlayedView: View {
             .filter { $0.lastPlayed != nil }
             .sorted { ($0.lastPlayed ?? Date.distantPast) > ($1.lastPlayed ?? Date.distantPast) }
         
-        if searchText.isEmpty {
-            return filtered
-        }
-        
-        return filtered.filter { track in
-            track.displayTitle.localizedCaseInsensitiveContains(searchText) ||
-            track.displayArtist.localizedCaseInsensitiveContains(searchText) ||
-            track.displayAlbum.localizedCaseInsensitiveContains(searchText)
-        }
+        return filtered.filter { $0.matches(searchText) }
     }
     
     var body: some View {

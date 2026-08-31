@@ -22,9 +22,9 @@
     align-items: center;
     margin-bottom: 20px;
     padding: 12px 16px;
-    background: #f9fafb;
+    background: var(--rs-bg-surface-alt);
     border-radius: 8px;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--rs-border-color);
     gap: 16px;
     flex-wrap: wrap;
 }
@@ -43,15 +43,15 @@
 .album-letter-header {
     font-size: 20px;
     font-weight: 700;
-    color: #1f2937;
+    color: var(--rs-text-heading);
     padding: 12px 0 8px 0;
     margin-top: 8px;
-    border-bottom: 2px solid #e5e7eb;
+    border-bottom: 2px solid var(--rs-border-color);
 }
 
 .albums-list-view .album-card {
-    background: white;
-    border: 1px solid #e5e7eb;
+    background: var(--rs-bg-surface);
+    border: 1px solid var(--rs-border-color);
     border-radius: 8px;
     padding: 16px;
     display: flex;
@@ -62,9 +62,9 @@
 }
 
 .albums-list-view .album-card:hover {
-    border-color: #6366f1;
+    border-color: var(--rs-accent-alt);
     transform: translateX(4px);
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+    box-shadow: 0 4px 12px var(--rs-accent-soft-strong);
 }
 
 .albums-list-view .album-icon {
@@ -101,7 +101,7 @@
 .albums-list-view .album-name {
     font-size: 16px;
     font-weight: 600;
-    color: #1f2937;
+    color: var(--rs-text-heading);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -109,7 +109,7 @@
 
 .albums-list-view .album-artist {
     font-size: 14px;
-    color: #6b7280;
+    color: var(--rs-text-secondary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -117,27 +117,27 @@
 
 .albums-list-view .album-stats {
     font-size: 12px;
-    color: #9ca3af;
+    color: var(--rs-text-muted);
     margin-top: 2px;
 }
 
 .albums-list-view .album-arrow {
-    color: #9ca3af;
+    color: var(--rs-text-muted);
     flex-shrink: 0;
     transition: transform 0.2s ease;
 }
 
 .albums-list-view .album-card:hover .album-arrow {
     transform: translateX(4px);
-    color: #6366f1;
+    color: var(--rs-accent-alt);
 }
 
 .albums-footer {
     padding: 16px 0;
     text-align: center;
     font-size: 13px;
-    color: #6b7280;
-    border-top: 1px solid #e5e7eb;
+    color: var(--rs-text-secondary);
+    border-top: 1px solid var(--rs-border-color);
     margin-top: 20px;
 }
 
@@ -211,7 +211,7 @@
     flex: 1;
     padding: 0;
     overflow-y: auto;
-    background: white;
+    background: var(--rs-bg-surface);
 }
 
 /* ===== ALBUM TRACKS TABLE ===== */
@@ -219,14 +219,14 @@
 .album-tracks-table {
     width: 100%;
     border-collapse: collapse;
-    background: white;
-    border: 1px solid #d1d5db;
+    background: var(--rs-bg-surface);
+    border: 1px solid var(--rs-border-color-strong);
 }
 
 .album-tracks-table thead {
     position: sticky;
     top: 0;
-    background: #f9fafb;
+    background: var(--rs-bg-surface-alt);
     z-index: 1;
 }
 
@@ -235,10 +235,10 @@
     text-align: left;
     font-size: 11px;
     font-weight: 600;
-    color: #6b7280;
+    color: var(--rs-text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    border-bottom: 1px solid #d1d5db;
+    border-bottom: 1px solid var(--rs-border-color-strong);
 }
 
 .album-tracks-table th.track-no {
@@ -252,24 +252,24 @@
 }
 
 .album-tracks-table tbody tr {
-    border-bottom: 1px solid #d1d5db;
+    border-bottom: 1px solid var(--rs-border-color-strong);
     cursor: pointer;
     transition: background-color 0.15s ease;
 }
 
 .album-tracks-table tbody tr:hover {
-    background-color: #f9fafb;
+    background-color: var(--rs-bg-surface-alt);
 }
 
 .album-tracks-table td {
     padding: 2px 8px;
     font-size: 13px;
-    color: #1f2937;
+    color: var(--rs-text-heading);
 }
 
 .album-tracks-table td.track-no {
     text-align: center;
-    color: #9ca3af;
+    color: var(--rs-text-muted);
     font-weight: 500;
 }
 

@@ -53,15 +53,15 @@ function buildAddTracksModal(callbacks) {
           <div class="column-list" id="addAlbumsList"><div class="list-item selected" data-value="">All Albums</div></div>
         </div>
       </div>
-      <div id="addTracksList" style="border:1px solid #e5e7eb; border-radius:8px; overflow:hidden;">
+      <div id="addTracksList" style="border:1px solid var(--rs-border-color); border-radius:8px; overflow:hidden;">
       </div>
     </div>
     <div class="modal-footer">
       <div style="flex:1; display:flex; align-items:center; gap:8px;">
-        <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:#6b7280; cursor:pointer;">
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--rs-text-secondary); cursor:pointer;">
           <input type="checkbox" id="addSelectAll" style="transform: translateY(1px);"> Select all visible
         </label>
-        <div id="addSelectedCount" style="font-size:12px; color:#6b7280;">0 selected</div>
+        <div id="addSelectedCount" style="font-size:12px; color:var(--rs-text-secondary);">0 selected</div>
       </div>
       <button class="btn btn-secondary" id="closeAddTracksBtn">Close</button>
       <button class="btn btn-primary" id="confirmAddSelectedBtn" disabled>Add selected</button>
@@ -139,7 +139,7 @@ function renderAddTracksListHTML(filteredTracks, selectedPaths, formatTime, call
   if (!list) return;
   
   if (!filteredTracks.length) {
-    list.innerHTML = '<div style="padding:16px; font-size:13px; color:#6b7280;">No matching tracks</div>';
+    list.innerHTML = '<div style="padding:16px; font-size:13px; color:var(--rs-text-secondary);">No matching tracks</div>';
     return;
   }
   
@@ -150,14 +150,14 @@ function renderAddTracksListHTML(filteredTracks, selectedPaths, formatTime, call
     const duration = t.metadata?.format?.duration ? formatTime(t.metadata.format.duration) : '--:--';
     const selected = selectedPaths.has(t.path);
     return `
-      <div class="playlist-track-item" data-file-path="${t.path}" style="display:flex; align-items:center; gap:12px; padding:8px 12px; border-bottom:1px solid #f1f5f9; ${selected ? 'background:#eef2ff;' : ''}">
+      <div class="playlist-track-item" data-file-path="${t.path}" style="display:flex; align-items:center; gap:12px; padding:8px 12px; border-bottom:1px solid var(--rs-border-color-soft); ${selected ? 'background:var(--rs-accent-soft);' : ''}">
         <div style="width:18px; flex-shrink:0; display:flex; justify-content:center;">
           <input type="checkbox" class="add-select" data-file-path="${t.path}" ${selected ? 'checked' : ''}>
         </div>
-        <div style="flex:2; font-weight:500; color:#1f2937; overflow:hidden; text-overflow:ellipsis;">${title}</div>
-        <div style="flex:1; color:#6b7280; overflow:hidden; text-overflow:ellipsis;">${artist}</div>
-        <div style="flex:1; color:#6b7280; overflow:hidden; text-overflow:ellipsis;">${album}</div>
-        <div style="width:60px; color:#6b7280;">${duration}</div>
+        <div style="flex:2; font-weight:500; color:var(--rs-text-heading); overflow:hidden; text-overflow:ellipsis;">${title}</div>
+        <div style="flex:1; color:var(--rs-text-secondary); overflow:hidden; text-overflow:ellipsis;">${artist}</div>
+        <div style="flex:1; color:var(--rs-text-secondary); overflow:hidden; text-overflow:ellipsis;">${album}</div>
+        <div style="width:60px; color:var(--rs-text-secondary);">${duration}</div>
         <div style="flex-shrink:0; display:flex; gap:6px;">
           <button class="btn btn-secondary btn-sm add-track-to-pl" data-file-path="${t.path}">Add</button>
         </div>

@@ -9,8 +9,13 @@ class MusicLibraryManager: ObservableObject {
     @Published var tracks: [Track] = [] {
         didSet {
             print("🔔 tracks @Published updated: \(tracks.count) tracks")
+            // Rebuild the artist/album/genre index once per track-list change so
+            // views never need to re-filter the full track array per row/keystroke.
+            libraryIndex = LibraryIndex.build(from: tracks)
         }
     }
+    /// One-pass snapshot of artist/album/genre groupings, kept in sync with `tracks`.
+    @Published private(set) var libraryIndex: LibraryIndex = .empty
     @Published var playlists: [Playlist] = [] {
         didSet {
             print("🔔 playlists @Published updated: \(playlists.count) playlists")
@@ -21,6 +26,11 @@ class MusicLibraryManager: ObservableObject {
     }
     @Published var isScanning: Bool = false
     @Published var scanProgress: Double = 0.0
+    /// Set when the most recent automatic reconciliation failed. The prior
+    /// library snapshot is always retained on failure; existing refresh/
+    /// settings surfaces can surface this without any new UI plumbing.
+    @Published var lastReconciliationError: String?
+    private var reconciliationTask: Task<Void, Never>?
     
     private let musicDirectory: URL
     private let databaseService: DatabaseService
@@ -121,7 +131,11 @@ class MusicLibraryManager: ObservableObject {
             
             // Step 3: Process each file
             for (index, fileURL) in audioFiles.enumerated() {
-                if let track = await processAudioFile(fileURL) {
+                if var track = await processAudioFile(fileURL) {
+                    // Populate the fingerprint so the next automatic
+                    // reconciliation pass can recognize this file as
+                    // unchanged instead of re-parsing every tag again.
+                    track.fileFingerprint = Track.fingerprint(fileSize: track.fileSize, modifiedDate: track.modifiedDate)
                     scannedTracks.append(track)
                 }
                 await MainActor.run {
@@ -152,6 +166,229 @@ class MusicLibraryManager: ObservableObject {
         await MainActor.run {
             isScanning = false
             scanProgress = 1.0
+        }
+    }
+    
+    // MARK: - Incremental Reconciliation (automatic post-sync library refresh)
+    
+    /// Automatic, non-destructive library refresh run on launch and on
+    /// returning to foreground. Unlike `scanLibrary()` (the explicit,
+    /// destructive "Rescan Library" repair path kept for manual recovery),
+    /// this only re-reads files that are new, changed, or removed since the
+    /// last reconciliation, trusts the desktop's manifest metadata when
+    /// available to skip tag parsing, and preserves every existing track's
+    /// local metadata (play count, favorite, rating, added date) untouched.
+    /// Concurrent callers (launch + foreground + manual pull-to-refresh) share
+    /// a single in-flight task instead of racing duplicate work.
+    func reconcileLibraryIncrementally() async {
+        if let existing = reconciliationTask {
+            await existing.value
+            return
+        }
+        let task = Task { [weak self] in
+            guard let self = self else { return }
+            await self.performIncrementalReconciliation()
+        }
+        reconciliationTask = task
+        await task.value
+        reconciliationTask = nil
+    }
+    
+    private func performIncrementalReconciliation() async {
+        await MainActor.run {
+            isScanning = true
+            scanProgress = 0
+            lastReconciliationError = nil
+        }
+        
+        do {
+            // Manifest is optional: a missing/malformed manifest just means we
+            // fall back to filesystem-only reconciliation (still finds files
+            // added via Files app/iTunes File Sharing) rather than aborting.
+            let manifest = SyncManifestReader.readFromDisk()
+            var manifestByFileName: [String: SyncManifestFile] = [:]
+            if let manifest = manifest {
+                for file in manifest.files {
+                    manifestByFileName[file.fileName] = file
+                }
+            }
+            
+            let audioFiles = try findAudioFiles(in: musicDirectory)
+            let fileManager = FileManager.default
+            
+            struct DiskEntry {
+                let url: URL
+                let filePath: String
+                let fileSize: Int64
+                let modifiedDate: Date
+                let fingerprint: String
+            }
+            
+            var diskEntries: [DiskEntry] = []
+            for fileURL in audioFiles {
+                guard let attributes = try? fileManager.attributesOfItem(atPath: fileURL.path) else { continue }
+                let fileSize = (attributes[.size] as? Int64) ?? 0
+                let modifiedDate = (attributes[.modificationDate] as? Date) ?? Date()
+                let fingerprint = Track.fingerprint(fileSize: fileSize, modifiedDate: modifiedDate)
+                diskEntries.append(DiskEntry(url: fileURL, filePath: fileURL.path, fileSize: fileSize, modifiedDate: modifiedDate, fingerprint: fingerprint))
+            }
+            let diskFilePaths = Set(diskEntries.map { $0.filePath })
+            
+            // Diff against the database's lightweight fingerprint index —
+            // an unchanged fingerprint means "skip this file entirely",
+            // which is what lets a large, mostly-unchanged library reconcile
+            // in roughly the time it takes to stat every file once.
+            let existingFingerprints = try await databaseService.loadFileFingerprints()
+            let deletedFilePaths = existingFingerprints.keys.filter { !diskFilePaths.contains($0) }
+            let changedEntries = diskEntries.filter { existingFingerprints[$0.filePath] != $0.fingerprint }
+            
+            let existingTracksByPath = Dictionary(uniqueKeysWithValues: tracks.map { ($0.filePath, $0) })
+            
+            var upserts: [Track] = []
+            var processed = 0
+            let totalToProcess = max(changedEntries.count, 1)
+            
+            for entry in changedEntries {
+                let fileName = entry.url.lastPathComponent
+                var track: Track?
+                
+                // Trust manifest metadata when it names this exact file AND
+                // reports the same size. Size survives an AFC transfer even
+                // though modification time does not, so it is the only safe
+                // cross-device match key; this lets a manifest-covered file
+                // skip AVFoundation/ID3 parsing entirely.
+                if let manifestFile = manifestByFileName[fileName], manifestFile.fileSize == entry.fileSize {
+                    track = Track(
+                        filePath: entry.filePath,
+                        fileName: fileName,
+                        title: manifestFile.title,
+                        artist: manifestFile.artist,
+                        album: manifestFile.album,
+                        albumArtist: manifestFile.albumArtist,
+                        year: manifestFile.year,
+                        trackNumber: manifestFile.trackNumber,
+                        discNumber: manifestFile.discNumber,
+                        genre: manifestFile.genre,
+                        duration: manifestFile.duration ?? 0,
+                        fileSize: entry.fileSize,
+                        modifiedDate: entry.modifiedDate,
+                        fileFingerprint: entry.fingerprint
+                    )
+                } else {
+                    if var parsed = await processAudioFile(entry.url) {
+                        parsed.fileFingerprint = entry.fingerprint
+                        track = parsed
+                    }
+                }
+                
+                if let builtTrack = track {
+                    upserts.append(preservingUserData(in: builtTrack, existing: existingTracksByPath[entry.filePath]))
+                }
+                
+                processed += 1
+                let progress = Double(processed) / Double(totalToProcess)
+                await MainActor.run { scanProgress = progress }
+            }
+            
+            if !upserts.isEmpty || !deletedFilePaths.isEmpty {
+                try await databaseService.applyReconciliation(upserts: upserts, deleteFilePaths: Array(deletedFilePaths))
+            }
+            
+            let reloadedTracks = try await databaseService.loadTracks()
+            await MainActor.run {
+                tracks = reloadedTracks
+            }
+            
+            // Playlists and playback metadata are imported only after the
+            // track list reflects the latest files, since both are matched
+            // against `tracks` by filename/stableID.
+            await importPlaylistsFromSync()
+            await importSyncedPlaybackMetadata()
+            
+            let reloadedPlaylists = try await databaseService.loadPlaylists()
+            await MainActor.run {
+                playlists = reloadedPlaylists
+            }
+            
+            // Record the manifest as accepted only after every step above
+            // committed successfully, so a crash mid-reconciliation causes the
+            // next launch/foreground to safely retry the same manifest rather
+            // than silently skipping it as "already applied".
+            if let manifest = manifest {
+                try await databaseService.setSyncStateValue("acceptedManifestRevision", value: manifest.revision)
+            }
+        } catch {
+            await MainActor.run {
+                lastReconciliationError = "Library sync failed: \(error.localizedDescription)"
+            }
+            print("❌ Incremental reconciliation failed: \(error)")
+        }
+        
+        await MainActor.run {
+            isScanning = false
+            scanProgress = 1.0
+        }
+    }
+    
+    /// Carries forward local-only fields (play count, last played, favorite,
+    /// rating, added date) from the previous database row for this file path,
+    /// so reconciling a changed/re-tagged file never resets user data the way
+    /// the old destructive full-rescan did.
+    private func preservingUserData(in track: Track, existing: Track?) -> Track {
+        guard let existing = existing else { return track }
+        var merged = track
+        merged.playCount = existing.playCount
+        merged.lastPlayed = existing.lastPlayed
+        merged.isFavorite = existing.isFavorite
+        merged.rating = existing.rating
+        merged.addedDate = existing.addedDate
+        return merged
+    }
+    
+    /// Imports the desktop's authoritative merged playback metadata
+    /// (Documents/SyncData/play_counts.json). By the time this file exists on
+    /// the device, the desktop has already merged it with whatever the phone
+    /// previously exported (play counts added, favorites ORed, ratings maxed
+    /// — see PlayCountSyncManager on desktop), so the phone must REPLACE its
+    /// local values with these rather than adding them again, or every sync
+    /// would double-count plays.
+    func importSyncedPlaybackMetadata() async {
+        guard let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
+        let fileURL = documentsURL.appendingPathComponent("SyncData").appendingPathComponent("play_counts.json")
+        guard FileManager.default.fileExists(atPath: fileURL.path) else { return }
+        
+        struct SyncedPlaybackMetadataEntry: Decodable {
+            let fileName: String
+            let playCount: Int
+            let lastPlayed: Double?
+            let isFavorite: Bool
+            let rating: Int
+        }
+        
+        do {
+            let data = try Data(contentsOf: fileURL)
+            let entries = try JSONDecoder().decode([SyncedPlaybackMetadataEntry].self, from: data)
+            let entriesByFileName = Dictionary(uniqueKeysWithValues: entries.map { ($0.fileName, $0) })
+            
+            var updatedTracks: [Track] = []
+            for var track in tracks {
+                guard let entry = entriesByFileName[track.fileName] else { continue }
+                track.playCount = entry.playCount
+                track.lastPlayed = entry.lastPlayed.map { Date(timeIntervalSince1970: $0) }
+                track.isFavorite = entry.isFavorite
+                track.rating = entry.rating
+                updatedTracks.append(track)
+            }
+            
+            guard !updatedTracks.isEmpty else { return }
+            try await databaseService.saveTracks(updatedTracks)
+            let reloaded = try await databaseService.loadTracks()
+            await MainActor.run {
+                tracks = reloaded
+            }
+            print("✅ Imported synced playback metadata for \(updatedTracks.count) tracks")
+        } catch {
+            print("❌ Failed to import synced playback metadata: \(error)")
         }
     }
     
@@ -197,6 +434,7 @@ class MusicLibraryManager: ObservableObject {
             var albumArtist: String?
             var year: Int?
             var trackNumber: Int?
+            var discNumber: Int?
             var genre: String?
             var albumArtData: Data?
             
@@ -228,6 +466,15 @@ class MusicLibraryManager: ObservableObject {
                     // Capture album artist (TPE2) if present; useful as a fallback
                     if identifier == "id3/TPE2" && albumArtist == nil {
                         albumArtist = try? await item.load(.stringValue)
+                    }
+                    // Track/disc numbers are commonly "N" or "N/TOTAL" text frames
+                    if identifier == "id3/TRCK" && trackNumber == nil {
+                        let raw: String? = try? await item.load(.stringValue)
+                        trackNumber = ID3TagReader.leadingInt(from: raw)
+                    }
+                    if identifier == "id3/TPOS" && discNumber == nil {
+                        let raw: String? = try? await item.load(.stringValue)
+                        discNumber = ID3TagReader.leadingInt(from: raw)
                     }
                 }
             }
@@ -265,8 +512,8 @@ class MusicLibraryManager: ObservableObject {
                 }
             }
             
-            // MARK: - ID3 Fallback (reads TALB/TIT2/TPE1/TPE2/TCON/TYER/TDRC/COMM/APIC)
-            if title == nil || artist == nil || album == nil || albumArtist == nil || genre == nil || year == nil || albumArtData == nil {
+            // MARK: - ID3 Fallback (reads TALB/TIT2/TPE1/TPE2/TCON/TYER/TDRC/TRCK/TPOS/COMM/APIC)
+            if title == nil || artist == nil || album == nil || albumArtist == nil || genre == nil || year == nil || albumArtData == nil || trackNumber == nil || discNumber == nil {
                 if let id3 = ID3TagReader.read(from: fileURL) {
                     
                     if title == nil { title = id3.title }
@@ -275,6 +522,8 @@ class MusicLibraryManager: ObservableObject {
                     if albumArtist == nil { albumArtist = id3.albumArtist }
                     if genre == nil { genre = id3.genre }
                     if albumArtData == nil { albumArtData = id3.albumArt }
+                    if trackNumber == nil { trackNumber = ID3TagReader.leadingInt(from: id3.trackNumber) }
+                    if discNumber == nil { discNumber = ID3TagReader.leadingInt(from: id3.discNumber) }
                     if year == nil {
                         if let y = id3.year {
                             let digits = y.trimmingCharacters(in: CharacterSet(charactersIn: "0123456789").inverted)
@@ -312,6 +561,7 @@ class MusicLibraryManager: ObservableObject {
                 albumArtist: albumArtist,
                 year: year,
                 trackNumber: trackNumber,
+                discNumber: discNumber,
                 genre: genre,
                 duration: durationSeconds,
                 albumArtData: albumArtData,
@@ -479,12 +729,7 @@ class MusicLibraryManager: ObservableObject {
     }
     
     func searchTracks(query: String) -> [Track] {
-        let lowercaseQuery = query.lowercased()
-        return tracks.filter {
-            $0.displayTitle.lowercased().contains(lowercaseQuery) ||
-            $0.displayArtist.lowercased().contains(lowercaseQuery) ||
-            $0.displayAlbum.lowercased().contains(lowercaseQuery)
-        }
+        tracks.filter { $0.matches(query) }
     }
     
     func getTracksForPlaylist(_ playlist: Playlist) -> [Track] {

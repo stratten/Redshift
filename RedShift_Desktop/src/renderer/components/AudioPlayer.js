@@ -20,9 +20,11 @@ class AudioPlayer {
       playbackSpeed: 1.0 // 0.5x, 0.75x, 1x, 1.25x, 1.5x, 2x
     };
     
-    // HTML5 Audio element for actual playback
-    this.audioElement = new Audio();
-    this.audioElement.volume = 1.0;
+    // Two elements allow the next track to be buffered before it becomes audible.
+    this.audioElementA = new Audio();
+    this.audioElementB = new Audio();
+    this.audioElementA.volume = 1.0;
+    this.audioElementB.volume = 1.0;
     this.isSeeking = false; // Flag to prevent update conflicts during seeking
     this.lastProgressUpdate = 0; // Throttle progress updates (legacy)
     this.lastDisplayedTime = 0; // For smoothing time display
@@ -44,6 +46,9 @@ class AudioPlayer {
     // Initialize playback manager component
     this.playback = new AudioPlayerPlayback(this);
     
+    // Coordinates preloading and optional crossfades between the two elements.
+    this.crossfade = new AudioPlayerCrossfade(this);
+
     // Initialize controls component
     this.controls = new AudioPlayerControls(this);
     
@@ -65,61 +70,64 @@ class AudioPlayer {
     // Initialize output device selection
     this.outputDevice.initialize();
   }
+
+  get audioElement() {
+    return this.crossfade.getActiveElement();
+  }
   
   setupAudioElement() {
-    this.ui.logBoth('info', 'Setting up HTML5 Audio element for playback');
-    
-    // Audio event listeners
-    this.audioElement.addEventListener('loadstart', () => {
+    this.ui.logBoth('info', 'Setting up HTML5 Audio elements for playback');
+    [this.audioElementA, this.audioElementB].forEach((element) => this.attachElementListeners(element));
+  }
+
+  attachElementListeners(element) {
+    element.addEventListener('loadstart', () => {
       this.ui.logBoth('info', 'Audio loading started');
     });
-    
-    this.audioElement.addEventListener('loadedmetadata', () => {
-      this.audioPlayerState.duration = this.audioElement.duration;
-      this.ui.logBoth('info', `Audio metadata loaded, duration: ${this.formatTime(this.audioElement.duration)}`);
-      // Reset time tracking for new audio
+
+    element.addEventListener('loadedmetadata', () => {
+      if (element !== this.audioElement) return;
+      this.audioPlayerState.duration = element.duration;
       this.lastDisplayedTime = 0;
-      this.updateProgress(0, this.audioElement.duration);
+      this.updateProgress(0, element.duration);
     });
-    
-    this.audioElement.addEventListener('canplay', () => {
-      this.ui.logBoth('info', 'Audio ready to play');
-    });
-    
-    this.audioElement.addEventListener('play', () => {
+
+    element.addEventListener('play', () => {
+      if (element !== this.audioElement) return;
       this.audioPlayerState.isPlaying = true;
+      this.lastDisplayedTime = element.currentTime;
       this.updatePlaybackState(true);
-      // Reset time tracking when playback starts to avoid initial jumps
-      this.lastDisplayedTime = this.audioElement.currentTime;
+      this.startProgressLoop();
       this.ui.logBoth('info', 'Audio playback started');
     });
-    
-    this.audioElement.addEventListener('pause', () => {
+
+    element.addEventListener('pause', () => {
+      if (element !== this.audioElement) return;
       this.audioPlayerState.isPlaying = false;
       this.updatePlaybackState(false);
+      this.stopProgressLoop();
       this.ui.logBoth('info', 'Audio playback paused');
     });
-    
-    this.audioElement.addEventListener('ended', () => {
-      this.audioPlayerState.isPlaying = false;
-      this.updatePlaybackState(false);
+
+    element.addEventListener('ended', () => {
+      if (element !== this.audioElement) return;
       const trackName = this.audioPlayerState.currentTrack?.name || 'Unknown';
       this.ui.logBoth('success', `🎵 Track finished playing: ${trackName}`);
       this.handleTrackEnded();
     });
-    
-    // Replace timeupdate-driven UI with a single rAF loop tied to the local Audio element
-    this.audioElement.addEventListener('play', () => this.startProgressLoop());
-    this.audioElement.addEventListener('pause', () => this.stopProgressLoop());
-    this.audioElement.addEventListener('ended', () => this.stopProgressLoop());
-    
-    this.audioElement.addEventListener('volumechange', () => {
-      this.audioPlayerState.volume = this.audioElement.volume;
-      this.updateVolumeUI(this.audioElement.volume, this.audioElement.muted);
+
+    element.addEventListener('timeupdate', () => {
+      if (element === this.audioElement) this.crossfade.onTimeUpdate();
     });
-    
-    this.audioElement.addEventListener('error', (e) => {
-      this.ui.logBoth('error', `Audio playback error: ${e.message || 'Unknown error'}`);
+
+    element.addEventListener('volumechange', () => {
+      if (element !== this.audioElement) return;
+      this.audioPlayerState.volume = element.volume;
+      this.updateVolumeUI(element.volume, element.muted);
+    });
+
+    element.addEventListener('error', (event) => {
+      this.ui.logBoth('error', `Audio playback error: ${event.message || 'Unknown error'}`);
     });
   }
   
@@ -257,7 +265,7 @@ class AudioPlayer {
 
   // Handle when a track ends - auto-advance to next track
   async handleTrackEnded() {
-    await this.playback.handleTrackEnded();
+    await this.crossfade.handleActiveEnded();
   }
 
   // Get the next track based on current context and playback mode

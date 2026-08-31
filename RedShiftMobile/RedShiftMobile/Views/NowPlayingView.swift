@@ -11,7 +11,7 @@ struct NowPlayingView: View {
     @State private var tempSliderValue: Double = 0
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 // Background gradient
                 LinearGradient(
@@ -340,6 +340,10 @@ struct NowPlayingView: View {
             }
             .navigationTitle("Now Playing")
             .navigationBarTitleDisplayMode(.inline)
+            // Tell the system this bar floats over dark content so the standard
+            // Liquid Glass toolbar buttons pick legible, vibrant icon tinting
+            // automatically instead of us hand-forcing white/blue foreground colors.
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 // Sleep Timer (left side)
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -368,7 +372,6 @@ struct NowPlayingView: View {
                     } label: {
                         ZStack {
                             Image(systemName: audioPlayer.sleepTimerMinutesRemaining != nil ? "moon.zzz.fill" : "moon.zzz")
-                                .foregroundColor(audioPlayer.sleepTimerMinutesRemaining != nil ? .blue : .white)
                             
                             // Show remaining time badge
                             if let minutes = audioPlayer.sleepTimerMinutesRemaining {
@@ -381,13 +384,15 @@ struct NowPlayingView: View {
                             }
                         }
                     }
+                    // Tint just this button blue while a timer is active; otherwise
+                    // let the system choose its standard vibrant tint automatically.
+                    .tint(audioPlayer.sleepTimerMinutesRemaining != nil ? .blue : nil)
                 }
                 
                 // Queue (right side)
                 ToolbarItem(placement: .navigationBarTrailing) {
                     NavigationLink(destination: QueueView()) {
                         Image(systemName: "list.bullet")
-                            .foregroundColor(.white)
                     }
                 }
             }

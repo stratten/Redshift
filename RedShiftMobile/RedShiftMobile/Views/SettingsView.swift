@@ -11,7 +11,7 @@ struct SettingsView: View {
     @State private var showingRescanAlert = false
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 // Library Section
                 Section {
@@ -54,10 +54,20 @@ struct SettingsView: View {
                     }
                     .disabled(libraryManager.isScanning)
                     
+                    if let error = libraryManager.lastReconciliationError {
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.orange)
+                            Text(error)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    
                 } header: {
                     Text("Library")
                 } footer: {
-                    Text("Music files are stored in the app's Documents/Music folder. You can add files via iTunes File Sharing or the Files app.")
+                    Text("Music files are stored in the app's Documents/Music folder. You can add files via iTunes File Sharing or the Files app. The library automatically syncs the latest changes each time the app opens.")
                 }
                 
                 // Storage Section

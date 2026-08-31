@@ -4,52 +4,51 @@ class AudioPlayerEqualizer {
   constructor(audioPlayer) {
     this.player = audioPlayer; // Reference to main AudioPlayer
     this.audioContext = null;
-    this.sourceNode = null;
+    this.chains = [];
     this.equalizerBands = [];
     this.equalizerEnabled = false;
   }
   
   setupWebAudio() {
     try {
-      // Create AudioContext
       this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      
-      // Create source from audio element
-      this.sourceNode = this.audioContext.createMediaElementSource(this.player.audioElement);
-      
-      // Standard 10-band equalizer frequencies (Hz)
-      const frequencies = [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
-      
-      // Create filter for each band
-      let previousNode = this.sourceNode;
-      
-      frequencies.forEach((freq, index) => {
-        const filter = this.audioContext.createBiquadFilter();
-        filter.type = index === 0 ? 'lowshelf' : index === frequencies.length - 1 ? 'highshelf' : 'peaking';
-        filter.frequency.value = freq;
-        filter.Q.value = 1.0;
-        filter.gain.value = 0; // Start flat (0 dB)
-        
-        previousNode.connect(filter);
-        previousNode = filter;
-        
-        this.equalizerBands.push({
-          filter,
-          frequency: freq,
-          gain: 0
-        });
-      });
-      
-      // Connect final filter to destination
-      previousNode.connect(this.audioContext.destination);
-      
-      // Load saved equalizer settings
+      this.frequencies = [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
+      this.chains = [
+        this.buildChain(this.player.audioElementA),
+        this.buildChain(this.player.audioElementB)
+      ];
+      this.equalizerBands = this.frequencies.map((frequency, index) => ({
+        filter: this.chains[0].filters[index],
+        frequency,
+        gain: 0
+      }));
       this.loadEqualizerSettings();
-      
-      this.player.ui.logBoth('success', '🎛️ Equalizer initialized with 10 bands');
+      this.player.ui.logBoth('success', '🎛️ Equalizer initialized with 10 bands (dual chain)');
     } catch (error) {
       this.player.ui.logBoth('error', `Failed to initialize equalizer: ${error.message}`);
     }
+  }
+
+  buildChain(element) {
+    const source = this.audioContext.createMediaElementSource(element);
+    let previousNode = source;
+    const filters = this.frequencies.map((frequency, index) => {
+      const filter = this.audioContext.createBiquadFilter();
+      filter.type = index === 0 ? 'lowshelf' : index === this.frequencies.length - 1 ? 'highshelf' : 'peaking';
+      filter.frequency.value = frequency;
+      filter.Q.value = 1.0;
+      previousNode.connect(filter);
+      previousNode = filter;
+      return filter;
+    });
+    const gainNode = this.audioContext.createGain();
+    previousNode.connect(gainNode);
+    gainNode.connect(this.audioContext.destination);
+    return { element, filters, gainNode };
+  }
+
+  getGainNode(element) {
+    return this.chains.find((chain) => chain.element === element)?.gainNode || null;
   }
   
   setEqualizerBand(index, gain) {
@@ -57,7 +56,9 @@ class AudioPlayerEqualizer {
       // Clamp gain between -12 dB and +12 dB
       const clampedGain = Math.max(-12, Math.min(12, gain));
       this.equalizerBands[index].gain = clampedGain;
-      this.equalizerBands[index].filter.gain.value = clampedGain;
+      this.chains.forEach((chain) => {
+        chain.filters[index].gain.value = clampedGain;
+      });
       this.saveEqualizerSettings();
     }
   }
@@ -96,7 +97,9 @@ class AudioPlayerEqualizer {
         settings.gains.forEach((gain, index) => {
           if (index < this.equalizerBands.length) {
             this.equalizerBands[index].gain = gain;
-            this.equalizerBands[index].filter.gain.value = gain;
+            this.chains.forEach((chain) => {
+              chain.filters[index].gain.value = gain;
+            });
           }
         });
         this.player.ui.logBoth('info', '🎛️ Loaded equalizer settings');
@@ -136,6 +139,7 @@ class AudioPlayerEqualizer {
     if (modal) {
       modal.style.display = 'flex';
       this.updateEqualizerUI();
+      this.updateCrossfadeUI(this.player.crossfade.crossfadeDuration);
     }
   }
   
@@ -190,6 +194,24 @@ class AudioPlayerEqualizer {
         }
       });
     }
+
+    const crossfadeSlider = document.getElementById('crossfadeSlider');
+    if (crossfadeSlider) {
+      crossfadeSlider.value = this.player.crossfade.crossfadeDuration;
+      crossfadeSlider.addEventListener('input', (event) => {
+        const seconds = Number(event.target.value);
+        this.player.crossfade.setCrossfadeDuration(seconds);
+        this.updateCrossfadeUI(seconds);
+      });
+      this.updateCrossfadeUI(this.player.crossfade.crossfadeDuration);
+    }
+  }
+
+  updateCrossfadeUI(seconds) {
+    const slider = document.getElementById('crossfadeSlider');
+    const value = document.getElementById('crossfadeValue');
+    if (slider) slider.value = seconds;
+    if (value) value.textContent = seconds > 0 ? `${seconds}s` : 'Off';
   }
 }
 

@@ -10,7 +10,7 @@ class AudioPlayerOutputDevice {
   async initialize() {
     try {
       // Check if setSinkId is supported
-      if (!this.player.audioElement.setSinkId) {
+      if (!this.player.audioElementA.setSinkId) {
         this.player.ui.logBoth('warning', '🔊 Audio output device selection not supported in this browser');
         return;
       }
@@ -59,11 +59,14 @@ class AudioPlayerOutputDevice {
   
   async setOutputDevice(deviceId) {
     try {
-      if (!this.player.audioElement.setSinkId) {
+      if (!this.player.audioElementA.setSinkId || !this.player.audioElementB.setSinkId) {
         throw new Error('setSinkId not supported');
       }
       
-      await this.player.audioElement.setSinkId(deviceId);
+      await Promise.all([
+        this.player.audioElementA.setSinkId(deviceId),
+        this.player.audioElementB.setSinkId(deviceId)
+      ]);
       this.currentOutputDeviceId = deviceId;
       
       // Save preference

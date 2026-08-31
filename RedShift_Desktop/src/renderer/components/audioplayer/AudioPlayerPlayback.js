@@ -12,42 +12,12 @@ class AudioPlayerPlayback {
     this.player.audioPlayerState.currentContext = context;
     this.player.audioPlayerState.currentContextTracks = tracks;
     this.player.audioPlayerState.currentTrackIndex = currentTrackIndex;
+    this.player.crossfade?.invalidatePreload();
     this.player.ui.logBoth('info', `Set playback context: ${context} with ${tracks.length} tracks, starting at index ${currentTrackIndex}`);
   }
 
-  // Handle when a track ends - auto-advance to next track
-  async handleTrackEnded() {
-    const trackName = this.player.audioPlayerState.currentTrack?.name || this.player.audioPlayerState.currentTrack?.filename || 'Unknown';
-    const trackPath = this.player.audioPlayerState.currentTrack?.filePath || this.player.audioPlayerState.currentTrack?.path;
-    
-    this.player.ui.logBoth('info', `🎵 Track ended handler called for: ${trackName}`);
-    this.player.ui.logBoth('info', `   Context: ${this.player.audioPlayerState.currentContext}, Repeat: ${this.player.audioPlayerState.repeatMode}`);
-    
-    // Notify main process that track ended (for play count tracking)
-    if (trackPath) {
-      try {
-        this.player.ui.logBoth('info', `📤 Sending track-ended notification to main process...`);
-        const result = await window.electronAPI.invoke('audio-track-ended-notify', trackPath);
-        if (result) {
-          this.player.ui.logBoth('success', `✅ Main process confirmed play count update for: ${trackName}`);
-          
-          // Dispatch custom event to immediately update UI
-          const event = new CustomEvent('play-count-incremented', {
-            detail: { filePath: trackPath }
-          });
-          window.dispatchEvent(event);
-          this.player.ui.logBoth('info', `📤 Dispatched play-count-incremented event for UI update`);
-        } else {
-          this.player.ui.logBoth('warning', `⚠️ Main process returned false for: ${trackName}`);
-        }
-      } catch (error) {
-        this.player.ui.logBoth('error', `❌ Failed to notify track ended: ${error.message}`);
-      }
-    } else {
-      this.player.ui.logBoth('warning', `⚠️ No track path available, skipping play count update`);
-    }
-    
-    // Handle repeat one - replay the same track
+  // Slow fallback if the next track was not ready by the natural end of this track.
+  async handleTrackEndedFallback() {
     if (this.player.audioPlayerState.repeatMode === 'one') {
       this.player.ui.logBoth('info', 'Repeat one mode - replaying current track');
       this.player.audioElement.currentTime = 0;
@@ -55,60 +25,88 @@ class AudioPlayerPlayback {
       return;
     }
     
-    // Try to get next track
     const nextTrack = this.getNextTrack();
-    
     if (nextTrack) {
       this.player.ui.logBoth('info', `Auto-advancing to next track: ${nextTrack.name}`);
       await this.playTrack(nextTrack.path, nextTrack);
-    } else if (this.player.audioPlayerState.repeatMode === 'all' && this.player.audioPlayerState.currentContextTracks.length > 0) {
-      // Repeat all - go back to the first track
-      this.player.ui.logBoth('info', 'Repeat all mode - restarting from beginning');
-      this.player.audioPlayerState.currentTrackIndex = 0;
-      const firstTrack = this.player.audioPlayerState.currentContextTracks[0];
-      await this.playTrack(firstTrack.path, firstTrack);
     } else {
+      this.player.audioPlayerState.isPlaying = false;
+      this.player.updatePlaybackState(false);
+      this.player.stopProgressLoop();
       this.player.ui.logBoth('info', 'No next track available - playback ended');
     }
   }
 
-  // Get the next track based on current context and playback mode
-  getNextTrack() {
+  // Look up the next track without moving the current index. The crossfade engine uses this
+  // to preload the exact same candidate that getNextTrack() later commits.
+  peekNextTrack() {
     if (!this.player.audioPlayerState.currentContextTracks || this.player.audioPlayerState.currentContextTracks.length === 0) {
-      this.player.ui.logBoth('warning', 'No context tracks available for auto-advance');
       return null;
     }
 
     const tracks = this.player.audioPlayerState.currentContextTracks;
-    let nextIndex;
-
-    if (this.player.audioPlayerState.shuffleMode) {
-      // Shuffle mode - pick a random track that's not the current one
-      if (tracks.length <= 1) return null;
-      
-      do {
-        nextIndex = Math.floor(Math.random() * tracks.length);
-      } while (nextIndex === this.player.audioPlayerState.currentTrackIndex && tracks.length > 1);
-      
-      this.player.ui.logBoth('info', `Shuffle mode - selected random track at index ${nextIndex}`);
-    } else {
-      // Sequential mode - next track in order
-      nextIndex = this.player.audioPlayerState.currentTrackIndex + 1;
-      
-      if (nextIndex >= tracks.length) {
-        this.player.ui.logBoth('info', 'Reached end of track list');
-        return null; // End of list
-      }
+    const currentIndex = this.player.audioPlayerState.currentTrackIndex;
+    const staged = this.player.crossfade?.preload;
+    if (staged?.originIndex === currentIndex && tracks[staged.index] === staged.track) {
+      return { index: staged.index, track: staged.track };
     }
 
-    this.player.audioPlayerState.currentTrackIndex = nextIndex;
-    return tracks[nextIndex];
+    let nextIndex;
+    if (this.player.audioPlayerState.shuffleMode) {
+      if (tracks.length <= 1) return null;
+      do {
+        nextIndex = Math.floor(Math.random() * tracks.length);
+      } while (nextIndex === currentIndex);
+    } else {
+      nextIndex = currentIndex + 1;
+      if (nextIndex >= tracks.length) {
+        if (this.player.audioPlayerState.repeatMode !== 'all') return null;
+        nextIndex = 0;
+      }
+    }
+    return { index: nextIndex, track: tracks[nextIndex] };
+  }
+
+  // Get and commit the next track for manual navigation or fallback playback.
+  getNextTrack() {
+    const next = this.peekNextTrack();
+    if (!next) {
+      this.player.ui.logBoth('info', 'No next track available (end of list or empty context)');
+      return null;
+    }
+    this.player.audioPlayerState.currentTrackIndex = next.index;
+    return next.track;
+  }
+
+  // Update renderer and main-process state after a preloaded track has begun playing.
+  commitAdvance(index, track) {
+    const filePath = track.path || track.filePath;
+    const fileName = filePath.split('/').pop();
+    const trackName = track.name || track.metadata?.common?.title || fileName;
+    this.player.audioPlayerState.currentTrackIndex = index;
+    this.player.audioPlayerState.currentTrack = { ...track, path: filePath, name: trackName };
+    this.player.lastDisplayedTime = 0;
+    this.player.updateTrackInfo({
+      filename: trackName,
+      metadata: track.metadata || { common: { title: trackName.replace(/\.\w+$/, ''), artist: 'Unknown Artist' } }
+    });
+    window.electronAPI.invoke('audio-load-track', filePath).then(() => {
+      return window.electronAPI.invoke('audio-play');
+    }).catch((error) => {
+      this.player.ui.logBoth('warning', `Main-process track mirror failed: ${error.message}`);
+    });
+    this.player.queueManager.updateQueuePreview();
+    if (this.player.ui.musicLibrary) this.player.ui.musicLibrary.renderMusicTable();
+    if (this.player.ui.albumsView?.selectedAlbum) this.player.ui.albumsView.renderDetailView();
+    if (this.player.ui.artistsView?.selectedArtist) this.player.ui.artistsView.renderDetailView();
+    if (this.player.ui.playlistManager?.currentPlaylist) this.player.ui.playlistManager.renderPlaylistTracks();
   }
 
   // Enhanced play track method that works with context
   async playTrack(filePath, track = null) {
     try {
       this.player.ui.logBoth('info', `Playing track: ${filePath}`);
+      this.player.crossfade?.cancelTransition();
       
       // If no track object provided, try to find it in the current context
       if (!track && this.player.audioPlayerState.currentContextTracks) {
@@ -163,6 +161,9 @@ class AudioPlayerPlayback {
       await window.electronAPI.invoke('audio-play');
       await this.player.audioElement.play();
       
+      // Stage the following track now, while the current one is audible.
+      this.player.crossfade?.prepareNextTrack();
+
       // Update queue preview after track starts playing
       this.player.queueManager.updateQueuePreview();
       

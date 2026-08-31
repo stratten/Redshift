@@ -101,7 +101,7 @@ class USBSyncDashboard {
       
       if (unsyncedTracks.length > 50) {
         container.innerHTML += `
-          <div style="padding: 15px; text-align: center; color: #666;">
+          <div style="padding: 15px; text-align: center; color: var(--rs-text-secondary);">
             ... and ${unsyncedTracks.length - 50} more tracks
           </div>
         `;

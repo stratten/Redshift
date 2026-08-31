@@ -181,6 +181,10 @@ class PlayCountSyncManager {
       // Clean up
       await fs.remove(tempDir);
       
+      // Returned so callers (e.g. manifest generation gating) can confirm
+      // this step actually pushed something rather than silently no-op'ing.
+      return { pushed: metadataEntries.length };
+      
     } catch (error) {
       console.error('❌ Failed to push track metadata:', error);
       throw error;

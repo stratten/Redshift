@@ -24,7 +24,7 @@ function showQuickPlaylistCreationDialog(onSuccess, logFn) {
   
   const box = document.createElement('div');
   box.style.cssText = `
-    background: white;
+    background: var(--rs-bg-surface);
     padding: 24px;
     border-radius: 8px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.3);
@@ -32,12 +32,12 @@ function showQuickPlaylistCreationDialog(onSuccess, logFn) {
   `;
   
   box.innerHTML = `
-    <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600;">Create New Playlist</h3>
+    <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600; color: var(--rs-text-primary);">Create New Playlist</h3>
     <input type="text" id="_quickPlaylistName" placeholder="Playlist name" 
-      style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; margin-bottom: 16px;">
+      style="width: 100%; padding: 8px; border: 1px solid var(--rs-border-color-strong); border-radius: 6px; font-size: 14px; margin-bottom: 16px; background: var(--rs-bg-surface); color: var(--rs-text-primary);">
     <div style="display: flex; gap: 8px; justify-content: flex-end;">
-      <button id="_quickPlaylistCancel" style="padding: 8px 16px; border: 1px solid #d1d5db; background: white; border-radius: 6px; cursor: pointer;">Cancel</button>
-      <button id="_quickPlaylistCreate" style="padding: 8px 16px; border: none; background: #6366f1; color: white; border-radius: 6px; cursor: pointer;">Create</button>
+      <button id="_quickPlaylistCancel" style="padding: 8px 16px; border: 1px solid var(--rs-border-color-strong); background: var(--rs-bg-surface); color: var(--rs-text-primary); border-radius: 6px; cursor: pointer;">Cancel</button>
+      <button id="_quickPlaylistCreate" style="padding: 8px 16px; border: none; background: var(--rs-accent-alt); color: white; border-radius: 6px; cursor: pointer;">Create</button>
     </div>
   `;
   

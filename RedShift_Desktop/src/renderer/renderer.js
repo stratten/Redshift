@@ -427,8 +427,35 @@ class RedshiftSyncUI {
   }
 }
 
+// Dark mode toggle: theme is applied early (see inline script in index.html <head>)
+// to avoid a flash of the wrong theme; this wires up the button and persists changes.
+function initThemeToggle() {
+  const toggleBtn = document.getElementById('themeToggleBtn');
+  if (!toggleBtn) return;
+
+  const applyTheme = (theme) => {
+    if (theme === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+  };
+
+  toggleBtn.addEventListener('click', () => {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const nextTheme = isDark ? 'light' : 'dark';
+    applyTheme(nextTheme);
+    try {
+      localStorage.setItem('rs-theme', nextTheme);
+    } catch (e) {
+      // localStorage unavailable; theme just won't persist across restarts
+    }
+  });
+}
+
 // Initialize the UI when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
+  initThemeToggle();
   window.redshiftUI = new RedshiftSyncUI();
 });
 

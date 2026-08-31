@@ -21,9 +21,9 @@
     justify-content: space-between;
     align-items: center;
     padding: 12px 16px;
-    background: #f9fafb;
+    background: var(--rs-bg-surface-alt);
     border-radius: 8px;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--rs-border-color);
     gap: 16px;
     flex-wrap: wrap;
 }
@@ -38,17 +38,17 @@
 }
 
 .search-filter-controls svg {
-    color: #6b7280;
+    color: var(--rs-text-secondary);
     flex-shrink: 0;
 }
 
 .search-filter-controls .search-input {
     flex: 1;
     padding: 8px 12px;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--rs-border-color-strong);
     border-radius: 6px;
     font-size: 14px;
-    background: white;
+    background: var(--rs-bg-surface);
     outline: none;
     transition: border-color 0.2s;
 }
@@ -59,7 +59,7 @@
 }
 
 .search-filter-controls .search-input::placeholder {
-    color: #9ca3af;
+    color: var(--rs-text-muted);
 }
 
 .image-controls {
@@ -70,7 +70,7 @@
 
 .image-stats {
     font-size: 13px;
-    color: #6b7280;
+    color: var(--rs-text-secondary);
     padding: 0 8px;
 }
 
@@ -88,7 +88,7 @@
 .artist-letter-header {
     font-size: 18px;
     font-weight: 700;
-    color: #6366f1;
+    color: var(--rs-accent-alt);
     padding: 8px 12px;
     background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
     border-radius: 8px;
@@ -101,8 +101,8 @@
     display: flex;
     align-items: center;
     padding: 16px;
-    background: white;
-    border: 1px solid #e5e7eb;
+    background: var(--rs-bg-surface);
+    border: 1px solid var(--rs-border-color);
     border-radius: 12px;
     margin-bottom: 8px;
     cursor: pointer;
@@ -110,10 +110,10 @@
 }
 
 .artist-card:hover {
-    background: #f9fafb;
-    border-color: #6366f1;
+    background: var(--rs-bg-surface-alt);
+    border-color: var(--rs-accent-alt);
     transform: translateX(4px);
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+    box-shadow: 0 4px 12px var(--rs-accent-soft-strong);
 }
 
 .artist-icon {
@@ -148,7 +148,7 @@
 .artist-name {
     font-size: 16px;
     font-weight: 600;
-    color: #111827;
+    color: var(--rs-text-heading);
     margin-bottom: 4px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -157,11 +157,11 @@
 
 .artist-stats {
     font-size: 13px;
-    color: #6b7280;
+    color: var(--rs-text-secondary);
 }
 
 .artist-arrow {
-    color: #9ca3af;
+    color: var(--rs-text-muted);
     flex-shrink: 0;
 }
 
@@ -174,9 +174,9 @@
     padding: 12px 16px;
     text-align: center;
     font-size: 13px;
-    color: #6b7280;
-    background: #f9fafb;
-    border-top: 1px solid #e5e7eb;
+    color: var(--rs-text-secondary);
+    background: var(--rs-bg-surface-alt);
+    border-top: 1px solid var(--rs-border-color);
     border-radius: 0 0 8px 8px;
 }
 
@@ -268,8 +268,8 @@
     display: flex;
     align-items: center;
     padding: 20px;
-    background: white;
-    border: 1px solid #e5e7eb;
+    background: var(--rs-bg-surface);
+    border: 1px solid var(--rs-border-color);
     border-radius: 12px;
     cursor: pointer;
     transition: all 0.2s;
@@ -277,10 +277,10 @@
 }
 
 .albums-grid .album-card:hover {
-    background: #f9fafb;
-    border-color: #6366f1;
+    background: var(--rs-bg-surface-alt);
+    border-color: var(--rs-accent-alt);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+    box-shadow: 0 4px 12px var(--rs-accent-soft-strong);
 }
 
 .albums-grid .album-icon {
@@ -317,7 +317,7 @@
 .albums-grid .album-name {
     font-size: 16px;
     font-weight: 600;
-    color: #111827;
+    color: var(--rs-text-heading);
     margin-bottom: 6px;
     line-height: 1.4;
     overflow: hidden;
@@ -331,11 +331,11 @@
 
 .albums-grid .album-track-count {
     font-size: 14px;
-    color: #6b7280;
+    color: var(--rs-text-secondary);
 }
 
 .albums-grid .album-arrow {
-    color: #9ca3af;
+    color: var(--rs-text-muted);
     flex-shrink: 0;
 }
 
@@ -388,16 +388,16 @@
 
 .album-group {
     margin-bottom: 32px;
-    background: white;
-    border: 1px solid #e5e7eb;
+    background: var(--rs-bg-surface);
+    border: 1px solid var(--rs-border-color);
     border-radius: 12px;
     overflow: hidden;
 }
 
 .album-group-header {
     padding: 16px 20px;
-    background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
-    border-bottom: 1px solid #e5e7eb;
+    background: var(--rs-bg-surface-alt);
+    border-bottom: 1px solid var(--rs-border-color);
     display: flex;
     align-items: center;
     gap: 16px;
@@ -425,7 +425,7 @@
 }
 
 .album-group-art-placeholder svg {
-    color: #6366f1;
+    color: var(--rs-accent-alt);
 }
 
 .album-group-info {
@@ -438,25 +438,25 @@
 .album-group-name {
     font-size: 18px;
     font-weight: 600;
-    color: #111827;
+    color: var(--rs-text-heading);
     margin: 0;
 }
 
 .album-group-count {
     font-size: 13px;
-    color: #6b7280;
+    color: var(--rs-text-secondary);
 }
 
 /* Artist Tracks Table */
 .artist-tracks-table {
     width: 100%;
     border-collapse: collapse;
-    border: 1px solid #d1d5db;
-    background: white;
+    border: 1px solid var(--rs-border-color-strong);
+    background: var(--rs-bg-surface);
 }
 
 .artist-tracks-table thead {
-    background: #f9fafb;
+    background: var(--rs-bg-surface-alt);
     position: sticky;
     top: 0;
     z-index: 1;
@@ -467,30 +467,30 @@
     text-align: left;
     font-size: 11px;
     font-weight: 600;
-    color: #6b7280;
+    color: var(--rs-text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    border-bottom: 1px solid #d1d5db;
+    border-bottom: 1px solid var(--rs-border-color-strong);
 }
 
 .artist-tracks-table tbody tr {
-    border-bottom: 1px solid #d1d5db;
+    border-bottom: 1px solid var(--rs-border-color-strong);
     transition: background-color 0.15s;
     cursor: pointer;
 }
 
 .artist-tracks-table tbody tr:hover {
-    background-color: #f9fafb;
+    background-color: var(--rs-bg-surface-alt);
 }
 
 .artist-tracks-table tbody tr:last-child {
-    border-bottom: 1px solid #d1d5db;
+    border-bottom: 1px solid var(--rs-border-color-strong);
 }
 
 .artist-tracks-table td {
     padding: 2px 8px;
     font-size: 13px;
-    color: #374151;
+    color: var(--rs-text-secondary);
 }
 
 /* Column widths */

@@ -10,6 +10,7 @@ const ArtistImageSyncManager = require('./usb-sync/ArtistImageSyncManager');
 const PlaylistSyncManager = require('./usb-sync/PlaylistSyncManager');
 const PlayCountSyncManager = require('./usb-sync/PlayCountSyncManager');
 const DeviceMusicImporter = require('./usb-sync/DeviceMusicImporter');
+const SyncManifestBuilder = require('./usb-sync/SyncManifestBuilder');
 
 /**
  * Main USB sync service - orchestrates all USB sync operations
@@ -42,6 +43,7 @@ class RedShiftUSBSyncService extends EventEmitter {
       this.getConnectedDeviceByDeviceId.bind(this)
     );
     this.deviceImporter = new DeviceMusicImporter(deviceMonitorService, musicLibraryCache, this);
+    this.manifestBuilder = new SyncManifestBuilder(musicLibraryCache);
     
     // Listen for device connection events
     if (this.deviceMonitorService && this.deviceMonitorService.eventEmitter) {
@@ -236,6 +238,19 @@ class RedShiftUSBSyncService extends EventEmitter {
 
       console.log(`✅ Music sync complete: ${musicResults.transferred} transferred, ${musicResults.skipped} skipped, ${musicResults.failed} failed`);
       
+      // Every filename confirmed present on the device after this sync: files
+      // that were already there before this run (not in tracksToSync), plus
+      // files this run just transferred or found already-present. This is the
+      // exact set of files the manifest is allowed to describe.
+      const tracksToSyncFileNames = new Set(tracksToSync.map(t => path.basename(t.path)));
+      const alreadyOnDeviceFileNames = tracks
+        .filter(t => !tracksToSyncFileNames.has(path.basename(t.path)))
+        .map(t => path.basename(t.path));
+      const confirmedOnDeviceFileNames = new Set([
+        ...alreadyOnDeviceFileNames,
+        ...(musicResults.confirmedFileNames || [])
+      ]);
+      
       // Now sync artist images
       console.log('🎨 Initiating artist image sync...');
       try {
@@ -249,6 +264,7 @@ class RedShiftUSBSyncService extends EventEmitter {
       
       // Now sync playlists (bi-directional)
       console.log('📋 Initiating bi-directional playlist sync...');
+      let playlistSyncOk = true;
       try {
         // Step 1: Pull playlists from device
         await this.playlistSync.pullPlaylistsFromDevice(deviceId);
@@ -263,11 +279,14 @@ class RedShiftUSBSyncService extends EventEmitter {
       } catch (playlistError) {
         console.error('⚠️  Playlist sync failed (non-fatal):', playlistError);
         console.error('Stack trace:', playlistError.stack);
-        // Don't fail the entire sync if playlists fail
+        // Don't fail the entire sync if playlists fail, but the manifest
+        // requires this step to have succeeded (see settled decisions).
+        playlistSyncOk = false;
       }
       
       // Now sync track metadata (bi-directional: play counts, favorites, ratings)
       console.log('📊 Initiating bi-directional track metadata sync...');
+      let metadataSyncOk = true;
       try {
         // Step 1: Pull metadata from device (includes play counts, favorites, ratings)
         await this.playCountSync.pullPlayCountsFromDevice(deviceId);
@@ -282,7 +301,27 @@ class RedShiftUSBSyncService extends EventEmitter {
       } catch (metadataError) {
         console.error('⚠️  Track metadata sync failed (non-fatal):', metadataError);
         console.error('Stack trace:', metadataError.stack);
-        // Don't fail the entire sync if metadata sync fails
+        metadataSyncOk = false;
+      }
+      
+      // Finally, publish the library manifest — the marker mobile reconciliation
+      // treats as "this sync is complete and its metadata can be trusted".
+      // Only generated when audio had zero failures and both playlists and
+      // metadata pushed successfully, per the settled manifest-last policy.
+      let manifestPublished = false;
+      if (musicResults.failed === 0 && playlistSyncOk && metadataSyncOk) {
+        try {
+          console.log('📄 Building and publishing sync manifest...');
+          const manifest = await this.manifestBuilder.buildManifest(confirmedOnDeviceFileNames);
+          await this.manifestBuilder.publishManifest(device.udid, manifest);
+          manifestPublished = true;
+          console.log(`📄 Manifest published: revision ${manifest.revision}, ${manifest.files.length} files`);
+        } catch (manifestError) {
+          console.error('⚠️  Manifest publish failed (non-fatal):', manifestError);
+          console.error('Stack trace:', manifestError.stack);
+        }
+      } else {
+        console.log('⏭️  Skipping manifest publish: audio failures, playlist sync, or metadata sync did not fully succeed');
       }
       
       this.emit('sync-completed', { 
@@ -290,7 +329,8 @@ class RedShiftUSBSyncService extends EventEmitter {
         transferred: musicResults.transferred, 
         failed: musicResults.failed, 
         skipped: musicResults.skipped, 
-        total: totalTracks 
+        total: totalTracks,
+        manifestPublished
       });
 
     } catch (error) {

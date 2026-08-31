@@ -16,21 +16,21 @@
 }
 
 .btn-primary {
-    background: #5a67d8;
-    color: white;
+    background: var(--rs-accent);
+    color: var(--rs-text-on-accent);
 }
 
 .btn-primary:hover {
-    background: #4c51bf;
+    background: var(--rs-accent-hover);
 }
 
 .btn-secondary {
-    background: #edf2f7;
-    color: #4a5568;
+    background: var(--rs-bg-hover);
+    color: var(--rs-text-primary);
 }
 
 .btn-secondary:hover {
-    background: #e2e8f0;
+    background: var(--rs-border-color);
 }
 
 .btn:disabled {
@@ -86,40 +86,40 @@
     grid-column: 1 / -1;
     text-align: center;
     padding: 60px 20px;
-    background: white;
+    background: var(--rs-bg-surface);
     border-radius: 12px;
-    border: 2px dashed #e2e8f0;
+    border: 2px dashed var(--rs-border-color);
 }
 
 .empty-devices-state svg {
-    color: #cbd5e0;
+    color: var(--rs-text-faint);
     margin-bottom: 16px;
 }
 
 .empty-devices-state h3 {
     margin: 0 0 8px 0;
-    color: #4a5568;
+    color: var(--rs-text-secondary);
     font-size: 18px;
 }
 
 .empty-devices-state p {
     margin: 0;
-    color: #a0aec0;
+    color: var(--rs-text-muted);
     font-size: 14px;
 }
 
 /* Device Card */
 .device-card {
-    background: white;
+    background: var(--rs-bg-surface);
     border-radius: 12px;
     padding: 20px;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--rs-border-color);
+    box-shadow: 0 2px 4px var(--rs-shadow-color);
     transition: all 0.2s ease;
 }
 
 .device-card:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px var(--rs-shadow-color);
 }
 
 .device-card-header {
@@ -128,7 +128,7 @@
     gap: 12px;
     margin-bottom: 16px;
     padding-bottom: 16px;
-    border-bottom: 1px solid #f7fafc;
+    border-bottom: 1px solid var(--rs-bg-surface-sunken);
 }
 
 .device-card-icon {
@@ -142,13 +142,13 @@
 .device-card-name {
     font-size: 16px;
     font-weight: 600;
-    color: #2d3748;
+    color: var(--rs-text-primary);
     margin: 0 0 4px 0;
 }
 
 .device-card-status {
     font-size: 13px;
-    color: #718096;
+    color: var(--rs-text-secondary);
     margin: 0;
 }
 
@@ -162,20 +162,20 @@
 .device-stat {
     text-align: center;
     padding: 12px 8px;
-    background: #f7fafc;
+    background: var(--rs-bg-surface-sunken);
     border-radius: 8px;
 }
 
 .device-stat-value {
     font-size: 20px;
     font-weight: 600;
-    color: #2d3748;
+    color: var(--rs-text-primary);
     margin-bottom: 4px;
 }
 
 .device-stat-label {
     font-size: 11px;
-    color: #718096;
+    color: var(--rs-text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -188,12 +188,12 @@
 .device-card-progress {
     margin-top: 16px;
     padding-top: 16px;
-    border-top: 1px solid #f7fafc;
+    border-top: 1px solid var(--rs-bg-surface-sunken);
 }
 
 .device-progress-bar {
     height: 6px;
-    background: #e2e8f0;
+    background: var(--rs-border-color);
     border-radius: 3px;
     overflow: hidden;
     margin-bottom: 8px;
@@ -201,56 +201,56 @@
 
 .device-progress-fill {
     height: 100%;
-    background: #5a67d8;
+    background: var(--rs-accent);
     transition: width 0.3s ease;
 }
 
 .device-progress-text {
     font-size: 13px;
-    color: #718096;
+    color: var(--rs-text-secondary);
     margin: 0;
 }
 
 /* Stat Cards */
 .stat-card {
-    background: white;
+    background: var(--rs-bg-surface);
     border-radius: 12px;
     padding: 20px;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--rs-border-color);
+    box-shadow: 0 1px 3px var(--rs-shadow-color);
 }
 
 .stat-value {
     font-size: 32px;
     font-weight: 700;
-    color: #2d3748;
+    color: var(--rs-text-primary);
     margin-bottom: 5px;
 }
 
 .stat-label {
-    color: #718096;
+    color: var(--rs-text-secondary);
     font-size: 14px;
 }
 
 /* File Lists */
 .file-list {
-    background: white;
+    background: var(--rs-bg-surface);
     border-radius: 12px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--rs-border-color);
     overflow: hidden;
 }
 
 .file-list-header {
-    background: #f7fafc;
+    background: var(--rs-bg-surface-sunken);
     padding: 15px 20px;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid var(--rs-border-color);
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
 .file-list-header h3 {
-    color: #2d3748;
+    color: var(--rs-text-primary);
     font-size: 16px;
 }
 
@@ -258,7 +258,7 @@
     display: flex;
     align-items: center;
     padding: 15px 20px;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid var(--rs-border-color-soft);
 }
 
 .file-item:last-child {
@@ -268,7 +268,7 @@
 .file-icon {
     width: 40px;
     height: 40px;
-    background: rgba(90, 103, 216, 0.1);
+    background: var(--rs-accent-soft);
     border-radius: 8px;
     display: flex;
     align-items: center;
@@ -282,13 +282,13 @@
 
 .file-name {
     font-weight: 500;
-    color: #2d3748;
+    color: var(--rs-text-primary);
     margin-bottom: 2px;
 }
 
 .file-details {
     font-size: 12px;
-    color: #718096;
+    color: var(--rs-text-secondary);
 }
 
 /* File Status Badges */
@@ -300,20 +300,20 @@
 }
 
 .status-new {
-    background: #c6f6d5;
-    color: #22543d;
+    background: var(--rs-success-bg);
+    color: var(--rs-success-text);
 }
 
 .status-modified {
-    background: #fef5e7;
-    color: #b7791f;
+    background: var(--rs-warning-bg);
+    color: var(--rs-warning-text);
 }
 
 /* Progress Bars */
 .progress-bar {
     width: 100%;
     height: 8px;
-    background: #edf2f7;
+    background: var(--rs-bg-hover);
     border-radius: 4px;
     overflow: hidden;
     margin: 10px 0;
@@ -321,14 +321,14 @@
 
 .progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, #5a67d8, #667eea);
+    background: linear-gradient(90deg, var(--rs-accent), var(--rs-gradient-start));
     transition: width 0.3s ease;
 }
 
 /* Log Area */
 .log-area {
-    background: #1a202c;
-    color: #e2e8f0;
+    background: var(--rs-bg-log);
+    color: var(--rs-border-color);
     border-radius: 8px;
     padding: 15px;
     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
@@ -344,7 +344,7 @@
 }
 
 .log-time {
-    color: #718096;
+    color: var(--rs-text-secondary);
     margin-right: 10px;
     min-width: 80px;
 }
@@ -363,7 +363,7 @@
 .empty-state {
     text-align: center;
     padding: 60px 20px;
-    color: #718096;
+    color: var(--rs-text-secondary);
 }
 
 .empty-state svg {

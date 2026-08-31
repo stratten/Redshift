@@ -120,6 +120,12 @@ class MusicSyncManager {
     let transferred = 0;
     let failed = 0;
     let skipped = 0;
+    // Tracked separately from the counts above so the manifest builder can
+    // know exactly which filenames are confirmed present on the device after
+    // this sync (transferred + skipped-because-already-present), and exclude
+    // anything that actually failed.
+    const confirmedFileNames = [];
+    const failedFileNames = [];
 
     // Push each file that needs syncing
     for (let i = 0; i < tracksToSync.length; i++) {
@@ -130,12 +136,14 @@ class MusicSyncManager {
         if (!await fs.pathExists(track.path)) {
           console.warn(`⚠️  Source file not found: ${track.path}`);
           failed++;
+          failedFileNames.push(fileName);
           continue;
         }
 
         console.log(`📤 [${i + 1}/${totalTracks}] ${fileName}`);
         await this.pushFileToDevice(udid, track.path, fileName);
         transferred++;
+        confirmedFileNames.push(fileName);
 
         if (progressCallback) {
           progressCallback({
@@ -152,10 +160,12 @@ class MusicSyncManager {
         // Check if file already exists (not an error, just skip)
         if (error.message && error.message.includes('already exists')) {
           skipped++;
+          confirmedFileNames.push(fileName);
           console.log(`⏭️  Already on device: ${fileName}`);
         } else {
           console.error(`❌ Failed: ${fileName} - ${error.message}`);
           failed++;
+          failedFileNames.push(fileName);
         }
         
         if (progressCallback) {
@@ -172,7 +182,7 @@ class MusicSyncManager {
       }
     }
 
-    return { transferred, failed, skipped, total: totalTracks };
+    return { transferred, failed, skipped, total: totalTracks, confirmedFileNames, failedFileNames };
   }
 }
 

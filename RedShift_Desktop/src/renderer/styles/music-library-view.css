@@ -25,7 +25,7 @@
 
 .library-stats {
     font-size: 12px;
-    color: #6b7280;
+    color: var(--rs-text-secondary);
 }
 
 /* ===== SCAN PROGRESS BAR ===== */
@@ -92,7 +92,7 @@
 .music-browser {
     display: flex;
     height: 200px;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--rs-border-color-strong);
     border-radius: 6px;
     overflow: hidden;
     margin-bottom: 12px;
@@ -100,10 +100,10 @@
 
 .browser-column {
     flex: 1;
-    border-right: 1px solid #e5e7eb;
+    border-right: 1px solid var(--rs-border-color);
     display: flex;
     flex-direction: column;
-    background: white;
+    background: var(--rs-bg-surface);
 }
 
 .browser-column:last-child {
@@ -112,11 +112,11 @@
 
 .column-header {
     padding: 8px 12px;
-    background: #f9fafb;
-    border-bottom: 1px solid #e5e7eb;
+    background: var(--rs-bg-surface-alt);
+    border-bottom: 1px solid var(--rs-border-color);
     font-size: 11px;
     font-weight: 600;
-    color: #374151;
+    color: var(--rs-text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.025em;
 }
@@ -130,19 +130,19 @@
 .list-item {
     padding: 4px 12px;
     cursor: pointer;
-    border-bottom: 1px solid #f3f4f6;
-    color: #4b5563;
+    border-bottom: 1px solid var(--rs-bg-surface-tertiary);
+    color: var(--rs-text-secondary);
     user-select: none;
     transition: background-color 0.1s;
 }
 
 .list-item:hover {
-    background: #f3f4f6;
+    background: var(--rs-bg-surface-tertiary);
 }
 
 .list-item.selected {
-    background: #dbeafe;
-    color: #1e40af;
+    background: var(--rs-accent-soft-strong);
+    color: var(--rs-accent);
     font-weight: 500;
 }
 
@@ -156,25 +156,25 @@
 }
 
 .column-list::-webkit-scrollbar-track {
-    background: #f1f5f9;
+    background: var(--rs-border-color-soft);
 }
 
 .column-list::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
+    background: var(--rs-border-color-strong);
     border-radius: 3px;
 }
 
 .column-list::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
+    background: var(--rs-text-muted);
 }
 
 /* ===== SUBTABS ===== */
 
 .subtabs {
     display: flex;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid var(--rs-border-color);
     margin-bottom: 16px;
-    background: #f8fafc;
+    background: var(--rs-bg-surface-sunken);
     border-radius: 6px 6px 0 0;
     padding: 0 8px;
 }
@@ -187,7 +187,7 @@
     cursor: pointer;
     font-size: 13px;
     font-weight: 500;
-    color: #64748b;
+    color: var(--rs-text-secondary);
     border-radius: 4px 4px 0 0;
     transition: all 0.15s ease;
     user-select: none;
@@ -195,14 +195,14 @@
 }
 
 .subtab-item:hover {
-    background: #e2e8f0;
-    color: #475569;
+    background: var(--rs-border-color);
+    color: var(--rs-text-primary);
 }
 
 .subtab-item.active {
-    background: white;
-    color: #1e40af;
-    border-bottom: 2px solid #3b82f6;
+    background: var(--rs-bg-surface);
+    color: var(--rs-accent);
+    border-bottom: 2px solid var(--rs-accent);
     margin-bottom: -1px;
 }
 
@@ -220,9 +220,9 @@
 .music-table-container {
     flex: 1;
     overflow: auto;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--rs-border-color-strong);
     border-radius: 6px;
-    background: white;
+    background: var(--rs-bg-surface);
 }
 
 .music-table {
@@ -233,8 +233,8 @@
 }
 
 .music-table thead {
-    background: #f9fafb;
-    border-bottom: 1px solid #d1d5db;
+    background: var(--rs-bg-surface-alt);
+    border-bottom: 1px solid var(--rs-border-color-strong);
     position: sticky;
     top: 0;
     z-index: 10;
@@ -248,8 +248,8 @@
     padding: 6px 8px;
     text-align: left;
     font-weight: 500;
-    color: #374151;
-    border-right: 1px solid #e5e7eb;
+    color: var(--rs-text-secondary);
+    border-right: 1px solid var(--rs-border-color);
     border-bottom: none;
     position: relative;
     overflow: hidden;
@@ -309,25 +309,26 @@
     gap: 4px;
     font-size: 10px;
     font-weight: 600;
-    color: #6b7280;
+    color: var(--rs-text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.025em;
 }
 
 .column-filter {
     padding: 2px 6px;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--rs-border-color-strong);
     border-radius: 3px;
     font-size: 10px;
-    background: white;
+    background: var(--rs-bg-surface);
+    color: var(--rs-text-primary);
     transition: border-color 0.15s;
     height: 18px;
 }
 
 .column-filter:focus {
     outline: none;
-    border-color: #5a67d8;
-    box-shadow: 0 0 0 1px rgba(90, 103, 216, 0.1);
+    border-color: var(--rs-accent);
+    box-shadow: 0 0 0 1px var(--rs-accent-soft);
 }
 
 /* ===== COLUMN WIDTHS ===== */
@@ -381,35 +382,35 @@
 
 /* Compact spacing like macOS Music */
 .music-table tbody tr {
-    border-bottom: 1px solid #f3f4f6;
+    border-bottom: 1px solid var(--rs-bg-surface-tertiary);
     transition: background-color 0.1s;
     height: 20px;
 }
 
 .music-table tbody tr:hover {
-    background-color: #f9fafb;
+    background-color: var(--rs-bg-surface-alt);
 }
 
 .music-table tbody tr:nth-child(even) {
-    background-color: #fafbfc;
+    background-color: var(--rs-bg-surface-sunken);
 }
 
 .music-table tbody tr:nth-child(even):hover {
-    background-color: #f3f4f6;
+    background-color: var(--rs-bg-surface-tertiary);
 }
 
 .music-table tbody tr.selected {
-    background-color: #dbeafe !important;
+    background-color: var(--rs-accent-soft-strong) !important;
 }
 
 .music-table tbody tr.selected:hover {
-    background-color: #bfdbfe !important;
+    background-color: var(--rs-accent-soft-stronger) !important;
 }
 
 .music-table td {
     padding: 2px 8px;
     vertical-align: middle;
-    border-right: 1px solid #f3f4f6;
+    border-right: 1px solid var(--rs-bg-surface-tertiary);
     overflow: hidden;
 }
 

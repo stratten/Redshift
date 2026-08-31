@@ -365,7 +365,9 @@ class AudioPlayerQueue {
     }
     
     this.player.ui.logBoth('info', `Removed from queue: ${track.name || 'Unknown Track'}`);
-    
+    this.player.crossfade.invalidatePreload();
+    this.player.crossfade.prepareNextTrack();
+
     // Update both preview and modal
     this.updateQueuePreview();
     if (document.getElementById('queueModal').style.display === 'flex') {
@@ -394,7 +396,9 @@ class AudioPlayerQueue {
       }
       
       this.player.ui.logBoth('info', 'Queue cleared');
-      
+      this.player.crossfade.invalidatePreload();
+      this.player.crossfade.prepareNextTrack();
+
       // Update both preview and modal
       this.updateQueuePreview();
       this.renderQueueModal();
@@ -428,7 +432,9 @@ class AudioPlayerQueue {
     }
     
     this.player.ui.logBoth('info', `Reordered queue: moved track from ${fromIndex} to ${toIndex}`);
-    
+    this.player.crossfade.invalidatePreload();
+    this.player.crossfade.prepareNextTrack();
+
     // Update both preview and modal
     this.updateQueuePreview();
     this.renderQueueModal();
@@ -463,7 +469,9 @@ class AudioPlayerQueue {
     
     const trackName = track.metadata?.common?.title || track.name || 'Unknown Track';
     this.player.ui.logBoth('success', `Added to queue: ${trackName}`);
-    
+    this.player.crossfade.invalidatePreload();
+    this.player.crossfade.prepareNextTrack();
+
     // Update queue UI
     this.updateQueuePreview();
     if (document.getElementById('queueModal').style.display === 'flex') {

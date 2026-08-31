@@ -57,14 +57,15 @@ struct ArtistDetailView: View {
     
     let artist: String
     
-    private var albums: [String] {
-        let artistTracks = libraryManager.tracks.filter { $0.artist == artist }
-        let albumSet = Set(artistTracks.compactMap { $0.album })
-        return albumSet.sorted()
+    private var allTracks: [Track] {
+        libraryManager.libraryIndex.artists.first { $0.id == artist }?.tracks ?? []
     }
     
-    private var allTracks: [Track] {
-        libraryManager.tracks.filter { $0.artist == artist }
+    // Album groups sourced from the pre-built index (already sorted by name)
+    // rather than re-filtering the full track array for every album row.
+    private var albums: [AlbumGroup] {
+        let names = Set(allTracks.compactMap { $0.album })
+        return libraryManager.libraryIndex.albums.filter { names.contains($0.album) }
     }
     
     var body: some View {
@@ -163,15 +164,12 @@ struct ArtistDetailView: View {
                                 .padding(.top, 8)
                             
                             VStack(spacing: 0) {
-                                ForEach(albums, id: \.self) { album in
-                                    NavigationLink(destination: AlbumDetailView(album: album)) {
+                                ForEach(albums) { album in
+                                    NavigationLink(destination: AlbumDetailView(album: album.album)) {
                                         HStack(spacing: 12) {
                                             // Album art
-                                            let tracks = libraryManager.tracks.filter { $0.album == album }
-                                            let albumArtData = tracks.first?.albumArtData
-                                            
                                             Group {
-                                                if let artData = albumArtData,
+                                                if let artData = album.albumArtData,
                                                    let uiImage = UIImage(data: artData) {
                                                     Image(uiImage: uiImage)
                                                         .resizable()
@@ -191,11 +189,11 @@ struct ArtistDetailView: View {
                                             }
                                             
                                             VStack(alignment: .leading, spacing: 4) {
-                                                Text(album)
+                                                Text(album.album)
                                                     .font(.headline)
                                                     .foregroundColor(.primary)
                                                 
-                                                Text("\(tracks.count) song\(tracks.count == 1 ? "" : "s")")
+                                                Text("\(album.tracks.count) song\(album.tracks.count == 1 ? "" : "s")")
                                                     .font(.caption)
                                                     .foregroundColor(.secondary)
                                             }
@@ -210,7 +208,7 @@ struct ArtistDetailView: View {
                                         .padding(.vertical, 10)
                                         .background(Color(.systemBackground))
                                         
-                                        if album != albums.last {
+                                        if album.id != albums.last?.id {
                                             Divider()
                                                 .padding(.leading, 88)
                                         }
@@ -252,17 +250,9 @@ struct ArtistAllTracksView: View {
     }
     
     private var tracks: [Track] {
-        var filtered = libraryManager.tracks.filter { $0.artist == artist }
+        let base = libraryManager.libraryIndex.artists.first { $0.id == artist }?.tracks ?? []
+        let filtered = searchText.isEmpty ? base : base.filter { $0.matches(searchText) }
         
-        // Apply search filter
-        if !searchText.isEmpty {
-            filtered = filtered.filter { track in
-                track.displayTitle.localizedCaseInsensitiveContains(searchText) ||
-                (track.album?.localizedCaseInsensitiveContains(searchText) ?? false)
-            }
-        }
-        
-        // Apply sorting
         switch sortBy {
         case .album:
             return filtered.sorted { ($0.album ?? "") < ($1.album ?? "") }
@@ -342,18 +332,22 @@ struct AlbumDetailView: View {
     
     let album: String
     
+    // Sourced from the index's pre-sorted AlbumGroup (disc, track, title, filename
+    // order via Track.albumOrder) instead of re-filtering/re-sorting every render.
+    private var albumGroup: AlbumGroup? {
+        libraryManager.libraryIndex.albums.first { $0.id == album }
+    }
+    
     private var tracks: [Track] {
-        libraryManager.tracks
-            .filter { $0.album == album }
-            .sorted { ($0.trackNumber ?? 9999) < ($1.trackNumber ?? 9999) }
+        albumGroup?.tracks ?? []
     }
     
     private var albumArtist: String {
-        tracks.first?.albumArtist ?? tracks.first?.artist ?? "Unknown Artist"
+        albumGroup?.albumArtist ?? "Unknown Artist"
     }
     
     private var albumYear: Int? {
-        tracks.first?.year
+        albumGroup?.year
     }
     
     var body: some View {
@@ -363,7 +357,7 @@ struct AlbumDetailView: View {
                     VStack(spacing: 12) {
                         // Album art
                         Group {
-                            if let artData = tracks.first?.albumArtData,
+                            if let artData = albumGroup?.albumArtData,
                                let uiImage = UIImage(data: artData) {
                                 Image(uiImage: uiImage)
                                     .resizable()
@@ -515,16 +509,8 @@ struct GenreDetailView: View {
     }
     
     private var tracks: [Track] {
-        var filtered = libraryManager.tracks.filter { $0.genre == genre }
-        
-        // Apply search filter
-        if !searchText.isEmpty {
-            filtered = filtered.filter { track in
-                track.displayTitle.localizedCaseInsensitiveContains(searchText) ||
-                track.displayArtist.localizedCaseInsensitiveContains(searchText) ||
-                (track.album?.localizedCaseInsensitiveContains(searchText) ?? false)
-            }
-        }
+        let base = libraryManager.libraryIndex.genres.first { $0.id == genre }?.tracks ?? []
+        let filtered = searchText.isEmpty ? base : base.filter { $0.matches(searchText) }
         
         // Apply sorting
         switch sortBy {

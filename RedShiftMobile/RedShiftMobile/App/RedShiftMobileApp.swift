@@ -47,9 +47,15 @@ struct RedShiftMobileApp: App {
                     Task {
                         await libraryManager.loadLibraryFromDatabase()
                         
-                        // Auto-scan only if library is empty
                         if libraryManager.tracks.isEmpty {
+                            // No local database yet: do a full initial scan.
                             await libraryManager.scanLibrary()
+                        } else {
+                            // Library already exists: reconcile incrementally so any
+                            // files/manifest changes since the last launch (including a
+                            // completed desktop sync while the app was closed) are picked
+                            // up automatically, without a destructive full rescan.
+                            await libraryManager.reconcileLibraryIncrementally()
                         }
                     }
                 }
@@ -60,11 +66,12 @@ struct RedShiftMobileApp: App {
                             await libraryManager.exportPlaylistsForSync()
                         }
                     } else if newPhase == .active && oldPhase == .background {
-                        // When coming back from background (after potential sync):
-                        // 1. Reload library from database (picks up new synced tracks)
-                        // 2. Import any new playlists
+                        // Coming back from background (after a potential desktop sync):
+                        // reconcile incrementally so the library reflects any newly
+                        // synced files/manifest automatically, with no manual "refresh
+                        // from Settings" step required.
                         Task {
-                            await libraryManager.loadLibraryFromDatabase()
+                            await libraryManager.reconcileLibraryIncrementally()
                         }
                     }
                 }

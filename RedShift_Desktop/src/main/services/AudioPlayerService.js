@@ -408,6 +408,7 @@ class AudioPlayerService {
           album: metadata.common.album || 'Unknown Album',
           year: metadata.common.year,
           track: metadata.common.track,
+          disk: metadata.common.disk,
           genre: metadata.common.genre ? metadata.common.genre.join(', ') : undefined,
           albumartist: metadata.common.albumartist
         },
