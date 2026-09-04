@@ -154,13 +154,21 @@
     display: block;
     width: 3px;
     border-radius: 1px;
-    background: var(--rs-accent);
+    /* Deliberately hot yellow-to-red rather than the app's muted accent
+       color — it needs to read as "something is actively happening here"
+       at a glance among rows of plain text, not blend in like the rest of
+       the UI. The gradient is relative to each bar's own box, so a taller
+       (louder) bar shows more of the red end, and a short one shows mostly
+       yellow — height and color reinforce the same signal together. */
+    background: linear-gradient(to top, #facc15, #ef4444);
+    box-shadow: 0 0 4px rgba(239, 68, 68, 0.35);
     height: 4px; /* resting height before JS starts writing live heights */
     transition: height 0.1s linear;
 }
 
 .now-playing-bars.paused .now-playing-bar {
     background: var(--rs-text-muted);
+    box-shadow: none;
     height: 4px !important;
     transition: none;
 }
