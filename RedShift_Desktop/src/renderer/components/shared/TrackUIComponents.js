@@ -42,6 +42,27 @@ function renderRatingDropdown(index, rating) {
 }
 
 /**
+ * Render the "now playing" indicator for a track row: a tiny 3-bar
+ * equalizer-style indicator (driven live by AudioPlayerVisualizer while
+ * playing) rather than the old pulsing ♫ glyph. Used identically across
+ * every track list renderer so all of them get the same indicator and any
+ * future visual tweak only needs to happen here.
+ * @param {boolean} isCurrentTrack - Whether this row is the active track
+ * @param {boolean} isPlaying - Whether playback is currently active (vs. paused)
+ * @returns {string} HTML string for the indicator, or '' if not the current track
+ */
+function renderNowPlayingIndicator(isCurrentTrack, isPlaying) {
+  if (!isCurrentTrack) return '';
+  const stateClass = isPlaying ? 'playing' : 'paused';
+  return `
+    <span class="now-playing-bars ${stateClass}">
+      <span class="now-playing-bar"></span>
+      <span class="now-playing-bar"></span>
+      <span class="now-playing-bar"></span>
+    </span>`;
+}
+
+/**
  * Render action buttons for a track (play, add to queue, add to playlist)
  * @param {number} index - Track index in the library/list
  * @returns {string} HTML string for action buttons

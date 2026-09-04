@@ -7,7 +7,8 @@ import SwiftUI
 struct MarqueeText: View {
     let text: String
     let font: Font
-    @State private var animate = false
+    @State private var offset: CGFloat = 0
+    @State private var scrollTask: Task<Void, Never>?
     
     var body: some View {
         GeometryReader { geometry in
@@ -15,21 +16,51 @@ struct MarqueeText: View {
                 .font(font)
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
-                .offset(x: animate ? -textWidth(text: text, font: font) - 20 : 0)
-                .animation(
-                    animate ? Animation.linear(duration: Double(text.count) * 0.2).repeatForever(autoreverses: false) : .default,
-                    value: animate
-                )
-                .onAppear {
-                    let textWidth = textWidth(text: text, font: font)
-                    if textWidth > geometry.size.width {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                            animate = true
-                        }
-                    }
-                }
+                .offset(x: offset)
                 .frame(width: geometry.size.width, alignment: .leading)
                 .clipped()
+                .onAppear {
+                    startScrolling(containerWidth: geometry.size.width)
+                }
+                .onDisappear {
+                    scrollTask?.cancel()
+                    scrollTask = nil
+                }
+                .onChange(of: text) { _, _ in
+                    offset = 0
+                    startScrolling(containerWidth: geometry.size.width)
+                }
+        }
+    }
+    
+    // Explicitly drives each scroll pass rather than using
+    // Animation.repeatForever, which loops a single linear pass back-to-back
+    // with no gap in between — the instant it finishes, it restarts, so the
+    // first couple of characters are already sliding away again before a
+    // reader can catch them. This instead: waits, animates one full pass,
+    // then snaps back to the start (no animation) and HOLDS there for a
+    // beat before the next pass begins.
+    private func startScrolling(containerWidth: CGFloat) {
+        scrollTask?.cancel()
+        let width = textWidth(text: text, font: font)
+        guard width > containerWidth else { return }
+        
+        // Matches the original target offset exactly (full text width plus a
+        // trailing gap) — only the restart timing/pause behavior changed.
+        let travelDistance = width + 20
+        let scrollDuration = Double(text.count) * 0.2
+        
+        scrollTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            while !Task.isCancelled {
+                withAnimation(.linear(duration: scrollDuration)) {
+                    offset = -travelDistance
+                }
+                try? await Task.sleep(nanoseconds: UInt64(scrollDuration * 1_000_000_000))
+                guard !Task.isCancelled else { return }
+                offset = 0 // instant snap back, no animation
+                try? await Task.sleep(nanoseconds: 1_000_000_000) // hold at start before next pass
+            }
         }
     }
     

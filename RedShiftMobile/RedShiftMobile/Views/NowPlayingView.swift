@@ -120,6 +120,16 @@ struct NowPlayingView: View {
                                 .frame(height: 30) // Tap target height
                             }
                             .frame(height: 30)
+                            // audioPlayer.currentTime only ticks 10x/sec (see
+                            // AudioPlayerService's progress timer), so without
+                            // an explicit animation the thumb sits still for
+                            // 100ms then snaps forward — a visible stair-step.
+                            // A linear animation matching that tick interval
+                            // makes it glide continuously between updates
+                            // instead. Skipped while the user is actively
+                            // dragging so their touch isn't fighting an
+                            // animation curve.
+                            .animation(isDraggingSlider ? nil : .linear(duration: 0.1), value: audioPlayer.currentTime)
                             
                             HStack {
                                 Text(formatTime(isDraggingSlider ? tempSliderValue : audioPlayer.currentTime))

@@ -185,10 +185,7 @@ function renderPlaylistTrackRow(playlistTrack, track, formatTime, playCountByPat
   
   // Check if this is the currently playing track
   const isCurrentTrack = currentTrackPath && track.path === currentTrackPath;
-  const nowPlayingIcon = isCurrentTrack ? (isPlaying 
-    ? '<span class="now-playing-icon playing">♫</span>' 
-    : '<span class="now-playing-icon paused">❙❙</span>') 
-    : '';
+  const nowPlayingIcon = renderNowPlayingIndicator(isCurrentTrack, isPlaying);
   
   return `
     <tr class="music-row playlist-track-row ${isCurrentTrack ? 'now-playing' : ''}" draggable="true" data-track-id="${playlistTrack.id}" data-file-path="${track.path}" data-position="${playlistTrack.position}">

@@ -159,10 +159,7 @@ function renderArtistTrackRow(track, index, favoriteByPath, ratingByPath, playCo
   
   // Check if this is the currently playing track
   const isCurrentTrack = currentTrackPath && track.path === currentTrackPath;
-  const nowPlayingIcon = isCurrentTrack ? (isPlaying 
-    ? '<span class="now-playing-icon playing">♫</span>' 
-    : '<span class="now-playing-icon paused">❙❙</span>') 
-    : '';
+  const nowPlayingIcon = renderNowPlayingIndicator(isCurrentTrack, isPlaying);
   
   return `
     <tr class="track-row ${isCurrentTrack ? 'now-playing' : ''}" data-index="${index}" data-path="${escapeHtml(track.path)}">

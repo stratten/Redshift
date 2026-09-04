@@ -40,6 +40,9 @@ class AudioPlayer {
     // Initialize equalizer component (Web Audio API)
     this.equalizer = new AudioPlayerEqualizer(this);
     
+    // Initialize now-playing visualizer (taps the equalizer's Web Audio graph)
+    this.visualizer = new AudioPlayerVisualizer(this);
+    
     // Initialize output device component
     this.outputDevice = new AudioPlayerOutputDevice(this);
     
@@ -98,6 +101,7 @@ class AudioPlayer {
       this.lastDisplayedTime = element.currentTime;
       this.updatePlaybackState(true);
       this.startProgressLoop();
+      this.visualizer.start();
       this.ui.logBoth('info', 'Audio playback started');
     });
 
@@ -106,6 +110,7 @@ class AudioPlayer {
       this.audioPlayerState.isPlaying = false;
       this.updatePlaybackState(false);
       this.stopProgressLoop();
+      this.visualizer.stop();
       this.ui.logBoth('info', 'Audio playback paused');
     });
 

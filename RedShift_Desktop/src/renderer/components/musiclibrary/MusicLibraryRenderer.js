@@ -47,10 +47,7 @@ function renderMusicTableHTML(filteredTracks, musicLibrary, favoriteByPath, rati
     
     // Check if this is the currently playing track
     const isCurrentTrack = currentTrackPath && track.path === currentTrackPath;
-    const nowPlayingIcon = isCurrentTrack ? (isPlaying 
-      ? '<span class="now-playing-icon playing">♫</span>' 
-      : '<span class="now-playing-icon paused">❙❙</span>') 
-      : '';
+    const nowPlayingIcon = renderNowPlayingIndicator(isCurrentTrack, isPlaying);
 
     return `
       <tr class="music-row ${isCurrentTrack ? 'now-playing' : ''}" data-index="${originalIndex}">

@@ -281,7 +281,15 @@
     height: 100%;
     background: var(--rs-accent);
     border-radius: 3px;
-    transition: width 0.1s;
+    /* Duration must exactly match UPDATE_INTERVAL_MS in AudioPlayerProgress.js.
+       JS only writes a new target width once per interval; the compositor
+       does the actual smooth, sub-pixel, every-display-frame interpolation
+       between old and new width via this transition. linear (not the
+       default ease) matches playback's constant real-time rate, and an
+       exact duration match means each transition finishes right as the next
+       write lands, so there's no overlap/restart stutter and no visible
+       once-per-interval "tick". */
+    transition: width 0.25s linear;
     pointer-events: none;
 }
 

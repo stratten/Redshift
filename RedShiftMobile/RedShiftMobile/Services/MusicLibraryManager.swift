@@ -240,9 +240,28 @@ class MusicLibraryManager: ObservableObject {
             // in roughly the time it takes to stat every file once.
             let existingFingerprints = try await databaseService.loadFileFingerprints()
             let deletedFilePaths = existingFingerprints.keys.filter { !diskFilePaths.contains($0) }
-            let changedEntries = diskEntries.filter { existingFingerprints[$0.filePath] != $0.fingerprint }
             
             let existingTracksByPath = Dictionary(uniqueKeysWithValues: tracks.map { ($0.filePath, $0) })
+            
+            // One-time migration: rows written before disc/track number
+            // extraction existed have both fields nil, and an unchanged
+            // fingerprint would otherwise hide them from reconciliation
+            // forever, leaving album order permanently wrong for any library
+            // synced before this fix shipped. Force exactly one re-parse of
+            // every such row, then never repeat the check again so a
+            // genuinely untagged file doesn't pay this cost on every launch.
+            let backfillStateKey = "discTrackNumberBackfillV1"
+            let backfillAlreadyApplied = try await databaseService.getSyncStateValue(backfillStateKey) != nil
+            let backfillFilePaths: Set<String> = backfillAlreadyApplied ? [] : Set(
+                diskEntries.compactMap { entry in
+                    guard let existing = existingTracksByPath[entry.filePath] else { return nil }
+                    return (existing.trackNumber == nil && existing.discNumber == nil) ? entry.filePath : nil
+                }
+            )
+            
+            let changedEntries = diskEntries.filter {
+                existingFingerprints[$0.filePath] != $0.fingerprint || backfillFilePaths.contains($0.filePath)
+            }
             
             var upserts: [Track] = []
             var processed = 0
@@ -316,6 +335,9 @@ class MusicLibraryManager: ObservableObject {
             // than silently skipping it as "already applied".
             if let manifest = manifest {
                 try await databaseService.setSyncStateValue("acceptedManifestRevision", value: manifest.revision)
+            }
+            if !backfillAlreadyApplied {
+                try await databaseService.setSyncStateValue(backfillStateKey, value: "done")
             }
         } catch {
             await MainActor.run {
@@ -473,6 +495,22 @@ class MusicLibraryManager: ObservableObject {
                         trackNumber = ID3TagReader.leadingInt(from: raw)
                     }
                     if identifier == "id3/TPOS" && discNumber == nil {
+                        let raw: String? = try? await item.load(.stringValue)
+                        discNumber = ID3TagReader.leadingInt(from: raw)
+                    }
+                    // FLAC/OGG/Opus store metadata as Vorbis comments, an entirely
+                    // different tag format from ID3 (no "ID3" header at all, so
+                    // ID3TagReader's fallback below never applies to these files).
+                    // AVFoundation still surfaces them, but under a "vorb/" keyspace
+                    // with different field names, e.g. "vorb/TRACKNUMBER" = "3/23".
+                    if identifier == "vorb/ALBUMARTIST" && albumArtist == nil {
+                        albumArtist = try? await item.load(.stringValue)
+                    }
+                    if identifier == "vorb/TRACKNUMBER" && trackNumber == nil {
+                        let raw: String? = try? await item.load(.stringValue)
+                        trackNumber = ID3TagReader.leadingInt(from: raw)
+                    }
+                    if identifier == "vorb/DISCNUMBER" && discNumber == nil {
                         let raw: String? = try? await item.load(.stringValue)
                         discNumber = ID3TagReader.leadingInt(from: raw)
                     }
