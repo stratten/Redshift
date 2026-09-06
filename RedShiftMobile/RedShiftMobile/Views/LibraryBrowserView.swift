@@ -37,6 +37,7 @@ enum LibraryCategory: String, CaseIterable {
 
 struct LibraryBrowserView: View {
     @EnvironmentObject var libraryManager: MusicLibraryManager
+    @Environment(\.dockBottomInset) private var dockBottomInset
     @Binding var navigationPath: NavigationPath
     
     var body: some View {
@@ -58,6 +59,7 @@ struct LibraryBrowserView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
             }
+            .safeAreaPadding(.bottom, dockBottomInset)
             .background(Color(red: 0.96, green: 0.96, blue: 0.96))
             .navigationTitle("Library")
             .navigationBarTitleDisplayMode(.large)
@@ -178,6 +180,7 @@ struct LibraryCategoryCard: View {
 // MARK: - Artists List View
 struct ArtistsListView: View {
     @EnvironmentObject var libraryManager: MusicLibraryManager
+    @Environment(\.dockBottomInset) private var dockBottomInset
     @State private var sortAscending = true
     @State private var searchText = ""
     @State private var viewMode: ArtistViewMode = .list
@@ -205,7 +208,13 @@ struct ArtistsListView: View {
         }
         .navigationTitle("Artists")
         .navigationBarTitleDisplayMode(.large)
-        .searchable(text: $searchText, prompt: "Search artists")
+        // iOS 26's default .searchable placement moved to a persistent
+        // bottom bar on iPhone (Apple's new "reachability" search design) —
+        // explicitly pinning it back to the navigation bar drawer restores
+        // the classic top placement that collapses on scroll, matching every
+        // other screen's pre-iOS-26 behavior instead of fighting our own
+        // custom bottom tab bar for the same screen real estate.
+        .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "Search artists")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 HStack(spacing: 16) {
@@ -241,6 +250,7 @@ struct ArtistsListView: View {
             }
         }
         .listStyle(.plain)
+        .safeAreaPadding(.bottom, dockBottomInset)
     }
     
     private var gridView: some View {
@@ -259,6 +269,7 @@ struct ArtistsListView: View {
             .padding(.horizontal, 16)
             .padding(.top, 12)
         }
+        .safeAreaPadding(.bottom, dockBottomInset)
     }
 }
 
@@ -417,6 +428,7 @@ extension String {
 // MARK: - Albums List View
 struct AlbumsListView: View {
     @EnvironmentObject var libraryManager: MusicLibraryManager
+    @Environment(\.dockBottomInset) private var dockBottomInset
     @State private var sortAscending = true
     @State private var searchText = ""
     @State private var viewMode: AlbumViewMode = .list
@@ -445,7 +457,7 @@ struct AlbumsListView: View {
         }
         .navigationTitle("Albums")
         .navigationBarTitleDisplayMode(.large)
-        .searchable(text: $searchText, prompt: "Search albums")
+        .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "Search albums")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 HStack(spacing: 16) {
@@ -481,6 +493,7 @@ struct AlbumsListView: View {
             }
         }
         .listStyle(.plain)
+        .safeAreaPadding(.bottom, dockBottomInset)
     }
     
     private var gridView: some View {
@@ -499,6 +512,7 @@ struct AlbumsListView: View {
             .padding(.horizontal, 16)
             .padding(.top, 12)
         }
+        .safeAreaPadding(.bottom, dockBottomInset)
     }
 }
 
@@ -644,6 +658,7 @@ struct SongsListView: View {
 // MARK: - Genres List View
 struct GenresListView: View {
     @EnvironmentObject var libraryManager: MusicLibraryManager
+    @Environment(\.dockBottomInset) private var dockBottomInset
     @State private var sortAscending = true
     @State private var searchText = ""
     
@@ -677,9 +692,10 @@ struct GenresListView: View {
                 }
             }
         }
+        .safeAreaPadding(.bottom, dockBottomInset)
         .navigationTitle("Genres")
         .navigationBarTitleDisplayMode(.large)
-        .searchable(text: $searchText, prompt: "Search genres")
+        .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "Search genres")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: { sortAscending.toggle() }) {
@@ -694,6 +710,7 @@ struct GenresListView: View {
 struct RecentlyPlayedView: View {
     @EnvironmentObject var libraryManager: MusicLibraryManager
     @EnvironmentObject var audioPlayer: AudioPlayerService
+    @Environment(\.dockBottomInset) private var dockBottomInset
     @State private var searchText = ""
     
     var recentlyPlayedTracks: [Track] {
@@ -782,11 +799,12 @@ struct RecentlyPlayedView: View {
                     }
                 }
                 .listStyle(.plain)
+                .safeAreaPadding(.bottom, dockBottomInset)
             }
         }
         .navigationTitle("Recently Played")
         .navigationBarTitleDisplayMode(.large)
-        .searchable(text: $searchText, prompt: "Search recently played")
+        .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "Search recently played")
     }
     
     private func formatRelativeTime(_ date: Date) -> String {

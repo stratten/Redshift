@@ -16,3 +16,53 @@
 @import 'doppler-sync.css';
 @import 'modals.css';
 @import 'shared.css';
+
+/* Shared fixed-column contract for every track table. */
+.music-table th.col-duration,
+.music-table th.duration-col,
+.music-table th.track-duration {
+    width: 72px;
+    min-width: 72px;
+    max-width: 72px;
+}
+
+.music-table th.col-playcount {
+    width: 64px;
+    min-width: 64px;
+    max-width: 64px;
+}
+
+.music-table th.col-favourite,
+.music-table th.col-favorite {
+    width: 56px;
+    min-width: 56px;
+    max-width: 56px;
+}
+
+.music-table th.col-rating {
+    width: 72px;
+    min-width: 72px;
+    max-width: 72px;
+}
+
+.music-table th.col-actions {
+    width: 80px;
+    min-width: 80px;
+    max-width: 80px;
+}
+
+/* Keep fixed-width track-table columns centered across library, artist, album, and playlist views. */
+.music-table .col-duration,
+.music-table th.duration-col,
+.music-table td.duration-col,
+.music-table th.track-duration,
+.music-table td.track-duration,
+.music-table .col-playcount,
+.music-table .col-favourite,
+.music-table .col-favorite,
+.music-table .col-rating,
+.music-table .col-actions,
+.music-table .track-no,
+.music-table .duration {
+    text-align: center;
+}

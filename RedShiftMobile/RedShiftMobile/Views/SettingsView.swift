@@ -6,6 +6,7 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject var audioPlayer: AudioPlayerService
     @EnvironmentObject var libraryManager: MusicLibraryManager
+    @Environment(\.dockBottomInset) private var dockBottomInset
     
     @State private var showingClearLibraryAlert = false
     @State private var showingRescanAlert = false
@@ -128,6 +129,7 @@ struct SettingsView: View {
                     Text("This will remove all metadata but keep your music files intact. Use this if you're experiencing database issues.")
                 }
             }
+            .safeAreaPadding(.bottom, dockBottomInset)
             .navigationTitle("Settings")
             .alert("Clear Library Database?", isPresented: $showingClearLibraryAlert) {
                 Button("Cancel", role: .cancel) {}
@@ -144,6 +146,7 @@ struct SettingsView: View {
 // MARK: - Storage View
 struct StorageView: View {
     @EnvironmentObject var libraryManager: MusicLibraryManager
+    @Environment(\.dockBottomInset) private var dockBottomInset
     @State private var showingDeleteAllAlert = false
     @State private var isDeleting = false
     
@@ -205,6 +208,7 @@ struct StorageView: View {
                 Text("Swipe left on a track to delete it. You can also sync more files from RedShift Desktop via USB.")
             }
         }
+        .safeAreaPadding(.bottom, dockBottomInset)
         .navigationTitle("Storage")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

@@ -500,6 +500,14 @@
     width: 90%;
 }
 
+.equalizer-modal-content .modal-header {
+    justify-content: space-between;
+}
+
+.equalizer-modal-content .modal-header h2 {
+    margin: 0;
+}
+
 .equalizer-modal-body {
     display: flex;
     flex-direction: column;

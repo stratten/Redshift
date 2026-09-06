@@ -6,6 +6,7 @@ import SwiftUI
 struct PlaylistsView: View {
     @EnvironmentObject var audioPlayer: AudioPlayerService
     @EnvironmentObject var libraryManager: MusicLibraryManager
+    @Environment(\.dockBottomInset) private var dockBottomInset
     
     @State private var showingCreatePlaylist = false
     @State private var newPlaylistName = ""
@@ -51,6 +52,7 @@ struct PlaylistsView: View {
                         }
                         .onDelete(perform: deletePlaylists)
                     }
+                    .safeAreaPadding(.bottom, dockBottomInset)
                 }
             }
             .navigationTitle("Playlists")
@@ -160,6 +162,7 @@ struct CreatePlaylistSheet: View {
 struct PlaylistDetailView: View {
     @EnvironmentObject var audioPlayer: AudioPlayerService
     @EnvironmentObject var libraryManager: MusicLibraryManager
+    @Environment(\.dockBottomInset) private var dockBottomInset
     
     let playlist: Playlist
     @State private var showingAddTracks = false
@@ -277,11 +280,14 @@ struct PlaylistDetailView: View {
                     }
                 }
                 .listStyle(.insetGrouped)
+                .safeAreaPadding(.bottom, dockBottomInset)
             }
         }
         .navigationTitle(playlist.name)
         .navigationBarTitleDisplayMode(.large)
-        .searchable(text: $searchText, prompt: "Search tracks")
+        // See LibraryBrowserView's Artists list for why placement is pinned
+        // explicitly (iOS 26 defaults .searchable to a bottom bar).
+        .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "Search tracks")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: { showingAddTracks = true }) {

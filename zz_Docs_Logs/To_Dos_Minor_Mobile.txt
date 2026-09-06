@@ -1,0 +1,67 @@
+==================================================
+New 
+--------------------------------------------------
+
+
+
+
+==================================================
+In Progress
+==================================================
+
+
+- When looking at the list of songs on an album, there is unnecessary space to the left, since the album art is already present in the top part of the screen. 
+
+- We still need a little bit more padding at the bottom for the area with the controls. We seem to have still pushed it a bit too far to the bottom. It's better than it was at the beginning, when there was probably three times as much space as needed, but now it feels a bit cramped. Additionally, for ergonomic purposes, we should probably have them be closer together in the center for ergonomics, so that it's easy to reach each of them with one hand. 
+
+- For the visualizer, it actually looks quite good, but it seems a bit jumpy, particularly compared to the desktop version. Can we do anything to smooth that out slightly, even if... ...slightly artificial? 
+
+- The search bar seems to now be present unconditionally, and has moved to the bottom. I'm not sure why that is, but I don't like it, and it shouldn't have happened. 
+
+- With the now playing bar, it's much more responsive, which is good, and accurate, which is good, and showing the visualizer, which is great, but it seems to have a fully gray background, even though it has the appearance of a floating island. If it's going to reserve the entire background area anyway, we might as well just not make it look like an island. However, if we can have the background actually show what would be present beneath the island, that would be preferred. 
+
+
+
+
+
+
+--------------------------------------------------
+- Modularization/Refactoring:
+--------------------------------------------------
+
+
+
+
+
+
+==================================================
+To Review 
+==================================================
+
+
+
+
+
+
+
+
+
+
+
+
+==================================================
+Deferred
+==================================================
+
+
+
+==================================================
+Done 
+--------------------------------------------------
+
+
+
+==================================================
+Discarded
+--------------------------------------------------
+- Live transcription for parakeet models. 

@@ -6,6 +6,7 @@ import SwiftUI
 struct LibraryView: View {
     @EnvironmentObject var audioPlayer: AudioPlayerService
     @EnvironmentObject var libraryManager: MusicLibraryManager
+    @Environment(\.dockBottomInset) private var dockBottomInset
     
     @State private var searchText = ""
     @State private var sortOption: SortOption = .artist
@@ -199,6 +200,7 @@ struct LibraryView: View {
                         }
                     }
                     .listStyle(.plain)
+                    .safeAreaPadding(.bottom, dockBottomInset)
                 }
             }
             .navigationTitle("Songs")

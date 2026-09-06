@@ -85,6 +85,7 @@ struct MarqueeText: View {
 struct ArtistDetailView: View {
     @EnvironmentObject var libraryManager: MusicLibraryManager
     @EnvironmentObject var audioPlayer: AudioPlayerService
+    @Environment(\.dockBottomInset) private var dockBottomInset
     
     let artist: String
     
@@ -255,6 +256,7 @@ struct ArtistDetailView: View {
                 .padding(.bottom, 20)
             }
         }
+        .safeAreaPadding(.bottom, dockBottomInset)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {
@@ -269,6 +271,7 @@ struct ArtistDetailView: View {
 struct ArtistAllTracksView: View {
     @EnvironmentObject var audioPlayer: AudioPlayerService
     @EnvironmentObject var libraryManager: MusicLibraryManager
+    @Environment(\.dockBottomInset) private var dockBottomInset
     
     let artist: String
     @State private var sortBy: SortOption = .album
@@ -329,9 +332,12 @@ struct ArtistAllTracksView: View {
                     }
             }
         }
+        .safeAreaPadding(.bottom, dockBottomInset)
         .navigationTitle("All Tracks")
         .navigationBarTitleDisplayMode(.inline)
-        .searchable(text: $searchText, prompt: "Search tracks")
+        // See LibraryBrowserView's Artists list for why placement is pinned
+        // explicitly (iOS 26 defaults .searchable to a bottom bar).
+        .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "Search tracks")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 HStack(spacing: 16) {
@@ -360,6 +366,7 @@ struct ArtistAllTracksView: View {
 struct AlbumDetailView: View {
     @EnvironmentObject var audioPlayer: AudioPlayerService
     @EnvironmentObject var libraryManager: MusicLibraryManager
+    @Environment(\.dockBottomInset) private var dockBottomInset
     
     let album: String
     
@@ -466,11 +473,19 @@ struct AlbumDetailView: View {
                         ForEach(tracks) { track in
                             HStack(spacing: 12) {
                                 if let trackNum = track.trackNumber {
+                                    // minWidth (not a fixed width) keeps
+                                    // single- and double-digit track numbers
+                                    // aligned to the same column without
+                                    // reserving a full 30pt of mostly-empty
+                                    // space to the left of every row — there's
+                                    // no per-row thumbnail here to justify
+                                    // that width; the album art already
+                                    // appears once, above, in the header.
                                     Text("\(trackNum)")
                                         .font(.subheadline)
                                         .fontWeight(.medium)
                                         .foregroundColor(.secondary)
-                                        .frame(width: 30, alignment: .trailing)
+                                        .frame(minWidth: 18, alignment: .trailing)
                                 }
                                 
                                 VStack(alignment: .leading, spacing: 4) {
@@ -503,8 +518,12 @@ struct AlbumDetailView: View {
                             }
                             
                             if track.id != tracks.last?.id {
+                                // 16 (row's own leading padding) + 18 (track
+                                // number column's minWidth) + 12 (HStack
+                                // spacing) = 46, matching the new tighter
+                                // column above.
                                 Divider()
-                                    .padding(.leading, track.trackNumber != nil ? 58 : 16)
+                                    .padding(.leading, track.trackNumber != nil ? 46 : 16)
                             }
                         }
                     }
@@ -514,6 +533,7 @@ struct AlbumDetailView: View {
                     .padding(.bottom, 20)
                 }
         }
+        .safeAreaPadding(.bottom, dockBottomInset)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {
@@ -528,6 +548,7 @@ struct AlbumDetailView: View {
 struct GenreDetailView: View {
     @EnvironmentObject var audioPlayer: AudioPlayerService
     @EnvironmentObject var libraryManager: MusicLibraryManager
+    @Environment(\.dockBottomInset) private var dockBottomInset
     
     let genre: String
     @State private var sortBy: SortOption = .artist
@@ -589,9 +610,10 @@ struct GenreDetailView: View {
                     }
             }
         }
+        .safeAreaPadding(.bottom, dockBottomInset)
         .navigationTitle(genre)
         .navigationBarTitleDisplayMode(.large)
-        .searchable(text: $searchText, prompt: "Search tracks")
+        .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "Search tracks")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Menu {

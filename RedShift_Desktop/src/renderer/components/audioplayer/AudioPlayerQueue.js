@@ -3,6 +3,7 @@
 class AudioPlayerQueue {
   constructor(audioPlayer) {
     this.player = audioPlayer; // Reference to main AudioPlayer
+    this.queueAdvancePromise = null;
   }
   
   /**
@@ -232,6 +233,65 @@ class AudioPlayerQueue {
     // Setup drag and drop for reordering
     this.setupQueueDragAndDrop();
   }
+
+  /**
+   * Animate skipped queue entries out and move the remaining rows into place.
+   */
+  async animateQueueAdvance(selectedQueueIndex) {
+    const queueTrackList = document.getElementById('queueTrackList');
+    if (!queueTrackList || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      this.renderQueueModal();
+      return;
+    }
+
+    const queueItems = Array.from(queueTrackList.querySelectorAll('.queue-track-item'));
+    const departingItems = queueItems.filter(item => Number(item.dataset.queueIndex) <= selectedQueueIndex);
+    if (departingItems.length === 0) {
+      this.renderQueueModal();
+      return;
+    }
+
+    const remainingItems = queueItems.filter(item => !departingItems.includes(item));
+    const previousTopByItem = new Map(remainingItems.map(item => [item, item.getBoundingClientRect().top]));
+    queueTrackList.style.pointerEvents = 'none';
+
+    try {
+      await Promise.all(departingItems.map(item => item.animate(
+        [
+          { opacity: 1, transform: 'translateX(0)' },
+          { opacity: 0, transform: 'translateX(-20px)' }
+        ],
+        { duration: 160, easing: 'ease-in', fill: 'forwards' }
+      ).finished.catch(() => undefined)));
+
+      departingItems.forEach(item => item.remove());
+
+      const movementAnimations = remainingItems.map(item => {
+        const previousTop = previousTopByItem.get(item);
+        const offset = previousTop - item.getBoundingClientRect().top;
+        if (offset === 0) return null;
+
+        item.style.transform = `translateY(${offset}px)`;
+        const animation = item.animate(
+          [
+            { transform: `translateY(${offset}px)` },
+            { transform: 'translateY(0)' }
+          ],
+          { duration: 220, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)', fill: 'forwards' }
+        );
+        return animation.finished.catch(() => undefined).then(() => {
+          item.style.transform = 'translateY(0)';
+          animation.cancel();
+          item.style.transform = '';
+        });
+      }).filter(Boolean);
+
+      await Promise.all(movementAnimations);
+      this.renderQueueModal();
+    } finally {
+      queueTrackList.style.pointerEvents = '';
+    }
+  }
   
   /**
    * Setup event listeners for the queue modal
@@ -283,12 +343,25 @@ class AudioPlayerQueue {
       queueTrackList.addEventListener('click', async (e) => {
         const trackItem = e.target.closest('.queue-track-item');
         if (trackItem && !e.target.closest('.queue-remove-btn')) {
+          if (this.queueAdvancePromise) return;
+
           const queueIndex = parseInt(trackItem.dataset.queueIndex);
           this.player.audioPlayerState.currentTrackIndex = queueIndex;
           const track = this.player.audioPlayerState.currentContextTracks[queueIndex];
           if (track) {
-            await this.player.playTrack(track.path, track);
-            this.renderQueueModal(); // Update modal to reflect new current track
+            const pendingAdvance = (async () => {
+              await this.player.playTrack(track.path, track);
+              await this.animateQueueAdvance(queueIndex);
+            })();
+            this.queueAdvancePromise = pendingAdvance;
+
+            try {
+              await pendingAdvance;
+            } finally {
+              if (this.queueAdvancePromise === pendingAdvance) {
+                this.queueAdvancePromise = null;
+              }
+            }
           }
         }
       });

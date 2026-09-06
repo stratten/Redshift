@@ -25,7 +25,13 @@ struct CustomTabBar: View {
     ]
     
     var body: some View {
-        HStack(spacing: 0) {
+        // Fixed spacing between compact (non-stretching) buttons instead of
+        // each item claiming `.frame(maxWidth: .infinity)`, then centering
+        // that whole cluster in the full-width row below. Spreading 3 items
+        // edge-to-edge across the full screen width put Library and
+        // Settings near the two corners — hard to reach with one thumb.
+        // Clustering them centrally keeps every tab reachable one-handed.
+        HStack(spacing: 40) {
             ForEach(items.indices, id: \.self) { index in
                 Button(action: { selectedTab = index }) {
                     VStack(spacing: 4) {
@@ -36,22 +42,22 @@ struct CustomTabBar: View {
                             .fontWeight(selectedTab == index ? .semibold : .regular)
                     }
                     .foregroundColor(selectedTab == index ? .purple : Color(red: 0.55, green: 0.55, blue: 0.58))
-                    .frame(maxWidth: .infinity)
+                    .frame(minWidth: 50)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
         }
+        .frame(maxWidth: .infinity)
         .padding(.top, 8)
-        // ContentView attaches this bar via .ignoresSafeArea(edges: .bottom)
-        // inside a .safeAreaInset — by default that inset content ALSO
-        // inherits the device's home-indicator clearance on top of any
-        // padding added here, effectively reserving space twice. Now that
-        // the safe area is explicitly opted out of, this fixed value is the
-        // ONLY bottom clearance applied, so it's kept just large enough to
-        // clear the home indicator's gesture strip without the previous
-        // (roughly) 8pt-of-our-own + ~34pt-of-automatic-safe-area stacking.
-        .padding(.bottom, 12)
+        // ContentView docks this bar in a plain VStack (not
+        // `.safeAreaInset`), so there is no automatic ~34pt home-indicator
+        // reservation stacking underneath this padding — this fixed value is
+        // the ONLY bottom clearance applied. Previous values (12pt, then
+        // less) left the bar feeling cramped against the home-indicator
+        // gesture strip; 18pt gives a bit more breathing room while staying
+        // far short of the original ~3x-too-much safeAreaInset gap.
+        .padding(.bottom, 18)
         .background(
             Color.white
                 .overlay(alignment: .top) {

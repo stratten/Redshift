@@ -5,6 +5,7 @@ import SwiftUI
 
 struct MiniPlayerView: View {
     @EnvironmentObject var audioPlayer: AudioPlayerService
+    @EnvironmentObject var spectrumAnalyzer: AudioSpectrumAnalyzer
     
     /// Invoked when the user taps the album art / track info area to open
     /// the full Now Playing screen. Deliberately NOT attached to the whole
@@ -24,7 +25,13 @@ struct MiniPlayerView: View {
                 // the open gesture itself) feel unreliable. Scoping the tap
                 // target to just this Button removes that overlap entirely.
                 Button(action: onTap) {
-                    HStack(spacing: 12) {
+                    // spacing: 0 here (instead of the outer HStack's uniform
+                    // 12pt gap) because the visualizer is now 1.5x larger —
+                    // its own explicit trailing padding below absorbs that
+                    // extra width so the track title still starts at
+                    // exactly the same x position as before, with no extra
+                    // space reserved anywhere in the row.
+                    HStack(spacing: 0) {
                         Group {
                             if let albumArtData = currentTrack.albumArtData,
                                let uiImage = UIImage(data: albumArtData) {
@@ -44,6 +51,21 @@ struct MiniPlayerView: View {
                                     )
                             }
                         }
+                        .padding(.trailing, 12)
+                        
+                        VisualizerBarsView(
+                            levels: spectrumAnalyzer.bandLevels,
+                            isActive: audioPlayer.isPlaying,
+                            minHeight: 4.5,
+                            maxHeight: 21,
+                            barWidth: 3.75,
+                            spacing: 3
+                        )
+                        // 1.5x bars are 5.75pt wider than the old size (3
+                        // bars * 3.75 width + 2 gaps * 3 spacing = 17.25, vs
+                        // 11.5 before) — trimming this trailing gap from
+                        // 12pt to 6.25pt absorbs exactly that difference.
+                        .padding(.trailing, 6.25)
                         
                         VStack(alignment: .leading, spacing: 2) {
                             Text(currentTrack.displayTitle)
@@ -110,4 +132,5 @@ struct MiniPlayerView: View {
 #Preview {
     MiniPlayerView(onTap: {})
         .environmentObject(AudioPlayerService())
+        .environmentObject(AudioSpectrumAnalyzer())
 }

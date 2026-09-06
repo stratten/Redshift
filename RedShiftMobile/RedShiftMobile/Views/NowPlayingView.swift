@@ -6,6 +6,7 @@ import SwiftUI
 struct NowPlayingView: View {
     @EnvironmentObject var audioPlayer: AudioPlayerService
     @EnvironmentObject var libraryManager: MusicLibraryManager
+    @EnvironmentObject var spectrumAnalyzer: AudioSpectrumAnalyzer
     
     @State private var isDraggingSlider = false
     @State private var tempSliderValue: Double = 0
@@ -75,6 +76,22 @@ struct NowPlayingView: View {
                         }
                         .padding(.horizontal, 32)
                         .padding(.top, 24)
+                        
+                        // 7 bands instead of the mini player's 3 — same real
+                        // FFT magnitude spectrum, just sliced narrower, since
+                        // the full player has the room to show that extra
+                        // frequency detail (see AudioSpectrumAnalyzer's
+                        // fullBandLevels).
+                        VisualizerBarsView(
+                            levels: spectrumAnalyzer.fullBandLevels,
+                            isActive: audioPlayer.isPlaying,
+                            minHeight: 6,
+                            maxHeight: 40,
+                            barWidth: 7,
+                            spacing: 6
+                        )
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 20)
                         
                         // Progress slider
                         VStack(spacing: 8) {
@@ -504,4 +521,5 @@ struct QueueView: View {
     NowPlayingView()
         .environmentObject(AudioPlayerService())
         .environmentObject(MusicLibraryManager())
+        .environmentObject(AudioSpectrumAnalyzer())
 }
