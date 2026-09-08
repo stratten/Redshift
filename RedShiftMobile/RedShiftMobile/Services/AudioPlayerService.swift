@@ -5,6 +5,7 @@ import Foundation
 import AVFoundation
 import MediaPlayer
 import Combine
+import UIKit
 
 enum RepeatMode: String, Codable {
     case off = "off"
@@ -383,7 +384,13 @@ class AudioPlayerService: NSObject, ObservableObject {
             MPNowPlayingInfoPropertyPlaybackRate: isPlaying ? 1.0 : 0.0
         ]
         
-        // TODO: Add album artwork when we implement cover art extraction
+        // The app already extracts and stores embedded cover art in Track.
+        // Supplying it to MPNowPlayingInfoCenter lets iOS use the real cover
+        // in the Dynamic Island, Lock Screen, Control Center, and AirPlay
+        // surfaces instead of its generic gray music-note placeholder.
+        if let artworkData = track.albumArtData, let artworkImage = UIImage(data: artworkData) {
+            nowPlayingInfo[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: artworkImage.size) { _ in artworkImage }
+        }
         
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
     }

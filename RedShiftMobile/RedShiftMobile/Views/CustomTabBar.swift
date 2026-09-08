@@ -17,23 +17,22 @@ struct CustomTabBarItem {
 
 struct CustomTabBar: View {
     @Binding var selectedTab: Int
+    let onTabTapped: (Int) -> Void
     
     let items: [CustomTabBarItem] = [
         CustomTabBarItem(icon: "music.note.list", label: "Library"),
-        CustomTabBarItem(icon: "music.note.list", label: "Playlists"),
         CustomTabBarItem(icon: "gearshape.fill", label: "Settings")
     ]
     
     var body: some View {
         // Fixed spacing between compact (non-stretching) buttons instead of
         // each item claiming `.frame(maxWidth: .infinity)`, then centering
-        // that whole cluster in the full-width row below. Spreading 3 items
-        // edge-to-edge across the full screen width put Library and
-        // Settings near the two corners — hard to reach with one thumb.
+        // that whole cluster in the full-width row below. This keeps Library
+        // and Settings reachable with one thumb.
         // Clustering them centrally keeps every tab reachable one-handed.
         HStack(spacing: 40) {
             ForEach(items.indices, id: \.self) { index in
-                Button(action: { selectedTab = index }) {
+                Button(action: { onTabTapped(index) }) {
                     VStack(spacing: 4) {
                         Image(systemName: items[index].icon)
                             .font(.system(size: 22))
@@ -70,5 +69,5 @@ struct CustomTabBar: View {
 }
 
 #Preview {
-    CustomTabBar(selectedTab: .constant(0))
+    CustomTabBar(selectedTab: .constant(0), onTabTapped: { _ in })
 }

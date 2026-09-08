@@ -1,5 +1,46 @@
 /* Modal Styles */
 
+.audio-visualization-modal-content {
+    max-width: 860px;
+    padding: 20px;
+    overflow: visible;
+}
+
+.audio-visualization-modal-content .modal-header {
+    justify-content: space-between;
+    margin-bottom: 14px;
+}
+
+.audio-visualization-modal-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.audio-visualization-modal-actions select {
+    height: 32px;
+    padding: 0 10px;
+    border: 1px solid var(--rs-border-color);
+    border-radius: 6px;
+    background: var(--rs-bg-surface-sunken);
+    color: var(--rs-text-primary);
+}
+
+.audio-visualization-modal-body {
+    height: min(55vh, 420px);
+    padding: 8px;
+    border: 1px solid rgba(250, 204, 21, 0.3);
+    border-radius: 10px;
+    background: #100f16;
+    box-shadow: inset 0 0 24px rgba(239, 68, 68, 0.12);
+}
+
+.audio-visualization-modal-body canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
 .transfer-modal {
     position: fixed;
     top: 0;
@@ -676,6 +717,166 @@
     font-weight: 600;
     min-width: 36px;
     text-align: right;
+}
+
+/* ===============================================
+   Playback Speed Modal Styles
+   =============================================== */
+
+.playback-speed-popover {
+    position: fixed;
+    z-index: 1100;
+    display: none;
+    width: 280px;
+    padding: 16px;
+    background: var(--rs-bg-surface);
+    border: 1px solid var(--rs-border-color);
+    border-radius: 12px;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
+    flex-direction: column;
+    gap: 14px;
+}
+
+.playback-speed-popover.show {
+    display: flex;
+    animation: playbackSpeedPopoverIn 0.15s ease-out;
+}
+
+@keyframes playbackSpeedPopoverIn {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.playback-speed-popover-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    color: var(--rs-text-primary);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.playback-speed-value {
+    color: var(--rs-accent);
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.playback-speed-slider-shell {
+    position: relative;
+    height: 28px;
+    margin-top: 4px;
+}
+
+.playback-speed-slider {
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    margin: 0;
+    background: linear-gradient(to right, var(--rs-accent), var(--rs-border-color));
+    border-radius: 3px;
+    cursor: pointer;
+    outline: none;
+    position: absolute;
+    top: 6px;
+    left: 0;
+    z-index: 1;
+    -webkit-appearance: none;
+}
+
+.playback-speed-slider::-webkit-slider-thumb {
+    width: 20px;
+    height: 20px;
+    appearance: none;
+    background: var(--rs-bg-surface);
+    border: 3px solid var(--rs-accent);
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    -webkit-appearance: none;
+}
+
+.playback-speed-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    background: var(--rs-bg-surface);
+    border: 3px solid var(--rs-accent);
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+}
+
+.playback-speed-ticks {
+    position: absolute;
+    top: 15px;
+    right: 10px;
+    left: 10px;
+    height: 7px;
+    pointer-events: none;
+}
+
+.playback-speed-ticks span {
+    position: absolute;
+    left: var(--position);
+    width: 1px;
+    height: 4px;
+    background: var(--rs-text-secondary);
+    opacity: 0.75;
+    transform: translateX(-50%);
+}
+
+.playback-speed-ticks .major {
+    width: 2px;
+    height: 7px;
+    background: var(--rs-accent);
+    opacity: 1;
+}
+
+.playback-speed-range-labels {
+    position: relative;
+    height: 16px;
+    margin: 0 10px;
+    color: var(--rs-text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.playback-speed-range-labels span {
+    position: absolute;
+    left: var(--position);
+    transform: translateX(-50%);
+}
+
+.playback-speed-range-labels span:first-child {
+    transform: none;
+}
+
+.playback-speed-range-labels span:last-child {
+    transform: translateX(-100%);
+}
+
+.playback-speed-reset {
+    align-self: center;
+    padding: 6px 12px;
+    background: var(--rs-accent-soft);
+    border: 1px solid var(--rs-accent);
+    border-radius: 6px;
+    color: var(--rs-accent);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.playback-speed-reset:hover {
+    background: var(--rs-accent);
+    color: var(--rs-text-on-accent);
 }
 
 /* ============================================

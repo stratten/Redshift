@@ -3,6 +3,18 @@
  * Data processing for Add Tracks modal
  */
 
+function getPlaylistTrackArtistCredit(track) {
+  return parseTrackArtistCredit(
+    track.metadata?.common?.artist,
+    track.metadata?.common?.title
+  );
+}
+
+function matchesPlaylistTrackArtist(track, artistName) {
+  if (!artistName) return true;
+  return getPlaylistTrackArtistCredit(track).allArtistKeys.includes(normalizeArtistKey(artistName));
+}
+
 function populateAddBrowser(musicLibrary) {
   const all = musicLibrary || [];
   const genres = new Set();
@@ -10,7 +22,7 @@ function populateAddBrowser(musicLibrary) {
   const albums = new Set();
   all.forEach(track => {
     genres.add(track.metadata?.common?.genre || 'Unknown Genre');
-    artists.add(track.metadata?.common?.artist || 'Unknown Artist');
+    getPlaylistTrackArtistCredit(track).allArtists.forEach(artist => artists.add(artist));
     albums.add(track.metadata?.common?.album || 'Unknown Album');
   });
   populateAddColumn('addGenresList', genres, 'All Genres');
@@ -40,8 +52,9 @@ function populateAddArtists(musicLibrary, genreFilter) {
   const set = new Set();
   all.forEach(t => {
     const genre = t.metadata?.common?.genre || 'Unknown Genre';
-    const artist = t.metadata?.common?.artist || 'Unknown Artist';
-    if (!genreFilter || genre === genreFilter) set.add(artist);
+    if (!genreFilter || genre === genreFilter) {
+      getPlaylistTrackArtistCredit(t).allArtists.forEach(artist => set.add(artist));
+    }
   });
   populateAddColumn('addArtistsList', set, 'All Artists');
 }
@@ -51,10 +64,9 @@ function populateAddAlbums(musicLibrary, genreFilter, artistFilter) {
   const set = new Set();
   all.forEach(t => {
     const genre = t.metadata?.common?.genre || 'Unknown Genre';
-    const artist = t.metadata?.common?.artist || 'Unknown Artist';
     const album = t.metadata?.common?.album || 'Unknown Album';
     const gm = !genreFilter || genre === genreFilter;
-    const am = !artistFilter || artist === artistFilter;
+    const am = matchesPlaylistTrackArtist(t, artistFilter);
     if (gm && am) set.add(album);
   });
   populateAddColumn('addAlbumsList', set, 'All Albums');
@@ -71,7 +83,7 @@ function applyAddFilters(musicLibrary, filters) {
     const artist = track.metadata?.common?.artist || 'Unknown Artist';
     const album = track.metadata?.common?.album || 'Unknown Album';
     const gm = !filters.genre || genre === filters.genre;
-    const am = !filters.artist || artist === filters.artist;
+    const am = matchesPlaylistTrackArtist(track, filters.artist);
     const albm = !filters.album || album === filters.album;
     const glob = !global || name.toLowerCase().includes(global) || artist.toLowerCase().includes(global) || album.toLowerCase().includes(global) || genre.toLowerCase().includes(global);
     return gm && am && albm && glob;

@@ -87,16 +87,28 @@ struct ArtistDetailView: View {
     @EnvironmentObject var audioPlayer: AudioPlayerService
     @Environment(\.dockBottomInset) private var dockBottomInset
     
-    let artist: String
+    let artistID: String
     
-    private var allTracks: [Track] {
-        libraryManager.libraryIndex.artists.first { $0.id == artist }?.tracks ?? []
+    private var artistGroup: ArtistGroup? {
+        libraryManager.libraryIndex.artists.first { $0.id == artistID }
+    }
+
+    private var artistName: String {
+        artistGroup?.name ?? "Unknown Artist"
+    }
+
+    private var primaryTracks: [Track] {
+        artistGroup?.primaryTracks ?? []
+    }
+
+    private var featuredTracks: [Track] {
+        artistGroup?.featuredTracks ?? []
     }
     
     // Album groups sourced from the pre-built index (already sorted by name)
     // rather than re-filtering the full track array for every album row.
     private var albums: [AlbumGroup] {
-        let names = Set(allTracks.compactMap { $0.album })
+        let names = Set(primaryTracks.compactMap { $0.album })
         return libraryManager.libraryIndex.albums.filter { names.contains($0.album) }
     }
     
@@ -106,13 +118,13 @@ struct ArtistDetailView: View {
                 // Artist Header
                 VStack(spacing: 12) {
                     // Artist image (circular)
-                    ArtistImageView(artistName: artist)
+                    ArtistImageView(artistName: artistName)
                         .frame(width: 140, height: 140)
                         .shadow(color: .black.opacity(0.15), radius: 10, x: 0, y: 5)
                         .padding(.top, 16)
                     
                     VStack(spacing: 6) {
-                        Text(artist)
+                        Text(artistName)
                             .font(.title2)
                             .fontWeight(.bold)
                             .foregroundColor(.primary)
@@ -125,15 +137,23 @@ struct ArtistDetailView: View {
                             Text("•")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
-                            Text("\(allTracks.count) song\(allTracks.count == 1 ? "" : "s")")
+                            Text("\(primaryTracks.count) song\(primaryTracks.count == 1 ? "" : "s")")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
+                            if !featuredTracks.isEmpty {
+                                Text("•")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text("\(featuredTracks.count) appearance\(featuredTracks.count == 1 ? "" : "s")")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
                         }
                     }
                     .padding(.horizontal, 20)
                     
                     Button(action: {
-                        audioPlayer.playQueue(allTracks, startingAt: 0)
+                        audioPlayer.playQueue(primaryTracks, startingAt: 0)
                     }) {
                         HStack(spacing: 8) {
                             Image(systemName: "play.fill")
@@ -155,7 +175,7 @@ struct ArtistDetailView: View {
                 // Content sections
                 VStack(spacing: 12) {
                     // "All Tracks" option
-                    NavigationLink(destination: ArtistAllTracksView(artist: artist)) {
+                    NavigationLink(destination: ArtistAllTracksView(artistID: artistID, creditRole: .primary)) {
                         HStack(spacing: 12) {
                             Image(systemName: "music.note.list")
                                 .font(.title3)
@@ -169,7 +189,7 @@ struct ArtistDetailView: View {
                                     .font(.headline)
                                     .foregroundColor(.primary)
                                 
-                                Text("\(allTracks.count) song\(allTracks.count == 1 ? "" : "s")")
+                                Text("\(primaryTracks.count) song\(primaryTracks.count == 1 ? "" : "s")")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
@@ -186,6 +206,35 @@ struct ArtistDetailView: View {
                     }
                     .buttonStyle(PlainButtonStyle())
                     
+                    if !featuredTracks.isEmpty {
+                        NavigationLink(destination: ArtistAllTracksView(artistID: artistID, creditRole: .featured)) {
+                            HStack(spacing: 12) {
+                                Image(systemName: "person.2.badge.plus")
+                                    .font(.title3)
+                                    .foregroundColor(.purple)
+                                    .frame(width: 50, height: 50)
+                                    .background(Color.purple.opacity(0.1))
+                                    .cornerRadius(8)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Appears On")
+                                        .font(.headline)
+                                        .foregroundColor(.primary)
+                                    Text("\(featuredTracks.count) song\(featuredTracks.count == 1 ? "" : "s")")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .background(Color(.systemBackground))
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+
                     // Albums section
                     if !albums.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
@@ -260,7 +309,7 @@ struct ArtistDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                Text(artist)
+                Text(artistName)
                     .font(.headline)
             }
         }
@@ -273,10 +322,20 @@ struct ArtistAllTracksView: View {
     @EnvironmentObject var libraryManager: MusicLibraryManager
     @Environment(\.dockBottomInset) private var dockBottomInset
     
-    let artist: String
+    let artistID: String
+    let creditRole: ArtistCreditRole
     @State private var sortBy: SortOption = .album
     @State private var searchText = ""
     
+    enum ArtistCreditRole {
+        case primary
+        case featured
+
+        var navigationTitle: String {
+            self == .primary ? "All Tracks" : "Appears On"
+        }
+    }
+
     enum SortOption: String, CaseIterable {
         case album = "Album"
         case title = "Title"
@@ -284,7 +343,8 @@ struct ArtistAllTracksView: View {
     }
     
     private var tracks: [Track] {
-        let base = libraryManager.libraryIndex.artists.first { $0.id == artist }?.tracks ?? []
+        let group = libraryManager.libraryIndex.artists.first { $0.id == artistID }
+        let base = creditRole == .primary ? (group?.primaryTracks ?? []) : (group?.featuredTracks ?? [])
         let filtered = searchText.isEmpty ? base : base.filter { $0.matches(searchText) }
         
         switch sortBy {
@@ -333,7 +393,7 @@ struct ArtistAllTracksView: View {
             }
         }
         .safeAreaPadding(.bottom, dockBottomInset)
-        .navigationTitle("All Tracks")
+        .navigationTitle(creditRole.navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
         // See LibraryBrowserView's Artists list for why placement is pinned
         // explicitly (iOS 26 defaults .searchable to a bottom bar).
@@ -342,9 +402,11 @@ struct ArtistAllTracksView: View {
             ToolbarItem(placement: .navigationBarTrailing) {
                 HStack(spacing: 16) {
                     Menu {
-                        Picker("Sort By", selection: $sortBy) {
-                            ForEach(SortOption.allCases, id: \.self) { option in
-                                Text(option.rawValue).tag(option)
+                        Section("Sort Tracks") {
+                            Picker("Sort By", selection: $sortBy) {
+                                ForEach(SortOption.allCases, id: \.self) { option in
+                                    Text(option.rawValue).tag(option)
+                                }
                             }
                         }
                     } label: {
@@ -471,16 +533,9 @@ struct AlbumDetailView: View {
                     // Track List
                     VStack(spacing: 0) {
                         ForEach(tracks) { track in
-                            HStack(spacing: 12) {
+                            HStack(alignment: .top, spacing: 12) {
                                 if let trackNum = track.trackNumber {
-                                    // minWidth (not a fixed width) keeps
-                                    // single- and double-digit track numbers
-                                    // aligned to the same column without
-                                    // reserving a full 30pt of mostly-empty
-                                    // space to the left of every row — there's
-                                    // no per-row thumbnail here to justify
-                                    // that width; the album art already
-                                    // appears once, above, in the header.
+                                    // A narrow number column aligns with the title's first line.
                                     Text("\(trackNum)")
                                         .font(.subheadline)
                                         .fontWeight(.medium)
@@ -509,7 +564,8 @@ struct AlbumDetailView: View {
                                         .frame(width: 44, height: 44)
                                 }
                             }
-                            .padding(.horizontal, 16)
+                            .padding(.leading, 0)
+                            .padding(.trailing, 16)
                             .padding(.vertical, 10)
                             .background(Color(.systemBackground))
                             .contentShape(Rectangle())
@@ -518,12 +574,9 @@ struct AlbumDetailView: View {
                             }
                             
                             if track.id != tracks.last?.id {
-                                // 16 (row's own leading padding) + 18 (track
-                                // number column's minWidth) + 12 (HStack
-                                // spacing) = 46, matching the new tighter
-                                // column above.
+                                // 18-point number column + 12-point spacing.
                                 Divider()
-                                    .padding(.leading, track.trackNumber != nil ? 46 : 16)
+                                    .padding(.leading, track.trackNumber != nil ? 30 : 0)
                             }
                         }
                     }
@@ -567,7 +620,9 @@ struct GenreDetailView: View {
         // Apply sorting
         switch sortBy {
         case .artist:
-            return filtered.sorted { ($0.artist ?? "") < ($1.artist ?? "") }
+            return filtered.sorted {
+                $0.primaryArtistName.localizedCaseInsensitiveCompare($1.primaryArtistName) == .orderedAscending
+            }
         case .title:
             return filtered.sorted { $0.displayTitle < $1.displayTitle }
         case .album:
@@ -617,9 +672,11 @@ struct GenreDetailView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Menu {
-                    Picker("Sort By", selection: $sortBy) {
-                        ForEach(SortOption.allCases, id: \.self) { option in
-                            Text(option.rawValue).tag(option)
+                    Section("Sort Tracks") {
+                        Picker("Sort By", selection: $sortBy) {
+                            ForEach(SortOption.allCases, id: \.self) { option in
+                                Text(option.rawValue).tag(option)
+                            }
                         }
                     }
                 } label: {
@@ -640,7 +697,7 @@ struct GenreDetailView: View {
 
 #Preview {
     NavigationStack {
-        ArtistDetailView(artist: "Sample Artist")
+        ArtistDetailView(artistID: "sample artist")
             .environmentObject(AudioPlayerService())
             .environmentObject(MusicLibraryManager())
     }

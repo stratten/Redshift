@@ -9,7 +9,8 @@
         "dev": "node build-html.js && electron . --dev",
         "build": "node build-html.js && ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES=true electron-builder",
         "pack": "node build-html.js && ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES=true electron-builder --dir",
-        "build:renderer": "node build-html.js"
+        "build:renderer": "node build-html.js",
+        "test": "node --test test/artist-credit-parser.test.js"
     },
     "dependencies": {
         "chokidar": "^3.5.3",

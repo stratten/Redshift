@@ -12,52 +12,79 @@
  */
 function processArtists(tracks, musicBrainzService) {
   const artistMap = new Map();
-  
-  tracks.forEach(track => {
-    // Extract artist from metadata (same way MusicLibrary does)
-    const artistName = track.metadata?.common?.artist || 'Unknown Artist';
-    const albumName = track.metadata?.common?.album || null;
-    const duration = track.metadata?.common?.duration || track.duration || 0;
-    
-    if (!artistMap.has(artistName)) {
-      artistMap.set(artistName, {
+
+  function addTrackToArtist(artistName, role, track) {
+    const key = normalizeArtistKey(artistName);
+    if (!key) return;
+
+    if (!artistMap.has(key)) {
+      artistMap.set(key, {
         name: artistName,
-        tracks: [],
-        albums: new Set(),
-        totalDuration: 0
+        primaryTracks: [],
+        featuredTracks: []
       });
     }
-    
-    const artistData = artistMap.get(artistName);
-    artistData.tracks.push(track);
-    if (albumName) {
-      artistData.albums.add(albumName);
+
+    const artist = artistMap.get(key);
+    const tracksForRole = role === 'primary' ? artist.primaryTracks : artist.featuredTracks;
+    if (!tracksForRole.includes(track)) {
+      tracksForRole.push(track);
     }
-    artistData.totalDuration += duration;
+  }
+
+  tracks.forEach(track => {
+    const artistCredit = parseTrackArtistCredit(
+      track.metadata?.common?.artist,
+      track.metadata?.common?.title
+    );
+
+    artistCredit.primaryArtists.forEach(artistName => {
+      addTrackToArtist(artistName, 'primary', track);
+    });
+
+    artistCredit.featuredArtists.forEach(artistName => {
+      addTrackToArtist(artistName, 'featured', track);
+    });
   });
-  
-  // Convert to array and add computed properties
+
   return Array.from(artistMap.values()).map(artist => {
-    // Find album art from the artist's tracks (fallback)
+    const tracksForArtist = Array.from(new Set(artist.primaryTracks.concat(artist.featuredTracks)));
+    const albums = new Set();
+    let totalDuration = 0;
     let albumArt = null;
-    for (const track of artist.tracks) {
-      if (track.metadata?.common?.picture && track.metadata.common.picture.length > 0) {
+
+    artist.primaryTracks.forEach(track => {
+      const albumName = track.metadata?.common?.album;
+      if (albumName) {
+        albums.add(albumName);
+      }
+    });
+
+    tracksForArtist.forEach(track => {
+      const duration = track.metadata?.common?.duration || track.duration || 0;
+      totalDuration += duration;
+
+      if (!albumArt && track.metadata?.common?.picture?.length > 0) {
         const picture = track.metadata.common.picture[0];
         albumArt = `data:${picture.format};base64,${picture.data.toString('base64')}`;
-        break;
       }
-    }
-    
-    // Check if we have a cached artist image
+    });
+
     const cachedImage = musicBrainzService.imageCache.get(artist.name);
-    
+
     return {
-      ...artist,
-      songCount: artist.tracks.length,
-      albumCount: artist.albums.size,
-      albums: Array.from(artist.albums),
-      albumArt: albumArt,
-      artistImage: cachedImage || null // Load from cache if available
+      name: artist.name,
+      primaryTracks: artist.primaryTracks,
+      featuredTracks: artist.featuredTracks,
+      tracks: tracksForArtist,
+      primarySongCount: artist.primaryTracks.length,
+      featuredSongCount: artist.featuredTracks.length,
+      songCount: tracksForArtist.length,
+      albumCount: albums.size,
+      albums: Array.from(albums),
+      totalDuration,
+      albumArt,
+      artistImage: cachedImage || null
     };
   });
 }

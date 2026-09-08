@@ -8,6 +8,7 @@
  * @param {Object} artist - Artist object
  * @param {Array} displayGroups - Array of {album, tracks} objects to display
  * @param {string|null} selectedAlbum - Currently selected album name (null for all songs)
+ * @param {string} creditRole - Selected artist-credit role ('primary' or 'featured')
  * @param {Map} favoriteByPath - Map of path -> favorite status
  * @param {Map} ratingByPath - Map of path -> rating value
  * @param {Map} playCountByPath - Map of path -> play count
@@ -15,7 +16,7 @@
  * @param {boolean} isPlaying - Whether audio is currently playing
  * @returns {string} HTML string for detail view
  */
-function renderArtistDetailView(artist, displayGroups, selectedAlbum, favoriteByPath = new Map(), ratingByPath = new Map(), playCountByPath = new Map(), currentTrackPath = null, isPlaying = false) {
+function renderArtistDetailView(artist, displayGroups, selectedAlbum, creditRole, favoriteByPath = new Map(), ratingByPath = new Map(), playCountByPath = new Map(), currentTrackPath = null, isPlaying = false) {
   const totalTracks = displayGroups.reduce((sum, g) => sum + g.tracks.length, 0);
   const songText = totalTracks === 1 ? 'song' : 'songs';
   
@@ -48,8 +49,8 @@ function renderArtistDetailView(artist, displayGroups, selectedAlbum, favoriteBy
           </div>
           <div>
             <h2 class="artist-detail-name">${escapeHtml(artist.name)}</h2>
-            ${selectedAlbum 
-              ? `<div class="artist-detail-album">${escapeHtml(selectedAlbum)}</div>`
+            ${selectedAlbum || creditRole === 'featured'
+              ? `<div class="artist-detail-album">${escapeHtml(selectedAlbum || 'Appears On')}</div>`
               : ''}
             <div class="artist-detail-stats">
               ${totalTracks} ${songText}

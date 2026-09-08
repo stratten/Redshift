@@ -78,7 +78,7 @@ final class SearchPredicateTests: XCTestCase {
             album: "OK Computer",
             genre: "Alternative"
         )
-        let group = ArtistGroup(id: "Radiohead", name: "Radiohead", tracks: [track], albumCount: 1)
+        let group = ArtistGroup(id: "radiohead", name: "Radiohead", primaryTracks: [track], featuredTracks: [], primaryAlbumCount: 1)
         XCTAssertTrue(group.matches("paranoid"))
         XCTAssertTrue(group.matches("alternative"))
         XCTAssertFalse(group.matches("jazz"))

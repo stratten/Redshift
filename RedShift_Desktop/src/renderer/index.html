@@ -184,6 +184,23 @@
             </div>
             
             <div class="header-center-group">
+                <div class="header-audio-visualization">
+                    <div class="audio-visualization" id="audioVisualization" role="button" tabindex="0" title="Open expanded visualization" aria-label="Open expanded live audio visualization">
+                        <canvas id="audioVisualizationCanvas"></canvas>
+                    </div>
+                    <div class="visualization-mode-menu">
+                        <button class="visualization-mode-trigger" id="headerAudioVisualizationMode" type="button" title="Choose visualization style" aria-label="Choose visualization style" aria-expanded="false">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </button>
+                        <div class="visualization-mode-options" id="audioVisualizationModeMenu" role="menu" hidden>
+                            <button type="button" data-visualization-mode="spectrogram" role="menuitemradio">Spectrogram</button>
+                            <button type="button" data-visualization-mode="oscilloscope" role="menuitemradio">Oscilloscope</button>
+                            <button type="button" data-visualization-mode="vectorscope" role="menuitemradio">Vectorscope</button>
+                        </div>
+                    </div>
+                </div>
                 <!-- Center: Mini Player -->
                 <!-- include: partials/components/mini-player.html -->
                 
@@ -224,6 +241,8 @@
     <!-- include: partials/modals/album-art-modal.html -->
     <!-- include: partials/modals/queue-modal.html -->
     <!-- include: partials/modals/equalizer-modal.html -->
+    <!-- include: partials/modals/playback-speed-modal.html -->
+    <!-- include: partials/modals/audio-visualization-modal.html -->
 
     <!-- Portaled Dropdowns (position: fixed elements that need to be at body level to avoid stacking context issues) -->
     <div class="output-device-dropdown" id="outputDeviceDropdown">
@@ -246,6 +265,7 @@
     <script src="components/audioplayer/AudioPlayerQueue.js"></script>
     <script src="components/audioplayer/AudioPlayerEqualizer.js"></script>
     <script src="components/audioplayer/AudioPlayerVisualizer.js"></script>
+    <script src="components/audioplayer/AudioPlayerVisualization.js"></script>
     <script src="components/audioplayer/AudioPlayerOutputDevice.js"></script>
     <script src="components/audioplayer/AudioPlayerPlayback.js"></script>
     <script src="components/audioplayer/AudioPlayerCrossfade.js"></script>
@@ -265,6 +285,7 @@
     <script src="components/shared/TrackUIComponents.js"></script>
     <script src="components/shared/TrackEventHandlers.js"></script>
     <script src="components/shared/PlaylistPickerUtils.js"></script>
+    <script src="components/shared/ArtistCreditParser.js"></script>
     <!-- Main AudioPlayer orchestrator (depends on all audioplayer modules above) -->
     <script src="components/AudioPlayer.js"></script>
     <!-- Music Library modules (loaded before MusicLibrary) -->

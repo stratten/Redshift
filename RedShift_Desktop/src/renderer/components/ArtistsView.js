@@ -11,6 +11,7 @@ class ArtistsView {
     this.currentView = 'list'; // 'list', 'albums', or 'detail'
     this.selectedArtist = null;
     this.selectedAlbum = null; // Track selected album when viewing single album
+    this.selectedCreditRole = 'primary';
     this.sortBy = 'name'; // 'name', 'songCount', 'albumCount'
     this.sortDirection = 'asc'; // 'asc' or 'desc'
     this.searchTerm = ''; // Local search term for artist filtering
@@ -20,6 +21,8 @@ class ArtistsView {
     
     // MusicBrainz service for fetching artist images
     this.musicBrainzService = new MusicBrainzService();
+    this.persistentListenersAttached = false;
+    this.imageFetchPromise = null;
   }
 
   /**
@@ -40,11 +43,13 @@ class ArtistsView {
    * Setup event listeners
    */
   setupEventListeners() {
-    // Listen for play count updates
-    window.addEventListener('play-count-incremented', (event) => {
-      const { filePath } = event.detail;
-      this.updateTrackPlayCountInUI(filePath);
-    });
+    if (!this.persistentListenersAttached) {
+      // Listen for play count updates
+      window.addEventListener('play-count-incremented', (event) => {
+        const { filePath } = event.detail;
+        this.updateTrackPlayCountInUI(filePath);
+      });
+    }
     
     // Local artist search filter
     const artistSearchInput = document.getElementById('artistSearchInput');
@@ -72,49 +77,47 @@ class ArtistsView {
       });
     }
 
-    // Back navigation buttons
-    document.addEventListener('click', (e) => {
-      if (e.target.closest('#backToArtists')) {
-        this.showArtistList();
-      }
-      if (e.target.closest('#backToAlbums')) {
-        this.showAlbumSelection();
-      }
-    });
-
-    // Artist card clicks and album selection
-    this.container.addEventListener('click', (e) => {
-      const artistCard = e.target.closest('.artist-card');
-      if (artistCard && this.currentView === 'list') {
-        const artistName = artistCard.dataset.artistName;
-        this.showAlbumSelection(artistName);
-      }
-      
-      // Album card clicks (in album selection view)
-      const albumCard = e.target.closest('.album-card');
-      if (albumCard && this.currentView === 'albums') {
-        const albumName = albumCard.dataset.albumName;
-        if (albumName === '__ALL_SONGS__') {
-          // Show all songs grouped by album
-          this.showAllSongs();
-        } else {
-          // Show single album detail
-          this.showAlbumDetail(albumName);
+    if (!this.persistentListenersAttached) {
+      // Back navigation buttons
+      document.addEventListener('click', (e) => {
+        if (e.target.closest('#backToArtists')) {
+          this.showArtistList();
         }
-      }
+        if (e.target.closest('#backToAlbums')) {
+          this.showAlbumSelection();
+        }
+      });
       
-      // Fetch images button
-      const fetchBtn = e.target.closest('#fetchArtistImages');
-      if (fetchBtn) {
-        this.startFetchingImages();
-      }
+      // Artist card clicks and album selection
+      this.container.addEventListener('click', (e) => {
+        const artistCard = e.target.closest('.artist-card');
+        if (artistCard && this.currentView === 'list') {
+          this.showAlbumSelection(artistCard.dataset.artistName);
+        }
+
+        const albumCard = e.target.closest('.album-card');
+        if (albumCard && this.currentView === 'albums') {
+          const albumName = albumCard.dataset.albumName;
+          if (albumName === '__ALL_SONGS__') {
+            this.showAllSongs();
+          } else if (albumName === '__APPEARANCES__') {
+            this.showFeaturedSongs();
+          } else {
+            this.showAlbumDetail(albumName);
+          }
+        }
+
+        if (e.target.closest('#fetchArtistImages')) {
+          this.startFetchingImages();
+        }
+
+        if (e.target.closest('#retryFailedImages')) {
+          this.retryFailedImages();
+        }
+      });
       
-      // Retry failed button
-      const retryBtn = e.target.closest('#retryFailedImages');
-      if (retryBtn) {
-        this.retryFailedImages();
-      }
-    });
+      this.persistentListenersAttached = true;
+    }
   }
 
   /**
@@ -143,53 +146,85 @@ class ArtistsView {
    * Fetch images only for artists we haven't attempted yet
    */
   async fetchNewArtistImages() {
-    // Delegate to global image fetcher
-    await fetchNewArtistImages(
-      this.artists,
-      this.musicBrainzService,
-      this.ui,
-      (artistName, imageUrl) => this.updateArtistCardImage(artistName, imageUrl)
-    );
+    if (this.imageFetchPromise) return null;
+    updateFetchButtonState(true);
+    try {
+      return await this.runImageFetch(() => fetchNewArtistImages(
+        this.artists,
+        this.musicBrainzService,
+        this.ui,
+        (artistName, imageUrl) => this.updateArtistCardImage(artistName, imageUrl)
+      ));
+    } finally {
+      if (this.currentView === 'list') {
+        this.renderListView();
+      }
+      updateFetchButtonState(false);
+    }
   }
 
   /**
    * Fetch artist images from MusicBrainz (user-triggered, fetches all)
    */
   async fetchArtistImages() {
-    // Delegate to global image fetcher
-    await fetchAllArtistImages(
+    const result = await this.runImageFetch(() => fetchAllArtistImages(
       this.artists,
       this.musicBrainzService,
       this.ui,
       (artistName, imageUrl) => this.updateArtistCardImage(artistName, imageUrl)
-    );
-    this.renderListView(); // Refresh to update button states
+    ));
+    if (result && this.currentView === 'list') {
+      this.renderListView();
+    }
+    return result;
   }
 
   /**
    * Start fetching images (user-triggered via button)
    */
   async startFetchingImages() {
+    if (this.imageFetchPromise) return;
     updateFetchButtonState(true);
-    await this.fetchArtistImages();
-    updateFetchButtonState(false);
+    try {
+      await this.fetchArtistImages();
+    } finally {
+      updateFetchButtonState(false);
+    }
   }
 
   /**
    * Retry failed artist image lookups
    */
   async retryFailedImages() {
+    if (this.imageFetchPromise) return;
     updateRetryButtonState(true);
-    
-    // Delegate to global image fetcher
-    await retryFailedArtistImages(
-      this.artists,
-      this.musicBrainzService,
-      this.ui,
-      (artistName, imageUrl) => this.updateArtistCardImage(artistName, imageUrl)
-    );
-    
-    this.renderListView(); // Refresh to update button states
+    try {
+      const result = await this.runImageFetch(() => retryFailedArtistImages(
+        this.artists,
+        this.musicBrainzService,
+        this.ui,
+        (artistName, imageUrl) => this.updateArtistCardImage(artistName, imageUrl)
+      ));
+      if (result && this.currentView === 'list') {
+        this.renderListView();
+      }
+    } finally {
+      updateRetryButtonState(false);
+    }
+  }
+
+  async runImageFetch(fetchOperation) {
+    if (this.imageFetchPromise) {
+      this.ui.logBoth('info', '🎨 Artist image fetch already in progress');
+      return null;
+    }
+
+    this.imageFetchPromise = fetchOperation();
+    try {
+      return await this.imageFetchPromise;
+    } finally {
+      this.imageFetchPromise = null;
+    }
   }
 
   /**
@@ -266,6 +301,9 @@ class ArtistsView {
     
     // Re-attach event listeners for new elements
     this.setupEventListeners();
+    if (this.imageFetchPromise) {
+      updateFetchButtonState(true);
+    }
   }
 
   /**
@@ -315,6 +353,7 @@ class ArtistsView {
     }
     
     this.selectedAlbum = null; // Clear album selection
+    this.selectedCreditRole = 'primary';
     this.currentView = 'albums';
     this.renderAlbumsView();
   }
@@ -327,11 +366,11 @@ class ArtistsView {
 
     const artist = this.selectedArtist;
     
-    // Group tracks by album to get album info
-    const albumGroups = this.groupTracksByAlbum(artist.tracks);
+    const primaryAlbumGroups = this.groupTracksByAlbum(artist.primaryTracks);
+    const featuredAlbumGroups = this.groupTracksByAlbum(artist.featuredTracks);
     
     // Delegate to global renderer
-    const html = renderArtistAlbumsView(artist, albumGroups);
+    const html = renderArtistAlbumsView(artist, primaryAlbumGroups, featuredAlbumGroups);
     this.container.innerHTML = html;
   }
 
@@ -343,6 +382,19 @@ class ArtistsView {
     if (!this.selectedArtist) return;
     
     this.selectedAlbum = null;
+    this.selectedCreditRole = 'primary';
+    this.currentView = 'detail';
+    this.renderDetailView();
+  }
+
+  /**
+   * Show tracks where the selected artist is featured.
+   */
+  showFeaturedSongs() {
+    if (!this.selectedArtist) return;
+
+    this.selectedAlbum = null;
+    this.selectedCreditRole = 'featured';
     this.currentView = 'detail';
     this.renderDetailView();
   }
@@ -354,6 +406,7 @@ class ArtistsView {
     if (!this.selectedArtist) return;
     
     this.selectedAlbum = albumName;
+    this.selectedCreditRole = 'primary';
     this.currentView = 'detail';
     this.renderDetailView();
   }
@@ -366,8 +419,10 @@ class ArtistsView {
 
     const artist = this.selectedArtist;
     
-    // Group tracks by album
-    const albumGroups = this.groupTracksByAlbum(artist.tracks);
+    const roleTracks = this.selectedCreditRole === 'featured'
+      ? artist.featuredTracks
+      : artist.primaryTracks;
+    const albumGroups = this.groupTracksByAlbum(roleTracks);
     
     // Filter to single album if one is selected
     const displayGroups = this.selectedAlbum 
@@ -385,7 +440,7 @@ class ArtistsView {
     const isPlaying = this.ui.audioPlayer?.audioPlayerState?.isPlaying || false;
     
     // Delegate to global renderer
-    const html = renderArtistDetailView(artist, displayGroups, this.selectedAlbum, favoriteByPath, ratingByPath, playCountByPath, currentTrackPath, isPlaying);
+    const html = renderArtistDetailView(artist, displayGroups, this.selectedAlbum, this.selectedCreditRole, favoriteByPath, ratingByPath, playCountByPath, currentTrackPath, isPlaying);
     this.container.innerHTML = html;
     
     // Setup track table interactions
@@ -403,6 +458,11 @@ class ArtistsView {
     return groupTracksByAlbum(tracks);
   }
 
+  getSelectedRoleTracks() {
+    return this.selectedCreditRole === 'featured'
+      ? this.selectedArtist.featuredTracks
+      : this.selectedArtist.primaryTracks;
+  }
 
   /**
    * Setup event listeners for track table
@@ -414,12 +474,12 @@ class ArtistsView {
     let contextTracks;
     if (this.selectedAlbum) {
       // Single album view - only include tracks from this album
-      contextTracks = this.selectedArtist.tracks.filter(
+      contextTracks = this.getSelectedRoleTracks().filter(
         t => (t.metadata?.common?.album || 'Unknown Album') === this.selectedAlbum
       );
     } else {
       // All songs view - include all artist's tracks
-      contextTracks = this.selectedArtist.tracks;
+      contextTracks = this.getSelectedRoleTracks();
     }
     
     trackRows.forEach((row, index) => {
@@ -460,17 +520,17 @@ class ArtistsView {
     const trackRows = this.container.querySelectorAll('.track-row');
     const tracksByIndex = Array.from(trackRows).map(row => {
       const path = row.dataset.path;
-      return this.selectedArtist.tracks.find(t => t.path === path);
+      return this.getSelectedRoleTracks().find(t => t.path === path);
     });
     
     // Build context tracks based on current view
     let contextTracks;
     if (this.selectedAlbum) {
-      contextTracks = this.selectedArtist.tracks.filter(
+      contextTracks = this.getSelectedRoleTracks().filter(
         t => (t.metadata?.common?.album || 'Unknown Album') === this.selectedAlbum
       );
     } else {
-      contextTracks = this.selectedArtist.tracks;
+      contextTracks = this.getSelectedRoleTracks();
     }
     
     const contextType = this.selectedAlbum ? 'album' : 'artist';

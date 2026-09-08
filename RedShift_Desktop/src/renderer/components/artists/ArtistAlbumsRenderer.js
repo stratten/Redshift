@@ -9,8 +9,9 @@
  * @param {Array} albumGroups - Array of {album, tracks} objects
  * @returns {string} HTML string for album selection view
  */
-function renderArtistAlbumsView(artist, albumGroups) {
-  const songText = artist.songCount === 1 ? 'song' : 'songs';
+function renderArtistAlbumsView(artist, primaryAlbumGroups, featuredAlbumGroups) {
+  const primarySongText = artist.primarySongCount === 1 ? 'song' : 'songs';
+  const featuredSongText = artist.featuredSongCount === 1 ? 'song' : 'songs';
   const albumText = artist.albumCount === 1 ? 'album' : 'albums';
   
   // Prefer artist image from MusicBrainz, fall back to album art, then icon
@@ -43,15 +44,16 @@ function renderArtistAlbumsView(artist, albumGroups) {
           <div>
             <h2 class="artist-detail-name">${escapeHtml(artist.name)}</h2>
             <div class="artist-detail-stats">
-              ${artist.songCount} ${songText} • ${artist.albumCount} ${albumText}
+              ${artist.primarySongCount} ${primarySongText} • ${artist.albumCount} ${albumText}${artist.featuredSongCount > 0 ? ` • ${artist.featuredSongCount} ${featuredSongText} featured` : ''}
             </div>
           </div>
         </div>
       </div>
       
       <div class="albums-grid">
-        ${renderAllSongsCard(artist.songCount)}
-        ${albumGroups.map(({ album, tracks }) => renderAlbumCard(album, tracks)).join('')}
+        ${artist.primarySongCount > 0 ? renderAllSongsCard(artist.primarySongCount) : ''}
+        ${primaryAlbumGroups.map(({ album, tracks }) => renderAlbumCard(album, tracks)).join('')}
+        ${artist.featuredSongCount > 0 ? renderAppearancesCard(artist.featuredSongCount, featuredAlbumGroups.length) : ''}
       </div>
     </div>
   `;
@@ -79,6 +81,34 @@ function renderAllSongsCard(songCount) {
       <div class="album-info">
         <div class="album-name">All Songs</div>
         <div class="album-track-count">${songCount} ${songText}</div>
+      </div>
+      <div class="album-arrow">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Render the special card for tracks where the artist is featured.
+ */
+function renderAppearancesCard(songCount, albumCount) {
+  const songText = songCount === 1 ? 'song' : 'songs';
+  const albumText = albumCount === 1 ? 'album' : 'albums';
+
+  return `
+    <div class="album-card all-songs-card" data-album-name="__APPEARANCES__">
+      <div class="album-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M12 3v18M3 12h18"></path>
+          <circle cx="12" cy="12" r="8"></circle>
+        </svg>
+      </div>
+      <div class="album-info">
+        <div class="album-name">Appears On</div>
+        <div class="album-track-count">${songCount} ${songText} • ${albumCount} ${albumText}</div>
       </div>
       <div class="album-arrow">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

@@ -9,8 +9,18 @@ import Foundation
 struct ArtistGroup: Identifiable, Hashable {
     let id: String
     let name: String
-    let tracks: [Track]
-    let albumCount: Int
+    let primaryTracks: [Track]
+    let featuredTracks: [Track]
+    let primaryAlbumCount: Int
+
+    var tracks: [Track] {
+        var seen = Set<UUID>()
+        return (primaryTracks + featuredTracks).filter { seen.insert($0.id).inserted }
+    }
+
+    var featuredAlbumCount: Int {
+        Set(featuredTracks.compactMap(\.album)).count
+    }
 
     static func == (lhs: ArtistGroup, rhs: ArtistGroup) -> Bool { lhs.id == rhs.id }
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
@@ -76,13 +86,31 @@ struct LibraryIndex {
     /// per bucket collection. This replaces the previous pattern of every row
     /// view independently re-filtering the entire track array.
     static func build(from tracks: [Track]) -> LibraryIndex {
-        var artistBuckets: [String: [Track]] = [:]
+        struct ArtistBucket {
+            var name: String
+            var primaryTracks: [Track] = []
+            var featuredTracks: [Track] = []
+        }
+
+        var artistBuckets: [String: ArtistBucket] = [:]
         var albumBuckets: [String: [Track]] = [:]
         var genreBuckets: [String: [Track]] = [:]
 
         for track in tracks {
-            if let artist = track.artist, !artist.isEmpty {
-                artistBuckets[artist, default: []].append(track)
+            let credit = track.artistCredit
+            for artist in credit.primaryArtists {
+                let key = ArtistCredit.normalizedKey(artist)
+                guard !key.isEmpty else { continue }
+                var bucket = artistBuckets[key] ?? ArtistBucket(name: artist)
+                bucket.primaryTracks.append(track)
+                artistBuckets[key] = bucket
+            }
+            for artist in credit.featuredArtists {
+                let key = ArtistCredit.normalizedKey(artist)
+                guard !key.isEmpty else { continue }
+                var bucket = artistBuckets[key] ?? ArtistBucket(name: artist)
+                bucket.featuredTracks.append(track)
+                artistBuckets[key] = bucket
             }
             if let album = track.album, !album.isEmpty {
                 albumBuckets[album, default: []].append(track)
@@ -92,12 +120,13 @@ struct LibraryIndex {
             }
         }
 
-        let artists = artistBuckets.map { name, artistTracks in
+        let artists = artistBuckets.map { key, bucket in
             ArtistGroup(
-                id: name,
-                name: name,
-                tracks: artistTracks,
-                albumCount: Set(artistTracks.compactMap { $0.album }).count
+                id: key,
+                name: bucket.name,
+                primaryTracks: bucket.primaryTracks,
+                featuredTracks: bucket.featuredTracks,
+                primaryAlbumCount: Set(bucket.primaryTracks.compactMap(\.album)).count
             )
         }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
 

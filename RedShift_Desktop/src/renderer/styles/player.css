@@ -3,7 +3,7 @@
 /* Enhanced Header with Music Player Integration */
 .header {
     display: grid;
-    grid-template-columns: 240px 1fr 240px;
+    grid-template-columns: max-content minmax(0, 1fr) 240px;
     gap: 16px;
     align-items: center;
     padding: 10px 20px;
@@ -14,7 +14,7 @@
     min-height: 105px; /* Tall enough for queue preview */
 }
 
-.header-left, .header-center, .header-right {
+.header-left, .header-center, .header-right, .header-audio-visualization {
     -webkit-app-region: no-drag; /* Make child elements not draggable */
 }
 
@@ -47,7 +47,19 @@
     align-items: center;
     gap: 12px;
     justify-content: center;
+    min-width: 0;
     -webkit-app-region: no-drag;
+}
+
+.header-audio-visualization {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+}
+
+.header-audio-visualization[hidden] {
+    display: none;
 }
 
 .header-right {
@@ -63,6 +75,7 @@
     flex-direction: column;
     gap: 8px;
     max-width: 650px;
+    min-width: 0;
     min-height: 95px; /* Expand to match full header height */
     background: var(--rs-subtle-overlay);
     border-radius: 12px;
@@ -77,6 +90,104 @@
     grid-template-columns: minmax(180px, 220px) 1fr auto; /* flexible left column, fluid middle, compact right */
     align-items: center;
     gap: 12px;
+}
+
+.audio-visualization {
+    width: clamp(84px, 11vw, 140px);
+    height: 42px;
+    overflow: hidden;
+    border: 1px solid rgba(250, 204, 21, 0.26);
+    border-radius: 7px;
+    background: #100f16;
+    box-shadow: inset 0 0 12px rgba(239, 68, 68, 0.12);
+    -webkit-app-region: no-drag;
+}
+
+.audio-visualization[role="button"] {
+    cursor: pointer;
+}
+
+.audio-visualization[role="button"]:focus-visible {
+    outline: 2px solid #facc15;
+    outline-offset: 2px;
+}
+
+.audio-visualization[hidden] {
+    display: none;
+}
+
+.audio-visualization canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.visualization-mode-menu {
+    position: relative;
+    -webkit-app-region: no-drag;
+}
+
+.visualization-mode-trigger {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 1px solid var(--rs-border-color);
+    border-radius: 6px;
+    background: var(--rs-bg-surface);
+    color: var(--rs-text-primary);
+    cursor: pointer;
+    -webkit-app-region: no-drag;
+}
+
+.visualization-mode-trigger:hover,
+.visualization-mode-trigger[aria-expanded="true"] {
+    border-color: #facc15;
+    color: #facc15;
+}
+
+.visualization-mode-options {
+    position: absolute;
+    z-index: 10;
+    top: calc(100% + 6px);
+    right: 0;
+    min-width: 132px;
+    padding: 4px;
+    border: 1px solid var(--rs-border-color);
+    border-radius: 7px;
+    background: #15131f;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+    -webkit-app-region: no-drag;
+}
+
+.visualization-mode-options[hidden] {
+    display: none;
+}
+
+.visualization-mode-options button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 6px 8px;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--rs-text-primary);
+    font-size: 11px;
+    text-align: left;
+    cursor: pointer;
+    -webkit-app-region: no-drag;
+}
+
+.visualization-mode-options button:hover,
+.visualization-mode-options button.selected {
+    background: rgba(250, 204, 21, 0.16);
+    color: #facc15;
+}
+
+.visualization-mode-options button.selected::after {
+    content: "✓";
+    font-weight: 700;
 }
 
 .player-bottom-row {

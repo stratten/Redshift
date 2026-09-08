@@ -1,0 +1,19 @@
+<!-- Audio Visualization Modal -->
+<div id="audioVisualizationModal" class="modal" style="display: none;">
+    <div class="modal-content audio-visualization-modal-content" role="dialog" aria-modal="true" aria-labelledby="audioVisualizationModalTitle">
+        <div class="modal-header">
+            <h2 id="audioVisualizationModalTitle">Audio Visualization</h2>
+            <div class="audio-visualization-modal-actions">
+                <select id="modalAudioVisualizationMode" aria-label="Visualization style">
+                    <option value="spectrogram">Spectrogram</option>
+                    <option value="oscilloscope">Oscilloscope</option>
+                    <option value="vectorscope">Vectorscope</option>
+                </select>
+                <button class="close-button" id="closeAudioVisualization" type="button" aria-label="Close audio visualization">&times;</button>
+            </div>
+        </div>
+        <div class="modal-body audio-visualization-modal-body">
+            <canvas id="audioVisualizationModalCanvas" aria-label="Expanded live audio visualization"></canvas>
+        </div>
+    </div>
+</div>

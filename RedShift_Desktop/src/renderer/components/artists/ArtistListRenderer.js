@@ -199,8 +199,20 @@ function groupArtistsByLetter(artists, sortBy) {
  * @returns {string} HTML string for artist card
  */
 function renderArtistCard(artist) {
-  const songText = artist.songCount === 1 ? 'song' : 'songs';
+  const primarySongText = artist.primarySongCount === 1 ? 'song' : 'songs';
+  const featuredSongText = artist.featuredSongCount === 1 ? 'appearance' : 'appearances';
   const albumText = artist.albumCount === 1 ? 'album' : 'albums';
+  const stats = [];
+
+  if (artist.primarySongCount > 0) {
+    stats.push(`${artist.primarySongCount} ${primarySongText}`);
+  }
+  if (artist.featuredSongCount > 0) {
+    stats.push(`${artist.featuredSongCount} ${featuredSongText}`);
+  }
+  if (artist.albumCount > 0) {
+    stats.push(`${artist.albumCount} ${albumText}`);
+  }
   
   // Prefer artist image from MusicBrainz, fall back to album art, then icon
   let artistImage;
@@ -223,7 +235,7 @@ function renderArtistCard(artist) {
       <div class="artist-info">
         <div class="artist-name">${escapeHtml(artist.name)}</div>
         <div class="artist-stats">
-          ${artist.songCount} ${songText}${artist.albumCount > 0 ? ` • ${artist.albumCount} ${albumText}` : ''}
+          ${stats.join(' • ')}
         </div>
       </div>
       <div class="artist-arrow">

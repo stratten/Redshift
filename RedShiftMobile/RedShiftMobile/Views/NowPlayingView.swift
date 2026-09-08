@@ -230,14 +230,16 @@ struct NowPlayingView: View {
                                 
                                 // Playback Speed
                                 Menu {
-                                    ForEach([0.5, 0.75, 1.0, 1.25, 1.5, 2.0], id: \.self) { rate in
-                                        Button(action: {
-                                            audioPlayer.setPlaybackRate(Float(rate))
-                                        }) {
-                                            HStack {
-                                                Text(rate == 1.0 ? "Normal (1×)" : "\(rate, specifier: "%.2g")×")
-                                                if audioPlayer.playbackRate == Float(rate) {
-                                                    Image(systemName: "checkmark")
+                                    Section("Playback Speed") {
+                                        ForEach([0.5, 0.75, 1.0, 1.25, 1.5, 2.0], id: \.self) { rate in
+                                            Button(action: {
+                                                audioPlayer.setPlaybackRate(Float(rate))
+                                            }) {
+                                                HStack {
+                                                    Text(rate == 1.0 ? "Normal (1×)" : "\(rate, specifier: "%.2g")×")
+                                                    if audioPlayer.playbackRate == Float(rate) {
+                                                        Image(systemName: "checkmark")
+                                                    }
                                                 }
                                             }
                                         }
@@ -262,27 +264,29 @@ struct NowPlayingView: View {
                                 
                                 // Crossfade
                                 Menu {
-                                    Button(action: {
-                                        audioPlayer.setCrossfadeDuration(0)
-                                    }) {
-                                        HStack {
-                                            Text("Off")
-                                            if audioPlayer.crossfadeDuration == 0 {
-                                                Image(systemName: "checkmark")
-                                            }
-                                        }
-                                    }
-                                    
-                                    Divider()
-                                    
-                                    ForEach([1, 2, 4, 6, 8, 10, 12], id: \.self) { seconds in
+                                    Section("Crossfade") {
                                         Button(action: {
-                                            audioPlayer.setCrossfadeDuration(TimeInterval(seconds))
+                                            audioPlayer.setCrossfadeDuration(0)
                                         }) {
                                             HStack {
-                                                Text(seconds == 1 ? "1 second" : "\(seconds) seconds")
-                                                if Int(audioPlayer.crossfadeDuration) == seconds {
+                                                Text("Off")
+                                                if audioPlayer.crossfadeDuration == 0 {
                                                     Image(systemName: "checkmark")
+                                                }
+                                            }
+                                        }
+
+                                        Divider()
+
+                                        ForEach([1, 2, 4, 6, 8, 10, 12], id: \.self) { seconds in
+                                            Button(action: {
+                                                audioPlayer.setCrossfadeDuration(TimeInterval(seconds))
+                                            }) {
+                                                HStack {
+                                                    Text(seconds == 1 ? "1 second" : "\(seconds) seconds")
+                                                    if Int(audioPlayer.crossfadeDuration) == seconds {
+                                                        Image(systemName: "checkmark")
+                                                    }
                                                 }
                                             }
                                         }
@@ -375,25 +379,27 @@ struct NowPlayingView: View {
                 // Sleep Timer (left side)
                 ToolbarItem(placement: .navigationBarLeading) {
                     Menu {
-                        ForEach([1, 5, 10, 15, 30, 45, 60, 90, 120], id: \.self) { minutes in
-                            Button(action: {
-                                audioPlayer.setSleepTimer(minutes: minutes)
-                            }) {
-                                HStack {
-                                    Text(minutes == 1 ? "1 minute" : "\(minutes) minutes")
-                                    if audioPlayer.sleepTimerMinutesRemaining == minutes {
-                                        Image(systemName: "checkmark")
+                        Section("Sleep Timer") {
+                            ForEach([1, 5, 10, 15, 30, 45, 60, 90, 120], id: \.self) { minutes in
+                                Button(action: {
+                                    audioPlayer.setSleepTimer(minutes: minutes)
+                                }) {
+                                    HStack {
+                                        Text(minutes == 1 ? "1 minute" : "\(minutes) minutes")
+                                        if audioPlayer.sleepTimerMinutesRemaining == minutes {
+                                            Image(systemName: "checkmark")
+                                        }
                                     }
                                 }
                             }
-                        }
-                        
-                        if audioPlayer.sleepTimerMinutesRemaining != nil {
-                            Divider()
-                            Button(role: .destructive, action: {
-                                audioPlayer.cancelSleepTimer()
-                            }) {
-                                Label("Cancel Timer", systemImage: "xmark.circle")
+
+                            if audioPlayer.sleepTimerMinutesRemaining != nil {
+                                Divider()
+                                Button(role: .destructive, action: {
+                                    audioPlayer.cancelSleepTimer()
+                                }) {
+                                    Label("Cancel Timer", systemImage: "xmark.circle")
+                                }
                             }
                         }
                     } label: {
@@ -453,7 +459,24 @@ struct QueueView: View {
                                 .foregroundColor(.purple)
                                 .font(.caption)
                         }
-                        
+
+                        Group {
+                            if let artworkData = track.albumArtData, let artworkImage = UIImage(data: artworkData) {
+                                Image(uiImage: artworkImage)
+                                    .resizable()
+                                    .scaledToFill()
+                            } else {
+                                RoundedRectangle(cornerRadius: 5)
+                                    .fill(Color.purple.opacity(0.2))
+                                    .overlay {
+                                        Image(systemName: "music.note")
+                                            .foregroundColor(.purple)
+                                    }
+                            }
+                        }
+                        .frame(width: 40, height: 40)
+                        .clipShape(RoundedRectangle(cornerRadius: 5))
+
                         VStack(alignment: .leading, spacing: 4) {
                             Text(track.displayTitle)
                                 .font(.body)

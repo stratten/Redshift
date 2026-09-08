@@ -27,6 +27,7 @@ async function fetchNewArtistImages(artists, musicBrainzService, ui, updateCallb
   
   let successCount = 0;
   let failCount = 0;
+  updateArtistImageFetchProgress('Fetching images', 0, newArtists.length, successCount, failCount);
   
   for (let i = 0; i < newArtists.length; i++) {
     const artist = newArtists[i];
@@ -48,6 +49,7 @@ async function fetchNewArtistImages(artists, musicBrainzService, ui, updateCallb
       failCount++;
       ui.logBoth('error', `❌ Failed to fetch image for ${artist.name}: ${error.message}`);
     }
+    updateArtistImageFetchProgress('Fetching images', i + 1, newArtists.length, successCount, failCount);
   }
   
   ui.logBoth('success', `✅ Finished auto-fetching: ${successCount} successful, ${failCount} failed`);
@@ -70,6 +72,7 @@ async function fetchAllArtistImages(artists, musicBrainzService, ui, updateCallb
   
   let successCount = 0;
   let failCount = 0;
+  updateArtistImageFetchProgress('Fetching images', 0, artistsToFetch.length, successCount, failCount);
   
   for (let i = 0; i < artistsToFetch.length; i++) {
     const artist = artistsToFetch[i];
@@ -91,6 +94,7 @@ async function fetchAllArtistImages(artists, musicBrainzService, ui, updateCallb
       failCount++;
       ui.logBoth('error', `❌ Failed to fetch image for ${artist.name}: ${error.message}`);
     }
+    updateArtistImageFetchProgress('Fetching images', i + 1, artistsToFetch.length, successCount, failCount);
   }
   
   ui.logBoth('success', `✅ Finished fetching all images: ${successCount} successful, ${failCount} failed`);
@@ -122,6 +126,7 @@ async function retryFailedArtistImages(artists, musicBrainzService, ui, updateCa
   
   let successCount = 0;
   let failCount = 0;
+  updateArtistImageFetchProgress('Retrying images', 0, failedArtists.length, successCount, failCount);
   
   for (let i = 0; i < failedArtists.length; i++) {
     const artist = failedArtists[i];
@@ -143,6 +148,7 @@ async function retryFailedArtistImages(artists, musicBrainzService, ui, updateCa
       failCount++;
       ui.logBoth('error', `❌ Retry failed for ${artist.name}: ${error.message}`);
     }
+    updateArtistImageFetchProgress('Retrying images', i + 1, failedArtists.length, successCount, failCount);
   }
   
   ui.logBoth('success', `✅ Finished retrying: ${successCount} successful, ${failCount} still failed`);
@@ -168,6 +174,15 @@ function updateArtistCardImage(container, currentView, artistName, imageUrl) {
   
   // Replace SVG with image
   iconDiv.innerHTML = `<img src="${imageUrl}" alt="${escapeHtml(artistName)}" class="artist-image" />`;
+}
+
+function updateArtistImageFetchProgress(action, completed, total, successCount, failCount) {
+  const status = document.querySelector('.image-stats');
+  if (!status) return;
+
+  const unavailableText = failCount > 0 ? ` • ${failCount} unavailable` : '';
+  status.textContent = `${action}: ${completed} of ${total} • ${successCount} found${unavailableText}`;
+  status.setAttribute('aria-live', 'polite');
 }
 
 /**

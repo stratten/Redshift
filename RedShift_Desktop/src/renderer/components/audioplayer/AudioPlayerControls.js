@@ -127,9 +127,41 @@ class AudioPlayerControls {
       }
     });
     
-    // Playback speed toggle
-    document.getElementById('speedBtn').addEventListener('click', () => {
-      this.cyclePlaybackSpeed();
+    // Playback speed control
+    const speedBtn = document.getElementById('speedBtn');
+    speedBtn.addEventListener('click', (event) => {
+      event.stopPropagation();
+      this.togglePlaybackSpeedPopover();
+    });
+
+    const playbackSpeedSlider = document.getElementById('playbackSpeedSlider');
+    if (playbackSpeedSlider) {
+      playbackSpeedSlider.addEventListener('input', (event) => {
+        this.setPlaybackSpeed(Number(event.target.value));
+      });
+    }
+
+    const resetPlaybackSpeed = document.getElementById('resetPlaybackSpeed');
+    if (resetPlaybackSpeed) {
+      resetPlaybackSpeed.addEventListener('click', () => this.setPlaybackSpeed(1));
+    }
+
+    const playbackSpeedPopover = document.getElementById('playbackSpeedModal');
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && playbackSpeedPopover?.classList.contains('show')) {
+        this.hidePlaybackSpeedPopover();
+      }
+    });
+
+    document.addEventListener('mousedown', (event) => {
+      if (playbackSpeedPopover?.classList.contains('show') && !playbackSpeedPopover.contains(event.target) && event.target !== speedBtn) {
+        this.hidePlaybackSpeedPopover();
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      if (playbackSpeedPopover?.classList.contains('show')) this.positionPlaybackSpeedPopover();
     });
     
     // Equalizer button
@@ -330,26 +362,76 @@ class AudioPlayerControls {
     return modes[(currentIndex + 1) % modes.length];
   }
   
-  cyclePlaybackSpeed() {
-    const speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
-    const currentIndex = speeds.indexOf(this.player.audioPlayerState.playbackSpeed);
-    const nextIndex = (currentIndex + 1) % speeds.length;
-    const nextSpeed = speeds[nextIndex];
-    
+  togglePlaybackSpeedPopover() {
+    const popover = document.getElementById('playbackSpeedModal');
+    if (popover?.classList.contains('show')) {
+      this.hidePlaybackSpeedPopover();
+    } else {
+      this.showPlaybackSpeedPopover();
+    }
+  }
+
+  showPlaybackSpeedPopover() {
+    const popover = document.getElementById('playbackSpeedModal');
+    if (!popover) return;
+
+    popover.classList.add('show');
+    this.updateSpeedButton(this.player.audioPlayerState.playbackSpeed);
+    this.positionPlaybackSpeedPopover();
+    requestAnimationFrame(() => document.getElementById('playbackSpeedSlider')?.focus());
+  }
+
+  positionPlaybackSpeedPopover() {
+    const popover = document.getElementById('playbackSpeedModal');
+    const speedBtn = document.getElementById('speedBtn');
+    if (!popover || !speedBtn) return;
+
+    const buttonBounds = speedBtn.getBoundingClientRect();
+    const left = Math.min(
+      window.innerWidth - popover.offsetWidth - 12,
+      Math.max(12, buttonBounds.left + (buttonBounds.width - popover.offsetWidth) / 2)
+    );
+    const preferredTop = buttonBounds.top - popover.offsetHeight - 10;
+    const top = preferredTop >= 12
+      ? preferredTop
+      : Math.min(window.innerHeight - popover.offsetHeight - 12, buttonBounds.bottom + 10);
+    popover.style.left = `${left}px`;
+    popover.style.top = `${top}px`;
+  }
+
+  hidePlaybackSpeedPopover() {
+    const popover = document.getElementById('playbackSpeedModal');
+    if (!popover) return;
+
+    popover.classList.remove('show');
+    document.getElementById('speedBtn')?.focus();
+  }
+
+  setPlaybackSpeed(speed) {
+    const nextSpeed = Math.min(2, Math.max(0.5, speed));
     this.player.audioPlayerState.playbackSpeed = nextSpeed;
     this.player.audioElementA.playbackRate = nextSpeed;
     this.player.audioElementB.playbackRate = nextSpeed;
     this.updateSpeedButton(nextSpeed);
-    
-    this.player.ui.logBoth('info', `🎵 Playback speed: ${nextSpeed}x`);
+  }
+
+  cyclePlaybackSpeed() {
+    this.showPlaybackSpeedPopover();
   }
   
   updateSpeedButton(speed) {
+    const displaySpeed = `${Number(speed.toFixed(2))}×`;
     const speedBtn = document.getElementById('speedBtn');
     if (speedBtn) {
-      speedBtn.textContent = `${speed}x`;
-      speedBtn.title = `Playback speed: ${speed}x (click to cycle)`;
+      speedBtn.textContent = displaySpeed;
+      speedBtn.title = `Playback speed: ${displaySpeed} (open speed control)`;
     }
+
+    const slider = document.getElementById('playbackSpeedSlider');
+    if (slider) slider.value = speed;
+
+    const value = document.getElementById('playbackSpeedValue');
+    if (value) value.textContent = displaySpeed;
   }
 }
 

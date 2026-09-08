@@ -35,7 +35,12 @@ struct VisualizerBarsView: View {
             }
         }
         .frame(height: maxHeight, alignment: .bottom)
-        .animation(.linear(duration: 1.0 / 30.0), value: levels)
+        // Analyzer frames arrive at 30 Hz, but giving every height only one
+        // 33 ms frame to land still reads as a sequence of hard steps. Match
+        // the desktop indicator's 100 ms linear height transition instead:
+        // adjacent updates overlap slightly, making the displayed motion
+        // continuous without moving the bars perceptibly behind the audio.
+        .animation(.linear(duration: 0.1), value: levels)
     }
 
     private func barHeight(for index: Int) -> CGFloat {

@@ -398,7 +398,7 @@ class MusicLibrary {
   async exitEditMode(save, capturedValue = null) {
     const editingState = { editingCell: this.editingCell };
     
-    await exitInlineEditMode(
+    const result = await exitInlineEditMode(
       editingState,
       this.ui.logBoth.bind(this.ui),
       save,
@@ -408,6 +408,25 @@ class MusicLibrary {
     );
     
     this.editingCell = editingState.editingCell;
+
+    if (result.didUpdate && (result.fieldType === 'artist' || result.fieldType === 'title')) {
+      const artistCredit = parseTrackArtistCredit(result.trackArtist, result.trackTitle);
+      if (this.selectedArtist && !artistCredit.allArtistKeys.includes(normalizeArtistKey(this.selectedArtist))) {
+        this.selectedArtist = '';
+        this.selectedAlbum = '';
+      }
+      this.populateLibraryBrowser();
+      if (this.selectedGenre) {
+        updateArtistsForSelectedGenre(this.musicLibrary, this.selectedGenre);
+      }
+      if (this.selectedArtist) {
+        updateAlbumsForSelectedArtist(this.musicLibrary, this.selectedGenre, this.selectedArtist);
+      }
+      updateBrowserColumnSelection('genresList', this.selectedGenre);
+      updateBrowserColumnSelection('artistsList', this.selectedArtist);
+      updateBrowserColumnSelection('albumsList', this.selectedAlbum);
+      this.applyFilters();
+    }
   }
   
   

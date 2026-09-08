@@ -12,8 +12,7 @@ struct PlaylistsView: View {
     @State private var newPlaylistName = ""
     
     var body: some View {
-        NavigationStack {
-            VStack {
+        VStack {
                 if libraryManager.playlists.isEmpty {
                     // Empty state
                     VStack(spacing: 20) {
@@ -66,7 +65,6 @@ struct PlaylistsView: View {
             .sheet(isPresented: $showingCreatePlaylist) {
                 CreatePlaylistSheet(isPresented: $showingCreatePlaylist, playlistName: $newPlaylistName)
             }
-        }
     }
     
     private func deletePlaylists(at offsets: IndexSet) {

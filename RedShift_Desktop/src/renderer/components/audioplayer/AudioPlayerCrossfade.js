@@ -162,6 +162,8 @@ class AudioPlayerCrossfade {
     this.player.audioPlayerState.isPlaying = true;
     this.player.updatePlaybackState(true);
     this.player.startProgressLoop();
+    this.player.visualizer.start();
+    this.player.visualization.start();
     this.notifyTrackEndedForPlayCount(completedTrack);
     this.player.playback.commitAdvance(next.index, next.track);
     this.prepareNextTrack();

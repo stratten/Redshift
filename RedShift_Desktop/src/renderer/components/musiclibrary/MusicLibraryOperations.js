@@ -264,7 +264,7 @@ function enterInlineEditMode(cell, rowIndex, musicLibrary, editingState, logBoth
  */
 async function exitInlineEditMode(editingState, logBoth, save, capturedValue = null, updateSongMetadata = null, musicLibrary = null) {
   if (!editingState.editingCell) {
-    return;
+    return { didUpdate: false };
   }
   
   const { cell, input, fieldType, rowIndex, originalValue } = editingState.editingCell;
@@ -277,6 +277,9 @@ async function exitInlineEditMode(editingState, logBoth, save, capturedValue = n
   
   // Clear editing state FIRST to prevent re-entry
   editingState.editingCell = null;
+  let didUpdate = false;
+  let trackArtist = '';
+  let trackTitle = '';
   
   // Restore display
   cell.textContent = save && newValue ? newValue : originalValue;
@@ -295,6 +298,9 @@ async function exitInlineEditMode(editingState, logBoth, save, capturedValue = n
         } else if (fieldType === 'album') {
           track.metadata.common.album = newValue;
         }
+        trackArtist = track.metadata?.common?.artist || '';
+        trackTitle = track.metadata?.common?.title || track.name || '';
+        didUpdate = true;
         logBoth('success', `Updated ${fieldType} to: ${newValue}`);
       } catch (err) {
         logBoth('error', `Failed to update ${fieldType}: ${err.message}`);
@@ -302,6 +308,8 @@ async function exitInlineEditMode(editingState, logBoth, save, capturedValue = n
       }
     }
   }
+
+  return { didUpdate, fieldType, newValue, trackArtist, trackTitle };
 }
 
 /**

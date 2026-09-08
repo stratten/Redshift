@@ -43,7 +43,7 @@ struct LibraryView: View {
         switch sortOption {
         case .artist:
             tracks.sort { 
-                let comparison = ($0.displayArtist, $0.displayAlbum, $0.trackNumber ?? 0) < ($1.displayArtist, $1.displayAlbum, $1.trackNumber ?? 0)
+                let comparison = ($0.primaryArtistName, $0.displayAlbum, $0.trackNumber ?? 0) < ($1.primaryArtistName, $1.displayAlbum, $1.trackNumber ?? 0)
                 return sortAscending ? comparison : !comparison
             }
         case .album:
@@ -215,18 +215,20 @@ struct LibraryView: View {
                     HStack(spacing: 12) {
                         // Sort menu
                         Menu {
-                            Picker("Sort by", selection: $sortOption) {
-                                ForEach(SortOption.allCases, id: \.self) { option in
-                                    Text(option.rawValue).tag(option)
+                            Section("Sort Songs") {
+                                Picker("Sort by", selection: $sortOption) {
+                                    ForEach(SortOption.allCases, id: \.self) { option in
+                                        Text(option.rawValue).tag(option)
+                                    }
                                 }
-                            }
-                            .onChange(of: sortOption) { _, newValue in
-                                // When sort option changes, set sensible default direction
-                                // For "Most Played" and "Recently Added", default to descending (arrow down)
-                                if newValue == .playCount || newValue == .recent {
-                                    sortAscending = false // descending = arrow down = highest/newest first
-                                } else {
-                                    sortAscending = true // ascending = arrow up = alphabetical A-Z
+                                .onChange(of: sortOption) { _, newValue in
+                                    // When sort option changes, set sensible default direction
+                                    // For "Most Played" and "Recently Added", default to descending (arrow down)
+                                    if newValue == .playCount || newValue == .recent {
+                                        sortAscending = false // descending = arrow down = highest/newest first
+                                    } else {
+                                        sortAscending = true // ascending = arrow up = alphabetical A-Z
+                                    }
                                 }
                             }
                         } label: {

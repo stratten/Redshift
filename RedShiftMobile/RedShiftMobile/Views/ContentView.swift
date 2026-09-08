@@ -37,7 +37,6 @@ struct ContentView: View {
     @EnvironmentObject var libraryManager: MusicLibraryManager
     
     @State private var selectedTab = 0
-    @State private var previousTab = 0
     @State private var showingNowPlaying = false
     @State private var libraryNavigationPath = NavigationPath()
     @State private var dockHeight: CGFloat = 0
@@ -46,13 +45,6 @@ struct ContentView: View {
         tabContent
             .sheet(isPresented: $showingNowPlaying) {
                 NowPlayingView()
-            }
-            .onChange(of: selectedTab) { oldValue, newValue in
-                // Pop to root when tapping the Library tab again
-                if previousTab == 0 && newValue == 0 && !libraryNavigationPath.isEmpty {
-                    libraryNavigationPath = NavigationPath()
-                }
-                previousTab = newValue
             }
             .onAppear {
                 // Setup audio player
@@ -84,15 +76,10 @@ struct ContentView: View {
                     .allowsHitTesting(selectedTab == 0)
                     .accessibilityHidden(selectedTab != 0)
                 
-                PlaylistsView()
+                SettingsView()
                     .opacity(selectedTab == 1 ? 1 : 0)
                     .allowsHitTesting(selectedTab == 1)
                     .accessibilityHidden(selectedTab != 1)
-                
-                SettingsView()
-                    .opacity(selectedTab == 2 ? 1 : 0)
-                    .allowsHitTesting(selectedTab == 2)
-                    .accessibilityHidden(selectedTab != 2)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .environment(\.dockBottomInset, dockHeight)
@@ -104,7 +91,7 @@ struct ContentView: View {
                         .padding(.top, 8)
                         .padding(.bottom, 4)
                 }
-                CustomTabBar(selectedTab: $selectedTab)
+                CustomTabBar(selectedTab: $selectedTab, onTabTapped: selectTab)
             }
             .background(
                 GeometryReader { geometry in
@@ -117,6 +104,13 @@ struct ContentView: View {
             )
         }
         .ignoresSafeArea(edges: .bottom)
+    }
+
+    private func selectTab(_ tab: Int) {
+        if tab == 0, selectedTab == 0, !libraryNavigationPath.isEmpty {
+            libraryNavigationPath = NavigationPath()
+        }
+        selectedTab = tab
     }
 }
 

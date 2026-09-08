@@ -52,6 +52,9 @@ final class AudioSpectrumAnalyzer: ObservableObject {
     private var audioFile: AVAudioFile?
     private var openTrackID: UUID?
     private var isReading = false
+    private var lastReportedPlaybackTime: TimeInterval?
+    private var estimatedPlaybackTime: TimeInterval?
+    private var lastEstimateTimestamp: TimeInterval?
 
     func start() {
         guard let player = audioPlayer, let track = player.currentTrack else { return }
@@ -67,6 +70,9 @@ final class AudioSpectrumAnalyzer: ObservableObject {
     func stop() {
         pollTimer?.invalidate()
         pollTimer = nil
+        lastReportedPlaybackTime = nil
+        estimatedPlaybackTime = nil
+        lastEstimateTimestamp = nil
         bandLevels = [CGFloat](repeating: 0, count: bandCount)
         fullBandLevels = [CGFloat](repeating: 0, count: fullBandCount)
     }
@@ -80,10 +86,46 @@ final class AudioSpectrumAnalyzer: ObservableObject {
         do {
             audioFile = try AVAudioFile(forReading: track.fileURL)
             openTrackID = track.id
+            // A new track must start its interpolated position at that track's
+            // next authoritative time reading, never carry a prior track's tail.
+            lastReportedPlaybackTime = nil
+            estimatedPlaybackTime = nil
+            lastEstimateTimestamp = nil
         } catch {
             audioFile = nil
             openTrackID = nil
         }
+    }
+
+    private func estimatedCurrentTime(for player: AudioPlayerService) -> TimeInterval {
+        let reportedTime = max(0, player.currentTime)
+        let now = ProcessInfo.processInfo.systemUptime
+        defer {
+            lastReportedPlaybackTime = reportedTime
+            lastEstimateTimestamp = now
+        }
+
+        guard player.isPlaying else {
+            estimatedPlaybackTime = reportedTime
+            return reportedTime
+        }
+
+        let didSeek = lastReportedPlaybackTime.map { abs(reportedTime - $0) > 0.25 } ?? true
+        if didSeek {
+            estimatedPlaybackTime = reportedTime
+            return reportedTime
+        }
+
+        guard let previousEstimate = estimatedPlaybackTime, let previousTimestamp = lastEstimateTimestamp else {
+            estimatedPlaybackTime = reportedTime
+            return reportedTime
+        }
+
+        let elapsed = now - previousTimestamp
+        let interpolated = previousEstimate + elapsed * Double(player.playbackRate)
+        let estimate = min(player.duration, max(reportedTime, interpolated))
+        estimatedPlaybackTime = estimate
+        return estimate
     }
 
     private func sampleTick() {
@@ -100,7 +142,11 @@ final class AudioSpectrumAnalyzer: ObservableObject {
         let totalFrames = file.length
         guard totalFrames > AVAudioFramePosition(fftSize), sampleRate > 0 else { return }
 
-        let targetFrame = AVAudioFramePosition(max(0, player.currentTime) * sampleRate)
+        // AudioPlayerService publishes its authoritative player time at 10 Hz;
+        // advance from that checkpoint between publications so the 30 Hz FFT
+        // reader samples new PCM frames continuously rather than three copies
+        // of the same frame followed by a visible jump.
+        let targetFrame = AVAudioFramePosition(estimatedCurrentTime(for: player) * sampleRate)
         let maxStart = totalFrames - AVAudioFramePosition(fftSize)
         let startFrame = min(max(0, targetFrame), maxStart)
         let format = file.processingFormat

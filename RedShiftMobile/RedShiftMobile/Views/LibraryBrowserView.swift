@@ -8,6 +8,7 @@ enum LibraryCategory: String, CaseIterable {
     case albums = "Albums"
     case songs = "Songs"
     case genres = "Genres"
+    case playlists = "Playlists"
     case recentlyPlayed = "Recently Played"
     
     var icon: String {
@@ -16,6 +17,7 @@ enum LibraryCategory: String, CaseIterable {
         case .albums: return "square.stack.fill"
         case .songs: return "music.note.list"
         case .genres: return "guitars.fill"
+        case .playlists: return "music.note.list"
         case .recentlyPlayed: return "clock.fill"
         }
     }
@@ -26,6 +28,7 @@ enum LibraryCategory: String, CaseIterable {
         case .albums: return Color.purple
         case .songs: return Color(red: 0.5, green: 0.9, blue: 0.5)
         case .genres: return Color.orange
+        case .playlists: return Color.indigo
         case .recentlyPlayed: return Color.blue
         }
     }
@@ -45,7 +48,7 @@ struct LibraryBrowserView: View {
             ScrollView {
                 VStack(spacing: 16) {
                     ForEach(LibraryCategory.allCases, id: \.self) { category in
-                        NavigationLink(destination: destinationView(for: category)) {
+                        NavigationLink(value: category) {
                             LibraryCategoryCard(category: category, itemCount: itemCount(for: category))
                         }
                         .buttonStyle(PlainButtonStyle())
@@ -61,9 +64,16 @@ struct LibraryBrowserView: View {
             }
             .safeAreaPadding(.bottom, dockBottomInset)
             .background(Color(red: 0.96, green: 0.96, blue: 0.96))
-            .navigationTitle("Library")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationDestination(for: LibraryCategory.self) { category in
+                destinationView(for: category)
+            }
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("Library")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
                         Task {
@@ -99,6 +109,8 @@ struct LibraryBrowserView: View {
             SongsListView()
         case .genres:
             GenresListView()
+        case .playlists:
+            PlaylistsView()
         }
     }
     
@@ -108,7 +120,7 @@ struct LibraryBrowserView: View {
             let count = libraryManager.tracks.filter { $0.lastPlayed != nil }.count
             return "\(count) track\(count == 1 ? "" : "s")"
         case .artists:
-            let count = Set(libraryManager.tracks.compactMap { $0.artist }).count
+            let count = libraryManager.libraryIndex.artists.count
             return "\(count) artist\(count == 1 ? "" : "s")"
         case .albums:
             let count = Set(libraryManager.tracks.compactMap { $0.album }).count
@@ -118,6 +130,9 @@ struct LibraryBrowserView: View {
         case .genres:
             let count = Set(libraryManager.tracks.compactMap { $0.genre }).count
             return "\(count) genre\(count == 1 ? "" : "s")"
+        case .playlists:
+            let count = libraryManager.playlists.count
+            return "\(count) playlist\(count == 1 ? "" : "s")"
         }
     }
 }
@@ -206,8 +221,7 @@ struct ArtistsListView: View {
                 gridView
             }
         }
-        .navigationTitle("Artists")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
         // iOS 26's default .searchable placement moved to a persistent
         // bottom bar on iPhone (Apple's new "reachability" search design) —
         // explicitly pinning it back to the navigation bar drawer restores
@@ -216,6 +230,11 @@ struct ArtistsListView: View {
         // custom bottom tab bar for the same screen real estate.
         .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "Search artists")
         .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text("Artists")
+                    .font(.title2)
+                    .fontWeight(.bold)
+            }
             ToolbarItem(placement: .navigationBarTrailing) {
                 HStack(spacing: 16) {
                     // View mode toggle
@@ -243,7 +262,7 @@ struct ArtistsListView: View {
     private var listView: some View {
         List {
             ForEach(artists) { artist in
-                NavigationLink(destination: ArtistDetailView(artist: artist.name)) {
+                NavigationLink(destination: ArtistDetailView(artistID: artist.id)) {
                     ArtistRowView(artist: artist)
                 }
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
@@ -260,7 +279,7 @@ struct ArtistsListView: View {
                 GridItem(.flexible(), spacing: 16)
             ], spacing: 20) {
                 ForEach(artists) { artist in
-                    NavigationLink(destination: ArtistDetailView(artist: artist.name)) {
+                    NavigationLink(destination: ArtistDetailView(artistID: artist.id)) {
                         ArtistGridItemView(artist: artist)
                     }
                     .buttonStyle(PlainButtonStyle())
@@ -292,15 +311,19 @@ struct ArtistRowView: View {
                     .foregroundColor(.primary)
                 
                 HStack(spacing: 10) {
-                    // Album count badge
-                    Label("\(artist.albumCount)", systemImage: "square.stack")
+                    Label("\(artist.primaryAlbumCount)", systemImage: "square.stack")
                         .font(.caption)
                         .foregroundColor(.secondary)
                     
-                    // Track count
-                    Label("\(artist.tracks.count)", systemImage: "music.note")
+                    Label("\(artist.primaryTracks.count)", systemImage: "music.note")
                         .font(.caption)
                         .foregroundColor(.secondary)
+
+                    if !artist.featuredTracks.isEmpty {
+                        Label("\(artist.featuredTracks.count)", systemImage: "person.2.badge.plus")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
             }
             
@@ -332,7 +355,7 @@ struct ArtistGridItemView: View {
                     .foregroundColor(.primary)
                 
                 HStack(spacing: 8) {
-                    Text("\(artist.albumCount) album\(artist.albumCount == 1 ? "" : "s")")
+                    Text("\(artist.primaryAlbumCount) album\(artist.primaryAlbumCount == 1 ? "" : "s")")
                         .font(.caption2)
                         .foregroundColor(.secondary)
                     
@@ -340,7 +363,13 @@ struct ArtistGridItemView: View {
                         .font(.caption2)
                         .foregroundColor(.secondary)
                     
-                    Text("\(artist.tracks.count) song\(artist.tracks.count == 1 ? "" : "s")")
+                    Text("\(artist.primaryTracks.count) song\(artist.primaryTracks.count == 1 ? "" : "s")")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+
+                if !artist.featuredTracks.isEmpty {
+                    Text("\(artist.featuredTracks.count) appearance\(artist.featuredTracks.count == 1 ? "" : "s")")
                         .font(.caption2)
                         .foregroundColor(.secondary)
                 }
@@ -455,10 +484,14 @@ struct AlbumsListView: View {
                 gridView
             }
         }
-        .navigationTitle("Albums")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "Search albums")
         .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text("Albums")
+                    .font(.title2)
+                    .fontWeight(.bold)
+            }
             ToolbarItem(placement: .navigationBarTrailing) {
                 HStack(spacing: 16) {
                     // View mode toggle
@@ -693,10 +726,14 @@ struct GenresListView: View {
             }
         }
         .safeAreaPadding(.bottom, dockBottomInset)
-        .navigationTitle("Genres")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "Search genres")
         .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text("Genres")
+                    .font(.title2)
+                    .fontWeight(.bold)
+            }
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: { sortAscending.toggle() }) {
                     Image(systemName: sortAscending ? "arrow.up.arrow.down" : "arrow.down.arrow.up")

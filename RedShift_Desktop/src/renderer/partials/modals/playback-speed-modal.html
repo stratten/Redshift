@@ -1,0 +1,17 @@
+<!-- Playback Speed Popover -->
+<div id="playbackSpeedModal" class="playback-speed-popover" role="dialog" aria-label="Playback Speed">
+    <div class="playback-speed-popover-heading">
+        <span>Playback Speed</span>
+        <output class="playback-speed-value" id="playbackSpeedValue" for="playbackSpeedSlider" aria-live="polite">1×</output>
+    </div>
+    <div class="playback-speed-slider-shell">
+        <input type="range" class="playback-speed-slider" id="playbackSpeedSlider" min="0.5" max="2" step="0.05" value="1" aria-label="Playback speed">
+        <div class="playback-speed-ticks" aria-hidden="true">
+            <span class="major" style="--position: 0%"></span><span style="--position: 6.667%"></span><span style="--position: 13.333%"></span><span class="major" style="--position: 16.667%"></span><span style="--position: 20%"></span><span style="--position: 26.667%"></span><span class="major" style="--position: 33.333%"></span><span style="--position: 40%"></span><span style="--position: 46.667%"></span><span class="major" style="--position: 50%"></span><span style="--position: 53.333%"></span><span style="--position: 60%"></span><span class="major" style="--position: 66.667%"></span><span style="--position: 73.333%"></span><span style="--position: 80%"></span><span class="major" style="--position: 83.333%"></span><span style="--position: 86.667%"></span><span style="--position: 93.333%"></span><span class="major" style="--position: 100%"></span>
+        </div>
+    </div>
+    <div class="playback-speed-range-labels" aria-hidden="true">
+        <span style="--position: 0%">0.5×</span><span style="--position: 33.333%">1×</span><span style="--position: 66.667%">1.5×</span><span style="--position: 100%">2×</span>
+    </div>
+    <button class="playback-speed-reset" id="resetPlaybackSpeed" type="button">Reset to 1×</button>
+</div>

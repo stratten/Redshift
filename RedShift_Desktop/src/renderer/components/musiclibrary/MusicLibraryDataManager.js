@@ -20,6 +20,18 @@ function formatDuration(seconds) {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
+function getTrackArtistCredit(track) {
+  return parseTrackArtistCredit(
+    track.metadata?.common?.artist,
+    track.metadata?.common?.title
+  );
+}
+
+function matchesTrackArtist(track, artistName) {
+  if (!artistName) return true;
+  return getTrackArtistCredit(track).allArtistKeys.includes(normalizeArtistKey(artistName));
+}
+
 /**
  * Populate the three-column library browser
  * @param {Array} musicLibrary - Full music library array
@@ -35,10 +47,9 @@ function populateLibraryBrowserColumns(musicLibrary, logBoth) {
   
   musicLibrary.forEach(track => {
     const genre = track.metadata?.common?.genre || 'Unknown Genre';
-    const artist = track.metadata?.common?.artist || 'Unknown Artist';
     const album = track.metadata?.common?.album || 'Unknown Album';
     genres.add(genre);
-    artists.add(artist);
+    getTrackArtistCredit(track).allArtists.forEach(artist => artists.add(artist));
     albums.add(album);
   });
   
@@ -99,10 +110,9 @@ function updateArtistsForSelectedGenre(musicLibrary, selectedGenre) {
   
   musicLibrary.forEach(track => {
     const genre = track.metadata?.common?.genre || 'Unknown Genre';
-    const artist = track.metadata?.common?.artist || 'Unknown Artist';
     
     if (!selectedGenre || genre === selectedGenre) {
-      filteredArtists.add(artist);
+      getTrackArtistCredit(track).allArtists.forEach(artist => filteredArtists.add(artist));
     }
   });
   
@@ -120,11 +130,10 @@ function updateAlbumsForSelectedArtist(musicLibrary, selectedGenre, selectedArti
   
   musicLibrary.forEach(track => {
     const genre = track.metadata?.common?.genre || 'Unknown Genre';
-    const artist = track.metadata?.common?.artist || 'Unknown Artist';
     const album = track.metadata?.common?.album || 'Unknown Album';
     
     const genreMatch = !selectedGenre || genre === selectedGenre;
-    const artistMatch = !selectedArtist || artist === selectedArtist;
+    const artistMatch = matchesTrackArtist(track, selectedArtist);
     
     if (genreMatch && artistMatch) {
       filteredAlbums.add(album);
@@ -175,7 +184,7 @@ function applyLibraryFilters(musicLibrary, browserState, favoriteByPath, ratingB
     
     // Check browser selections
     const genreBrowserMatch = !browserState.selectedGenre || genre === browserState.selectedGenre;
-    const artistBrowserMatch = !browserState.selectedArtist || artist === browserState.selectedArtist;
+    const artistBrowserMatch = matchesTrackArtist(track, browserState.selectedArtist);
     const albumBrowserMatch = !browserState.selectedAlbum || album === browserState.selectedAlbum;
     
     // Check global filter (OR across all fields)

@@ -17,7 +17,7 @@ class AudioPlayer {
       queue: [],
       shuffleMode: false,
       repeatMode: 'none',
-      playbackSpeed: 1.0 // 0.5x, 0.75x, 1x, 1.25x, 1.5x, 2x
+      playbackSpeed: 1.0 // 0.5× to 2×, selected in 0.05× increments
     };
     
     // Two elements allow the next track to be buffered before it becomes audible.
@@ -42,6 +42,10 @@ class AudioPlayer {
     
     // Initialize now-playing visualizer (taps the equalizer's Web Audio graph)
     this.visualizer = new AudioPlayerVisualizer(this);
+
+    // Renders the user-selected spectrogram, oscilloscope, or vectorscope
+    // beside transport controls from the same post-EQ audio graph.
+    this.visualization = new AudioPlayerVisualization(this);
     
     // Initialize output device component
     this.outputDevice = new AudioPlayerOutputDevice(this);
@@ -102,6 +106,7 @@ class AudioPlayer {
       this.updatePlaybackState(true);
       this.startProgressLoop();
       this.visualizer.start();
+      this.visualization.start();
       this.ui.logBoth('info', 'Audio playback started');
     });
 
@@ -111,6 +116,7 @@ class AudioPlayer {
       this.updatePlaybackState(false);
       this.stopProgressLoop();
       this.visualizer.stop();
+      this.visualization.stop();
       this.ui.logBoth('info', 'Audio playback paused');
     });
 
