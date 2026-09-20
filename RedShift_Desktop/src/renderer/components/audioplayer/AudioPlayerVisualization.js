@@ -9,6 +9,8 @@ class AudioPlayerVisualization {
     this.modal = document.getElementById('audioVisualizationModal');
     this.modalCanvas = document.getElementById('audioVisualizationModalCanvas');
     this.modalContext = this.modalCanvas.getContext('2d');
+    this.modalContent = this.modal.querySelector('.audio-visualization-modal-content');
+    this.modalBody = this.modal.querySelector('.audio-visualization-modal-body');
     this.modalOpen = false;
     this.frequencyAnalyser = null;
     this.leftAnalyser = null;
@@ -16,13 +18,23 @@ class AudioPlayerVisualization {
     this.frequencyData = null;
     this.leftData = null;
     this.rightData = null;
+    this.leftFrequencyData = null;
+    this.rightFrequencyData = null;
     this.connectedGainNodes = new WeakSet();
     this.splitters = [];
     this.spectrogramState = new WeakMap();
+    this.constellationRenderer = new AudioConstellationRenderer();
+    this.architectureRenderer = new AudioArchitectureRenderer();
+    this.constellation3DRenderer = new AudioConstellation3DRenderer();
+    this.architecture3DRenderer = new AudioArchitecture3DRenderer();
     this.rafId = null;
     this.pixelRatio = window.devicePixelRatio || 1;
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(this.container);
+    this.modalResizeObserver = new ResizeObserver(() => {
+      if (this.modalOpen) this.resizeModal();
+    });
+    this.modalResizeObserver.observe(this.modalBody);
     this.bindSettings();
     this.bindModal();
     this.resize();
@@ -99,6 +111,7 @@ class AudioPlayerVisualization {
 
   bindModal() {
     const closeButton = document.getElementById('closeAudioVisualization');
+    this.resizeButton = document.getElementById('toggleAudioVisualizationSize');
     this.container.addEventListener('click', () => this.showModal());
     this.container.addEventListener('keydown', (event) => {
       if (event.key === 'Enter' || event.key === ' ') {
@@ -107,6 +120,7 @@ class AudioPlayerVisualization {
       }
     });
     this.modalModeInput.addEventListener('change', () => this.setMode(this.modalModeInput.value));
+    this.resizeButton.addEventListener('click', () => this.toggleModalSize());
     closeButton.addEventListener('click', () => this.hideModal());
     this.modal.addEventListener('click', (event) => {
       if (event.target === this.modal) this.hideModal();
@@ -129,7 +143,20 @@ class AudioPlayerVisualization {
 
   hideModal() {
     this.modalOpen = false;
+    this.modalContent.classList.remove('audio-visualization-modal-expanded');
+    this.resizeButton.title = 'Expand visualization';
+    this.resizeButton.setAttribute('aria-label', 'Expand visualization');
     this.modal.style.display = 'none';
+  }
+
+  toggleModalSize() {
+    const expanded = this.modalContent.classList.toggle('audio-visualization-modal-expanded');
+    this.resizeButton.title = expanded ? 'Restore visualization size' : 'Expand visualization';
+    this.resizeButton.setAttribute('aria-label', this.resizeButton.title);
+    window.requestAnimationFrame(() => {
+      this.resizeModal();
+      this.drawFrame();
+    });
   }
 
   ensureAnalysers() {
@@ -144,11 +171,13 @@ class AudioPlayerVisualization {
       this.frequencyAnalyser.smoothingTimeConstant = 0.72;
       this.leftAnalyser = context.createAnalyser();
       this.rightAnalyser = context.createAnalyser();
-      this.leftAnalyser.fftSize = this.rightAnalyser.fftSize = 512;
+      this.leftAnalyser.fftSize = this.rightAnalyser.fftSize = 1024;
       this.leftAnalyser.smoothingTimeConstant = this.rightAnalyser.smoothingTimeConstant = 0.5;
       this.frequencyData = new Float32Array(this.frequencyAnalyser.frequencyBinCount);
       this.leftData = new Uint8Array(this.leftAnalyser.fftSize);
       this.rightData = new Uint8Array(this.rightAnalyser.fftSize);
+      this.leftFrequencyData = new Uint8Array(this.leftAnalyser.frequencyBinCount);
+      this.rightFrequencyData = new Uint8Array(this.rightAnalyser.frequencyBinCount);
     }
     equalizer.chains.forEach((chain) => {
       if (!chain.gainNode || this.connectedGainNodes.has(chain.gainNode)) return;
@@ -231,8 +260,23 @@ class AudioPlayerVisualization {
     this.context = context;
     this.width = width;
     this.height = height;
+    const isConstellation3D = this.modeInput.value === 'stereo-constellation-3d';
+    const isArchitecture3D = this.modeInput.value === 'audio-architecture-3d';
+    this.constellation3DRenderer.setActive(isConstellation3D);
+    this.architecture3DRenderer.setActive(isArchitecture3D);
     if (this.modeInput.value === 'oscilloscope') this.drawOscilloscope();
     else if (this.modeInput.value === 'vectorscope') this.drawVectorscope();
+    else if (this.modeInput.value === 'density-vectorscope') this.drawDensityVectorscope();
+    else if (this.modeInput.value === 'goniometer') this.drawGoniometer();
+    else if (this.modeInput.value === 'multiband-stereo') this.drawMultibandStereoField();
+    else if (this.modeInput.value === 'stereo-constellation') this.constellationRenderer.draw(this);
+    else if (this.modeInput.value === 'audio-architecture') this.architectureRenderer.draw(this);
+    else if (isConstellation3D) {
+      if (!this.constellation3DRenderer.draw(this)) this.constellationRenderer.draw(this);
+    }
+    else if (isArchitecture3D) {
+      if (!this.architecture3DRenderer.draw(this)) this.architectureRenderer.draw(this);
+    }
     else this.drawSpectrogram();
     Object.assign(this, previousSurface);
   }
@@ -339,5 +383,108 @@ class AudioPlayerVisualization {
       const y = this.height - (this.rightData[index] / 255) * this.height;
       this.context.fillRect(x, y, 1.5, 1.5);
     }
+  }
+
+  drawDensityVectorscope() {
+    this.context.fillStyle = 'rgba(16, 15, 22, 0.25)';
+    this.context.fillRect(0, 0, this.width, this.height);
+    this.leftAnalyser.getByteTimeDomainData(this.leftData);
+    this.rightAnalyser.getByteTimeDomainData(this.rightData);
+    this.context.save();
+    this.context.globalCompositeOperation = 'lighter';
+    this.context.fillStyle = 'rgba(250, 100, 28, 0.18)';
+    for (let index = 0; index < this.leftData.length; index += 1) {
+      const x = (this.leftData[index] / 255) * this.width;
+      const y = this.height - (this.rightData[index] / 255) * this.height;
+      this.context.fillRect(x - 1, y - 1, 2, 2);
+    }
+    this.context.fillStyle = 'rgba(255, 226, 120, 0.55)';
+    for (let index = 0; index < this.leftData.length; index += 1) {
+      const x = (this.leftData[index] / 255) * this.width;
+      const y = this.height - (this.rightData[index] / 255) * this.height;
+      this.context.fillRect(x - 0.45, y - 0.45, 0.9, 0.9);
+    }
+    this.context.restore();
+  }
+
+  drawGoniometer() {
+    this.clearSurface(this.context, this.width, this.height);
+    const centerX = this.width / 2;
+    const centerY = this.height / 2;
+    this.context.strokeStyle = 'rgba(250, 204, 21, 0.16)';
+    this.context.lineWidth = 1;
+    this.context.beginPath();
+    this.context.moveTo(centerX, 0);
+    this.context.lineTo(centerX, this.height);
+    this.context.moveTo(0, centerY);
+    this.context.lineTo(this.width, centerY);
+    this.context.stroke();
+    [0.25, 0.5, 0.75].forEach((radius) => {
+      this.context.beginPath();
+      this.context.ellipse(centerX, centerY, centerX * radius, centerY * radius, 0, 0, Math.PI * 2);
+      this.context.stroke();
+    });
+    this.leftAnalyser.getByteTimeDomainData(this.leftData);
+    this.rightAnalyser.getByteTimeDomainData(this.rightData);
+    this.context.save();
+    this.context.globalCompositeOperation = 'lighter';
+    this.context.fillStyle = 'rgba(250, 204, 21, 0.24)';
+    for (let index = 0; index < this.leftData.length; index += 2) {
+      const left = (this.leftData[index] - 128) / 128;
+      const right = (this.rightData[index] - 128) / 128;
+      const mid = (left + right) / 2;
+      const side = (left - right) / 2;
+      this.context.fillRect(centerX + side * centerX * 0.92, centerY - mid * centerY * 0.92, 1.5, 1.5);
+    }
+    this.context.restore();
+  }
+
+  drawMultibandStereoField() {
+    this.context.fillStyle = 'rgba(16, 15, 22, 0.16)';
+    this.context.fillRect(0, 0, this.width, this.height);
+    this.leftAnalyser.getByteFrequencyData(this.leftFrequencyData);
+    this.rightAnalyser.getByteFrequencyData(this.rightFrequencyData);
+    const bands = [
+      { label: 'BASS', start: 32, end: 300, color: '239, 68, 68' },
+      { label: 'MIDS', start: 300, end: 2400, color: '249, 115, 22' },
+      { label: 'TREBLE', start: 2400, end: 16000, color: '250, 204, 21' }
+    ];
+    const laneHeight = this.height / bands.length;
+    const binWidth = this.leftAnalyser.context.sampleRate / this.leftAnalyser.fftSize;
+
+    if (this.height >= 150) {
+      this.context.fillStyle = 'rgba(250, 204, 21, 0.38)';
+      this.context.font = '10px system-ui';
+      bands.forEach((band, index) => {
+        const laneTop = index * laneHeight;
+        this.context.fillText(band.label, 8, laneTop + 14);
+        this.context.strokeStyle = 'rgba(250, 204, 21, 0.12)';
+        this.context.beginPath();
+        this.context.moveTo(0, laneTop);
+        this.context.lineTo(this.width, laneTop);
+        this.context.stroke();
+      });
+    }
+
+    this.context.save();
+    this.context.globalCompositeOperation = 'lighter';
+    bands.forEach((band, index) => {
+      const firstBin = Math.max(1, Math.floor(band.start / binWidth));
+      const lastBin = Math.min(this.leftFrequencyData.length - 1, Math.ceil(band.end / binWidth));
+      const step = Math.max(1, Math.ceil((lastBin - firstBin + 1) / 96));
+      const laneCenter = (index + 0.5) * laneHeight;
+      for (let bin = firstBin; bin <= lastBin; bin += step) {
+        const left = this.leftFrequencyData[bin] / 255;
+        const right = this.rightFrequencyData[bin] / 255;
+        const energy = (left + right) / 2;
+        if (energy < 0.035) continue;
+        const balance = (right - left) / Math.max(0.1, right + left);
+        const x = this.width / 2 + balance * this.width * 0.42;
+        const halfHeight = energy * laneHeight * 0.42;
+        this.context.fillStyle = `rgba(${band.color}, ${0.06 + energy * 0.36})`;
+        this.context.fillRect(x - 1, laneCenter - halfHeight, 2, halfHeight * 2);
+      }
+    });
+    this.context.restore();
   }
 }

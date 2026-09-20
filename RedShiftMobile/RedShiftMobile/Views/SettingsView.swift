@@ -86,6 +86,22 @@ struct SettingsView: View {
                     Text("Storage")
                 }
                 
+                Section {
+                    ShareLink(item: PlaybackDiagnostics.shared.logFileURL) {
+                        Label("Export Playback Log", systemImage: "square.and.arrow.up")
+                    }
+
+                    Button(role: .destructive, action: {
+                        PlaybackDiagnostics.shared.clear()
+                    }) {
+                        Label("Clear Playback Log", systemImage: "trash")
+                    }
+                } header: {
+                    Text("Playback Diagnostics")
+                } footer: {
+                    Text("Exports the most recent playback, queue, background, audio-session, and error events. Share this file after audio stops unexpectedly.")
+                }
+
                 // About Section
                 Section {
                     HStack {

@@ -37,7 +37,21 @@ class AudioPlayerService: NSObject, ObservableObject {
     private var crossfadeTimer: Timer?
     private var isCrossfading: Bool = false
     private var originalQueue: [Track] = [] // For shuffle/unshuffle
+    private var lastDiagnosticHeartbeat = Date.distantPast
+    private var lastProgressTime: TimeInterval = 0
+    private var lastProgressDate = Date()
+    private var wasPlayingBeforeInterruption = false
     weak var libraryManager: MusicLibraryManager? // For updating play counts
+
+    override init() {
+        super.init()
+        PlaybackDiagnostics.shared.startAudioSessionMonitoring()
+        PlaybackDiagnostics.shared.record("playback.lifecycle", "Audio player initialized")
+        let notificationCenter = NotificationCenter.default
+        notificationCenter.addObserver(self, selector: #selector(handleAudioSessionInterruption), name: AVAudioSession.interruptionNotification, object: AVAudioSession.sharedInstance())
+        notificationCenter.addObserver(self, selector: #selector(handleAudioRouteChange), name: AVAudioSession.routeChangeNotification, object: AVAudioSession.sharedInstance())
+        notificationCenter.addObserver(self, selector: #selector(handleMediaServicesReset), name: AVAudioSession.mediaServicesWereResetNotification, object: AVAudioSession.sharedInstance())
+    }
     
     // MARK: - Audio Session Setup
     static func setupAudioSession() {
@@ -48,15 +62,75 @@ class AudioPlayerService: NSObject, ObservableObject {
                 options: [.allowAirPlay, .allowBluetooth]
             )
             try AVAudioSession.sharedInstance().setActive(true)
+            PlaybackDiagnostics.shared.record("audio-session", "Configured playback category")
         } catch {
             print("Failed to setup audio session: \(error)")
+            PlaybackDiagnostics.shared.record("audio-session.error", "Configuration failed: \(error.localizedDescription)")
         }
+    }
+
+    @objc private func handleAudioSessionInterruption(_ notification: Notification) {
+        let rawType = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt ?? 0
+        guard let type = AVAudioSession.InterruptionType(rawValue: rawType) else {
+            PlaybackDiagnostics.shared.record("audio-session.recovery", "Unknown interruption type")
+            return
+        }
+
+        if type == .began {
+            wasPlayingBeforeInterruption = isPlaying
+            pauseForAudioSessionEvent("Interruption began")
+            return
+        }
+
+        let rawOptions = notification.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0
+        let shouldResume = AVAudioSession.InterruptionOptions(rawValue: rawOptions).contains(.shouldResume)
+        PlaybackDiagnostics.shared.record("audio-session.recovery", "Interruption ended shouldResume=\(shouldResume) wasPlaying=\(wasPlayingBeforeInterruption)")
+        defer { wasPlayingBeforeInterruption = false }
+        guard shouldResume, wasPlayingBeforeInterruption else { return }
+
+        do {
+            try AVAudioSession.sharedInstance().setActive(true)
+            resume()
+        } catch {
+            PlaybackDiagnostics.shared.record("audio-session.recovery-failed", error.localizedDescription)
+        }
+    }
+
+    @objc private func handleAudioRouteChange(_ notification: Notification) {
+        let rawReason = notification.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt ?? 0
+        guard let reason = AVAudioSession.RouteChangeReason(rawValue: rawReason) else {
+            PlaybackDiagnostics.shared.record("audio-session.recovery", "Unknown route-change reason")
+            return
+        }
+
+        if reason == .oldDeviceUnavailable {
+            wasPlayingBeforeInterruption = false
+            pauseForAudioSessionEvent("Audio device disconnected")
+        } else {
+            PlaybackDiagnostics.shared.record("audio-session.recovery", "Route changed reason=\(reason.rawValue)")
+        }
+    }
+
+    @objc private func handleMediaServicesReset(_ notification: Notification) {
+        PlaybackDiagnostics.shared.record("audio-session.recovery", "Media services reset")
+        AudioPlayerService.setupAudioSession()
+    }
+
+    private func pauseForAudioSessionEvent(_ reason: String) {
+        guard isPlaying || player?.isPlaying == true else { return }
+        player?.pause()
+        isPlaying = false
+        stopProgressTimer()
+        updateNowPlayingInfo()
+        PlaybackDiagnostics.shared.record("audio-session.paused", "\(reason) \(playbackDiagnosticSnapshot())")
     }
     
     // MARK: - Playback Controls
     func play(track: Track) {
+        PlaybackDiagnostics.shared.record("play.request", "track=\(track.stableID) file=\(track.fileName) queueIndex=\(currentIndex)")
         guard FileManager.default.fileExists(atPath: track.filePath) else {
             print("File not found: \(track.filePath)")
+            PlaybackDiagnostics.shared.record("play.failed", "Missing file for track=\(track.stableID)")
             return
         }
         
@@ -67,7 +141,12 @@ class AudioPlayerService: NSObject, ObservableObject {
             player?.enableRate = true // Enable playback rate adjustment
             player?.rate = playbackRate // Apply current playback rate
             player?.prepareToPlay()
-            player?.play()
+            guard player?.play() == true else {
+                isPlaying = false
+                stopProgressTimer()
+                PlaybackDiagnostics.shared.record("play.failed", "AVAudioPlayer rejected track=\(track.stableID)")
+                return
+            }
             
             isPlaying = true
             currentTrack = track
@@ -75,9 +154,11 @@ class AudioPlayerService: NSObject, ObservableObject {
             
             startProgressTimer()
             updateNowPlayingInfo()
+            PlaybackDiagnostics.shared.record("play.started", "track=\(track.stableID) duration=\(duration)")
             
         } catch {
             print("Failed to play track: \(error)")
+            PlaybackDiagnostics.shared.record("play.failed", "track=\(track.stableID) error=\(error.localizedDescription)")
         }
     }
     
@@ -86,13 +167,19 @@ class AudioPlayerService: NSObject, ObservableObject {
         isPlaying = false
         stopProgressTimer()
         updateNowPlayingInfo()
+        PlaybackDiagnostics.shared.record("play.paused", playbackDiagnosticSnapshot())
     }
     
     func resume() {
-        player?.play()
+        guard player?.play() == true else {
+            isPlaying = false
+            PlaybackDiagnostics.shared.record("play.failed", "Resume rejected \(playbackDiagnosticSnapshot())")
+            return
+        }
         isPlaying = true
         startProgressTimer()
         updateNowPlayingInfo()
+        PlaybackDiagnostics.shared.record("play.resumed", playbackDiagnosticSnapshot())
     }
     
     func togglePlayPause() {
@@ -110,6 +197,7 @@ class AudioPlayerService: NSObject, ObservableObject {
         currentTime = 0
         stopProgressTimer()
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+        PlaybackDiagnostics.shared.record("play.stopped", playbackDiagnosticSnapshot())
     }
     
     func seek(to time: TimeInterval) {
@@ -146,6 +234,7 @@ class AudioPlayerService: NSObject, ObservableObject {
             shuffleQueue(keepingCurrentTrack: true)
         }
         
+        PlaybackDiagnostics.shared.record("queue.started", "count=\(queue.count) index=\(currentIndex) shuffle=\(shuffleEnabled)")
         play(track: queue[currentIndex])
     }
     
@@ -267,6 +356,7 @@ class AudioPlayerService: NSObject, ObservableObject {
             if repeatMode == .all {
                 currentIndex = 0
             } else {
+                PlaybackDiagnostics.shared.record("queue.completed", "Reached end with repeat off")
                 stop()
                 return
             }
@@ -349,9 +439,25 @@ class AudioPlayerService: NSObject, ObservableObject {
     // MARK: - Progress Timer
     private func startProgressTimer() {
         stopProgressTimer()
+        lastProgressTime = player?.currentTime ?? 0
+        lastProgressDate = Date()
         timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
             guard let self = self, let player = self.player else { return }
             self.currentTime = player.currentTime
+            let now = Date()
+
+            if abs(player.currentTime - self.lastProgressTime) > 0.01 {
+                self.lastProgressTime = player.currentTime
+                self.lastProgressDate = now
+            } else if self.isPlaying && now.timeIntervalSince(self.lastProgressDate) >= 15 {
+                PlaybackDiagnostics.shared.record("play.stalled", self.playbackDiagnosticSnapshot())
+                self.lastProgressDate = now
+            }
+
+            if self.isPlaying && now.timeIntervalSince(self.lastDiagnosticHeartbeat) >= 60 {
+                PlaybackDiagnostics.shared.record("play.heartbeat", self.playbackDiagnosticSnapshot())
+                self.lastDiagnosticHeartbeat = now
+            }
             
             // Check if we should start crossfade
             if self.crossfadeDuration > 0 && !self.isCrossfading {
@@ -366,6 +472,11 @@ class AudioPlayerService: NSObject, ObservableObject {
     private func stopProgressTimer() {
         timer?.invalidate()
         timer = nil
+    }
+
+    private func playbackDiagnosticSnapshot() -> String {
+        let trackID = currentTrack?.stableID ?? "none"
+        return "track=\(trackID) index=\(currentIndex)/\(queue.count) currentTime=\(String(format: "%.2f", currentTime)) playerPlaying=\(player?.isPlaying ?? false) isPlaying=\(isPlaying) crossfading=\(isCrossfading)"
     }
     
     // MARK: - Now Playing Info (Lock Screen)
@@ -491,10 +602,12 @@ class AudioPlayerService: NSObject, ObservableObject {
         let nextTrack = queue[currentIndex + 1]
         
         print("🔀 Starting crossfade to: \(nextTrack.displayTitle)")
+        PlaybackDiagnostics.shared.record("crossfade.started", "fromIndex=\(currentIndex) toTrack=\(nextTrack.stableID)")
         
         // Prepare next player
         guard FileManager.default.fileExists(atPath: nextTrack.filePath) else {
             print("❌ Next track file not found for crossfade")
+            PlaybackDiagnostics.shared.record("crossfade.failed", "Missing file for track=\(nextTrack.stableID)")
             isCrossfading = false
             return
         }
@@ -533,12 +646,14 @@ class AudioPlayerService: NSObject, ObservableObject {
             }
         } catch {
             print("❌ Failed to prepare next track for crossfade: \(error)")
+            PlaybackDiagnostics.shared.record("crossfade.failed", "track=\(nextTrack.stableID) error=\(error.localizedDescription)")
             isCrossfading = false
         }
     }
     
     private func completeCrossfade() {
         print("✅ Crossfade complete")
+        PlaybackDiagnostics.shared.record("crossfade.completed", "fromIndex=\(currentIndex) toIndex=\(currentIndex + 1)")
         
         // Stop old player
         player?.stop()
@@ -565,6 +680,7 @@ class AudioPlayerService: NSObject, ObservableObject {
     
     // MARK: - Cleanup
     deinit {
+        NotificationCenter.default.removeObserver(self)
         stopProgressTimer()
         cancelSleepTimer()
         crossfadeTimer?.invalidate()
@@ -578,6 +694,8 @@ extension AudioPlayerService: AVAudioPlayerDelegate {
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
+            let playerRole = player === self.player ? "current" : player === self.nextPlayer ? "next" : "retired"
+            PlaybackDiagnostics.shared.record("play.finished", "player=\(playerRole) successful=\(flag) \(self.playbackDiagnosticSnapshot())")
             
             if flag {
                 // Track finished successfully - increment play count
@@ -587,6 +705,8 @@ extension AudioPlayerService: AVAudioPlayerDelegate {
                     }
                 }
                 self.next()
+            } else {
+                PlaybackDiagnostics.shared.record("play.failed", "Player ended unsuccessfully without an advance")
             }
         }
     }
@@ -594,6 +714,7 @@ extension AudioPlayerService: AVAudioPlayerDelegate {
     func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
         DispatchQueue.main.async { [weak self] in
             print("Audio decode error: \(error?.localizedDescription ?? "unknown")")
+            PlaybackDiagnostics.shared.record("play.decode-error", error?.localizedDescription ?? "unknown")
             self?.next()
         }
     }

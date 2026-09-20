@@ -1,20 +1,32 @@
 /* Modal Styles */
 
-.audio-visualization-modal-content {
-    max-width: 860px;
-    padding: 20px;
-    overflow: visible;
+.modal-content.audio-visualization-modal-content {
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    width: min(90vw, 620px);
+    max-width: 620px;
+    max-height: 80vh;
+    padding: 24px;
+    overflow: hidden;
 }
 
 .audio-visualization-modal-content .modal-header {
     justify-content: space-between;
+    gap: 24px;
     margin-bottom: 14px;
+}
+
+.audio-visualization-modal-content .modal-header h2 {
+    min-width: 0;
+    margin: 0;
 }
 
 .audio-visualization-modal-actions {
     display: flex;
     align-items: center;
     gap: 10px;
+    flex: 0 0 auto;
 }
 
 .audio-visualization-modal-actions select {
@@ -27,7 +39,9 @@
 }
 
 .audio-visualization-modal-body {
+    box-sizing: border-box;
     height: min(55vh, 420px);
+    position: relative;
     padding: 8px;
     border: 1px solid rgba(250, 204, 21, 0.3);
     border-radius: 10px;
@@ -35,10 +49,41 @@
     box-shadow: inset 0 0 24px rgba(239, 68, 68, 0.12);
 }
 
+.modal-content.audio-visualization-modal-content.audio-visualization-modal-expanded {
+    width: calc(100vw - 96px);
+    max-width: none;
+    height: calc(100vh - 144px);
+    max-height: none;
+}
+
+.audio-visualization-modal-expanded .audio-visualization-modal-body {
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
+}
+
 .audio-visualization-modal-body canvas {
     display: block;
     width: 100%;
     height: 100%;
+}
+
+.visualization-resize-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.visualization-restore-icon {
+    display: none;
+}
+
+.audio-visualization-modal-expanded .visualization-expand-icon {
+    display: none;
+}
+
+.audio-visualization-modal-expanded .visualization-restore-icon {
+    display: block;
 }
 
 .transfer-modal {

@@ -19,7 +19,9 @@ function renderArtistListView(viewState, musicBrainzService) {
     : 'No images fetched yet';
 
   let html = `
-    <div class="artists-list-view">
+    <div class="artists-browser">
+      <section class="artists-master-pane" aria-label="Artists">
+        <div class="artists-list-view">
       <div class="artists-controls">
         <div class="search-filter-controls">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -101,9 +103,15 @@ function renderArtistListView(viewState, musicBrainzService) {
   html += `
       </div>
       
-      <div class="artists-footer">
-        ${filteredArtists.length} artist${filteredArtists.length !== 1 ? 's' : ''} • 
-        ${totalSongs} tracks
+          <div class="artists-footer">
+            ${filteredArtists.length} artist${filteredArtists.length !== 1 ? 's' : ''} • ${totalSongs} tracks
+          </div>
+        </div>
+      </section>
+      <div class="artist-albums-panel-container">
+        <div class="artist-albums-panel-empty">
+          <span>Select an artist to browse albums</span>
+        </div>
       </div>
     </div>
   `;

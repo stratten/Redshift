@@ -12,6 +12,7 @@ class ArtistsView {
     this.selectedArtist = null;
     this.selectedAlbum = null; // Track selected album when viewing single album
     this.selectedCreditRole = 'primary';
+    this.panelView = this.loadPanelViewPreference();
     this.sortBy = 'name'; // 'name', 'songCount', 'albumCount'
     this.sortDirection = 'asc'; // 'asc' or 'desc'
     this.searchTerm = ''; // Local search term for artist filtering
@@ -90,13 +91,19 @@ class ArtistsView {
       
       // Artist card clicks and album selection
       this.container.addEventListener('click', (e) => {
+        const panelViewButton = e.target.closest('[data-artist-panel-view]');
+        if (panelViewButton) {
+          this.showPanelView(panelViewButton.dataset.artistPanelView);
+          return;
+        }
+
         const artistCard = e.target.closest('.artist-card');
         if (artistCard && this.currentView === 'list') {
           this.showAlbumSelection(artistCard.dataset.artistName);
         }
 
         const albumCard = e.target.closest('.album-card');
-        if (albumCard && this.currentView === 'albums') {
+        if (albumCard && (this.currentView === 'albums' || albumCard.closest('.artist-albums-panel-container'))) {
           const albumName = albumCard.dataset.albumName;
           if (albumName === '__ALL_SONGS__') {
             this.showAllSongs();
@@ -353,9 +360,10 @@ class ArtistsView {
     }
     
     this.selectedAlbum = null; // Clear album selection
-    this.selectedCreditRole = 'primary';
-    this.currentView = 'albums';
-    this.renderAlbumsView();
+    this.selectedCreditRole = this.panelView === 'tracks' ? 'all' : 'primary';
+    this.currentView = this.container?.querySelector('.artist-albums-panel-container') ? 'list' : 'albums';
+    if (this.panelView === 'tracks') this.renderDetailView();
+    else this.renderAlbumsView();
   }
 
   /**
@@ -369,9 +377,27 @@ class ArtistsView {
     const primaryAlbumGroups = this.groupTracksByAlbum(artist.primaryTracks);
     const featuredAlbumGroups = this.groupTracksByAlbum(artist.featuredTracks);
     
-    // Delegate to global renderer
-    const html = renderArtistAlbumsView(artist, primaryAlbumGroups, featuredAlbumGroups);
-    this.container.innerHTML = html;
+    const panelContainer = this.container.querySelector('.artist-albums-panel-container');
+    if (panelContainer) {
+      panelContainer.innerHTML = renderArtistAlbumsPanel(artist, primaryAlbumGroups, featuredAlbumGroups);
+      this.container.querySelectorAll('.artist-card').forEach((card) => {
+        card.classList.toggle('is-selected', card.dataset.artistName === artist.name);
+      });
+      return;
+    }
+
+    // Preserve the existing full-page behavior until the list renderer provides the panel container.
+    this.container.innerHTML = renderArtistAlbumsView(artist, primaryAlbumGroups, featuredAlbumGroups);
+  }
+
+  showPanelView(panelView) {
+    if (!this.selectedArtist || !['albums', 'tracks'].includes(panelView)) return;
+    this.savePanelViewPreference(panelView);
+    this.selectedAlbum = null;
+    this.selectedCreditRole = panelView === 'tracks' ? 'all' : 'primary';
+    this.currentView = 'list';
+    if (panelView === 'albums') this.renderAlbumsView();
+    else this.renderDetailView();
   }
 
 
@@ -382,7 +408,13 @@ class ArtistsView {
     if (!this.selectedArtist) return;
     
     this.selectedAlbum = null;
-    this.selectedCreditRole = 'primary';
+    this.selectedCreditRole = 'all';
+    this.savePanelViewPreference('tracks');
+    if (this.container?.querySelector('.artist-albums-panel-container')) {
+      this.currentView = 'list';
+      this.renderDetailView();
+      return;
+    }
     this.currentView = 'detail';
     this.renderDetailView();
   }
@@ -395,6 +427,12 @@ class ArtistsView {
 
     this.selectedAlbum = null;
     this.selectedCreditRole = 'featured';
+    this.savePanelViewPreference('albums');
+    if (this.container?.querySelector('.artist-albums-panel-container')) {
+      this.currentView = 'list';
+      this.renderDetailView();
+      return;
+    }
     this.currentView = 'detail';
     this.renderDetailView();
   }
@@ -407,6 +445,12 @@ class ArtistsView {
     
     this.selectedAlbum = albumName;
     this.selectedCreditRole = 'primary';
+    this.savePanelViewPreference('albums');
+    if (this.container?.querySelector('.artist-albums-panel-container')) {
+      this.currentView = 'list';
+      this.renderDetailView();
+      return;
+    }
     this.currentView = 'detail';
     this.renderDetailView();
   }
@@ -416,12 +460,19 @@ class ArtistsView {
    */
   renderDetailView() {
     if (!this.container || !this.selectedArtist) return;
+    const panelContainer = this.container.querySelector('.artist-albums-panel-container');
+    if (panelContainer && this.panelView === 'albums' && !this.selectedAlbum && this.selectedCreditRole !== 'featured') {
+      this.renderAlbumsView();
+      return;
+    }
 
     const artist = this.selectedArtist;
     
     const roleTracks = this.selectedCreditRole === 'featured'
       ? artist.featuredTracks
-      : artist.primaryTracks;
+      : this.selectedCreditRole === 'all'
+        ? artist.tracks
+        : artist.primaryTracks;
     const albumGroups = this.groupTracksByAlbum(roleTracks);
     
     // Filter to single album if one is selected
@@ -439,6 +490,16 @@ class ArtistsView {
     const currentTrackPath = currentTrack?.filePath || currentTrack?.path || null;
     const isPlaying = this.ui.audioPlayer?.audioPlayerState?.isPlaying || false;
     
+    if (panelContainer) {
+      panelContainer.innerHTML = renderArtistTracksPanel(artist, displayGroups, this.selectedCreditRole, this.selectedAlbum, favoriteByPath, ratingByPath, playCountByPath, currentTrackPath, isPlaying);
+      this.container.querySelectorAll('.artist-card').forEach((card) => {
+        card.classList.toggle('is-selected', card.dataset.artistName === artist.name);
+      });
+      this.setupTrackTableListeners();
+      this.setupTrackActionListeners();
+      return;
+    }
+
     // Delegate to global renderer
     const html = renderArtistDetailView(artist, displayGroups, this.selectedAlbum, this.selectedCreditRole, favoriteByPath, ratingByPath, playCountByPath, currentTrackPath, isPlaying);
     this.container.innerHTML = html;
@@ -459,9 +520,26 @@ class ArtistsView {
   }
 
   getSelectedRoleTracks() {
-    return this.selectedCreditRole === 'featured'
-      ? this.selectedArtist.featuredTracks
-      : this.selectedArtist.primaryTracks;
+    if (this.selectedCreditRole === 'featured') return this.selectedArtist.featuredTracks;
+    if (this.selectedCreditRole === 'all') return this.selectedArtist.tracks;
+    return this.selectedArtist.primaryTracks;
+  }
+
+  loadPanelViewPreference() {
+    try {
+      return localStorage.getItem('redshift.artistPanelView') === 'tracks' ? 'tracks' : 'albums';
+    } catch (error) {
+      return 'albums';
+    }
+  }
+
+  savePanelViewPreference(panelView) {
+    this.panelView = panelView;
+    try {
+      localStorage.setItem('redshift.artistPanelView', panelView);
+    } catch (error) {
+      console.warn('Unable to save artist panel view preference:', error);
+    }
   }
 
   /**

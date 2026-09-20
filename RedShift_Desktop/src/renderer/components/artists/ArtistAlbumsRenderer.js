@@ -62,6 +62,71 @@ function renderArtistAlbumsView(artist, primaryAlbumGroups, featuredAlbumGroups)
 }
 
 /**
+ * Render the persistent detail panel shown beside the artist list.
+ */
+function renderArtistAlbumsPanel(artist, primaryAlbumGroups, featuredAlbumGroups) {
+  return `
+    <aside class="artist-albums-panel" aria-label="${escapeHtml(artist.name)} albums">
+      ${renderArtistPanelHeader(artist, 'albums')}
+      <div class="artist-albums-panel-scroll">
+        <div class="artist-albums-panel-grid">
+          ${primaryAlbumGroups.map(({ album, tracks }) => renderAlbumCard(album, tracks)).join('')}
+          ${artist.featuredSongCount > 0 ? renderAppearancesCard(artist.featuredSongCount, featuredAlbumGroups.length) : ''}
+        </div>
+      </div>
+    </aside>
+  `;
+}
+
+/**
+ * Render the artist's complete album-grouped track list inside the detail panel.
+ */
+function renderArtistTracksPanel(artist, displayGroups, creditRole, selectedAlbum, favoriteByPath, ratingByPath, playCountByPath, currentTrackPath, isPlaying) {
+  const panelLabel = selectedAlbum || (creditRole === 'featured' ? 'Appears On' : 'All Tracks');
+  let trackIndex = 0;
+
+  return `
+    <aside class="artist-albums-panel" aria-label="${escapeHtml(artist.name)} ${panelLabel}">
+      ${renderArtistPanelHeader(artist, selectedAlbum || creditRole === 'featured' ? 'album' : 'tracks', panelLabel)}
+      <div class="artist-albums-panel-scroll artist-panel-track-list">
+        ${displayGroups.map(({ album, tracks }) => {
+          const html = renderArtistAlbumGroup(album, tracks, favoriteByPath, ratingByPath, playCountByPath, currentTrackPath, isPlaying, trackIndex);
+          trackIndex += tracks.length;
+          return html;
+        }).join('')}
+      </div>
+    </aside>
+  `;
+}
+
+function renderArtistPanelHeader(artist, panelView, trackLabel = null) {
+  const albumText = artist.albumCount === 1 ? 'album' : 'albums';
+  const artistImage = artist.artistImage
+    ? `<img src="${artist.artistImage}" alt="${escapeHtml(artist.name)}" class="artist-image" />`
+    : artist.albumArt
+      ? `<img src="${artist.albumArt}" alt="${escapeHtml(artist.name)}" class="artist-image" />`
+      : `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>`;
+
+  return `
+    <div class="artist-albums-panel-header">
+      <div class="artist-albums-panel-identity">
+          <div class="artist-albums-panel-image">${artistImage}</div>
+          <div>
+            <h2>${escapeHtml(artist.name)}</h2>
+            <p>${trackLabel || `${artist.primarySongCount} songs · ${artist.albumCount} ${albumText}`}</p>
+          </div>
+      </div>
+      ${panelView === 'album'
+        ? `<button type="button" class="artist-panel-back-button" data-artist-panel-view="albums">All Albums</button>`
+        : `<div class="artist-panel-view-switch" role="group" aria-label="Artist view">
+            <button type="button" class="${panelView === 'albums' ? 'is-active' : ''}" data-artist-panel-view="albums">Albums</button>
+            <button type="button" class="${panelView === 'tracks' ? 'is-active' : ''}" data-artist-panel-view="tracks">All Tracks</button>
+          </div>`}
+    </div>
+  `;
+}
+
+/**
  * Render the "All Songs" special card
  * @param {number} songCount - Total number of songs
  * @returns {string} HTML string for all songs card

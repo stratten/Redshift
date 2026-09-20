@@ -42,6 +42,8 @@ struct RedShiftMobileApp: App {
                 .environmentObject(libraryManager)
                 .environmentObject(spectrumAnalyzer)
                 .onAppear {
+                    PlaybackDiagnostics.shared.record("app.lifecycle", "Window appeared")
+                    PlaybackDiagnostics.shared.startMetricKitMonitoring()
                     // Connect audio player to library manager for play count tracking
                     audioPlayer.libraryManager = libraryManager
                     // Connect the visualizer to the audio player so it knows which
@@ -79,6 +81,7 @@ struct RedShiftMobileApp: App {
                     }
                 }
                 .onChange(of: scenePhase) { oldPhase, newPhase in
+                    PlaybackDiagnostics.shared.record("app.lifecycle", "Scene phase \(oldPhase) → \(newPhase)")
                     if newPhase == .background {
                         // Export playlists when app goes to background (in case of sync)
                         Task {

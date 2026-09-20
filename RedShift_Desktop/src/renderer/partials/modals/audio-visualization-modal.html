@@ -8,7 +8,28 @@
                     <option value="spectrogram">Spectrogram</option>
                     <option value="oscilloscope">Oscilloscope</option>
                     <option value="vectorscope">Vectorscope</option>
+                    <option value="density-vectorscope">Density Vectorscope</option>
+                    <option value="goniometer">Mid/Side Goniometer</option>
+                    <option value="multiband-stereo">Multiband Stereo Field</option>
+                    <option value="stereo-constellation">Stereo Constellation Field</option>
+                    <option value="audio-architecture">Audio Architecture</option>
+                    <option value="stereo-constellation-3d">Stereo Constellation 3D</option>
+                    <option value="audio-architecture-3d">Audio Architecture 3D</option>
                 </select>
+                <button class="close-button visualization-resize-button" id="toggleAudioVisualizationSize" type="button" title="Expand visualization" aria-label="Expand visualization">
+                    <svg class="visualization-expand-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="15 3 21 3 21 9"></polyline>
+                        <polyline points="9 21 3 21 3 15"></polyline>
+                        <line x1="21" y1="3" x2="14" y2="10"></line>
+                        <line x1="3" y1="21" x2="10" y2="14"></line>
+                    </svg>
+                    <svg class="visualization-restore-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 3 3 3 3 9"></polyline>
+                        <polyline points="15 21 21 21 21 15"></polyline>
+                        <line x1="3" y1="3" x2="10" y2="10"></line>
+                        <line x1="21" y1="21" x2="14" y2="14"></line>
+                    </svg>
+                </button>
                 <button class="close-button" id="closeAudioVisualization" type="button" aria-label="Close audio visualization">&times;</button>
             </div>
         </div>

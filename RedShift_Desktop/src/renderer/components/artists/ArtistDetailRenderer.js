@@ -62,9 +62,11 @@ function renderArtistDetailView(artist, displayGroups, selectedAlbum, creditRole
       <div class="artist-albums">
   `;
 
-  // Render each album group
+  // Render each album group with a stable index across the complete track list.
+  let trackIndex = 0;
   displayGroups.forEach(({ album, tracks }) => {
-    html += renderArtistAlbumGroup(album, tracks, favoriteByPath, ratingByPath, playCountByPath, currentTrackPath, isPlaying);
+    html += renderArtistAlbumGroup(album, tracks, favoriteByPath, ratingByPath, playCountByPath, currentTrackPath, isPlaying, trackIndex);
+    trackIndex += tracks.length;
   });
 
   html += `
@@ -86,7 +88,7 @@ function renderArtistDetailView(artist, displayGroups, selectedAlbum, creditRole
  * @param {boolean} isPlaying - Whether audio is currently playing
  * @returns {string} HTML string for album group
  */
-function renderArtistAlbumGroup(album, tracks, favoriteByPath, ratingByPath, playCountByPath, currentTrackPath, isPlaying) {
+function renderArtistAlbumGroup(album, tracks, favoriteByPath, ratingByPath, playCountByPath, currentTrackPath, isPlaying, trackIndexOffset = 0) {
   const trackCount = tracks.length;
   const trackText = trackCount === 1 ? 'track' : 'tracks';
   
@@ -133,7 +135,7 @@ function renderArtistAlbumGroup(album, tracks, favoriteByPath, ratingByPath, pla
           </tr>
         </thead>
         <tbody>
-          ${tracks.map((track, index) => renderArtistTrackRow(track, index, favoriteByPath, ratingByPath, playCountByPath, currentTrackPath, isPlaying)).join('')}
+          ${tracks.map((track, index) => renderArtistTrackRow(track, trackIndexOffset + index, favoriteByPath, ratingByPath, playCountByPath, currentTrackPath, isPlaying)).join('')}
         </tbody>
       </table>
     </div>
