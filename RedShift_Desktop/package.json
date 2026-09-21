@@ -10,7 +10,7 @@
         "build": "node build-html.js && ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES=true electron-builder",
         "pack": "node build-html.js && ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES=true electron-builder --dir",
         "build:renderer": "node build-html.js",
-        "test": "node --test test/artist-credit-parser.test.js"
+        "test": "node --test test/artist-credit-parser.test.js test/video-library-classification.test.js"
     },
     "dependencies": {
         "chokidar": "^3.5.3",

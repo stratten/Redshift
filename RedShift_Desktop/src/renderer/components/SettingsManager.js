@@ -16,6 +16,11 @@ class SettingsManager {
     document.getElementById('browseSyncBtn').addEventListener('click', () => {
       this.browseForDirectory('masterLibraryPath');
     });
+
+    // Browse video library path button
+    document.getElementById('browseVideoBtn').addEventListener('click', () => {
+      this.browseForDirectory('videoLibraryPath');
+    });
     
     // Advanced settings toggle
     document.getElementById('advancedToggle').addEventListener('click', () => {
@@ -39,6 +44,9 @@ class SettingsManager {
       // Advanced sync path (only if different from music path)
       const syncPath = settings.masterLibraryPath && settings.masterLibraryPath !== musicPath ? settings.masterLibraryPath : '';
       document.getElementById('syncLibraryPathInput').value = syncPath;
+
+      // Video library path is independent of the music and sync paths.
+      document.getElementById('videoLibraryPathInput').value = settings.videoLibraryPath || '';
       
       // Legacy display
       if (document.getElementById('libraryPath')) {
@@ -104,6 +112,12 @@ class SettingsManager {
             } catch (e) {
               this.ui.logBoth('warning', `Could not set musicLibraryPath: ${e.message}`);
             }
+          }
+        } else if (settingKey === 'videoLibraryPath') {
+          document.getElementById('videoLibraryPathInput').value = newPath;
+          this.ui.logBoth('success', `Video library path updated: ${newPath}`, '🎬');
+          if (this.ui.videoLibrary) {
+            this.ui.videoLibrary.hasLoadedOnce = false;
           }
         }
       }

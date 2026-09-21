@@ -9,6 +9,7 @@ const { registerAudioHandlers } = require('./AudioHandlers');
 const { registerPlaylistHandlers } = require('./PlaylistHandlers');
 const { registerSyncHandlers } = require('./SyncHandlers');
 const { registerArtistImageHandlers } = require('./ArtistImageHandlers');
+const { registerVideoHandlers } = require('./VideoHandlers');
 
 /**
  * Register all IPC handlers
@@ -26,6 +27,7 @@ function registerAllIpc(ipcMain, manager) {
       ['musicLibraryCache', () => !!manager.musicLibraryCache],
       ['playlistService', () => !!manager.playlistService],
       ['dopplerSyncService', () => !!manager.dopplerSyncService],
+      ['videoLibraryCache', () => !!manager.videoLibraryCache],
     ];
     const deadline = Date.now() + 10000; // allow up to 10s for cold starts
     let lastLoggedAt = 0;
@@ -54,6 +56,7 @@ function registerAllIpc(ipcMain, manager) {
   registerPlaylistHandlers(ipcMain, manager, waitReady);
   registerSyncHandlers(ipcMain, manager, waitReady);
   registerArtistImageHandlers(ipcMain);
+  registerVideoHandlers(ipcMain, manager, waitReady);
 
   console.log('✅ All IPC handlers registered');
 }

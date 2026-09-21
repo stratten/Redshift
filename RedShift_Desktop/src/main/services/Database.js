@@ -141,6 +141,59 @@ async function initializeDatabase(dbPath) {
   await run(db, `CREATE INDEX IF NOT EXISTS idx_transfer_device ON transferred_files(device_id)`);
   await run(db, `CREATE INDEX IF NOT EXISTS idx_transfer_status ON transferred_files(transfer_status)`);
 
+  // Videos table: local desktop video library (independent of the songs/audio tables)
+  await run(db, `
+    CREATE TABLE IF NOT EXISTS videos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      file_path TEXT UNIQUE NOT NULL,
+      file_name TEXT NOT NULL,
+      relative_path TEXT,
+      file_size INTEGER NOT NULL,
+      modified_time INTEGER NOT NULL,
+      title TEXT,
+      content_kind TEXT NOT NULL DEFAULT 'other',
+      series_title TEXT,
+      series_key TEXT,
+      season_number INTEGER,
+      episode_start INTEGER,
+      episode_end INTEGER,
+      group_source TEXT NOT NULL DEFAULT 'unclassified',
+      duration INTEGER,
+      width INTEGER,
+      height INTEGER,
+      playback_supported INTEGER,
+      last_position_seconds INTEGER DEFAULT 0,
+      watched INTEGER DEFAULT 0,
+      added_date INTEGER DEFAULT (strftime('%s', 'now')),
+      modified_date INTEGER DEFAULT (strftime('%s', 'now'))
+    )
+  `);
+
+  await run(db, `CREATE INDEX IF NOT EXISTS idx_videos_file_path ON videos(file_path)`);
+  await run(db, `CREATE INDEX IF NOT EXISTS idx_videos_title ON videos(title)`);
+
+  // Add organizational columns for video-library databases created before this feature.
+  const videoColumnMigrations = [
+    `ALTER TABLE videos ADD COLUMN content_kind TEXT NOT NULL DEFAULT 'other'`,
+    `ALTER TABLE videos ADD COLUMN series_title TEXT`,
+    `ALTER TABLE videos ADD COLUMN series_key TEXT`,
+    `ALTER TABLE videos ADD COLUMN season_number INTEGER`,
+    `ALTER TABLE videos ADD COLUMN episode_start INTEGER`,
+    `ALTER TABLE videos ADD COLUMN episode_end INTEGER`,
+    `ALTER TABLE videos ADD COLUMN group_source TEXT NOT NULL DEFAULT 'unclassified'`
+  ];
+
+  for (const sql of videoColumnMigrations) {
+    try {
+      await run(db, sql);
+    } catch (_) {
+      // The column already exists in databases initialized by a newer version.
+    }
+  }
+
+  await run(db, `CREATE INDEX IF NOT EXISTS idx_videos_content_kind ON videos(content_kind)`);
+  await run(db, `CREATE INDEX IF NOT EXISTS idx_videos_series_season_episode ON videos(series_key, season_number, episode_start)`);
+
   return db;
 }
 

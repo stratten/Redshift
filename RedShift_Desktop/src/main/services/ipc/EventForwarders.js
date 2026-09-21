@@ -130,6 +130,9 @@ function attachEventForwarders(manager) {
     });
     ae.on('audio-error', (data) => manager.sendToRenderer('audio-error', data));
   }
+
+  // VideoLibraryCache emits scan completion through the shared manager EventEmitter.
+  manager.on('video-scan-progress', (data) => manager.sendToRenderer('video-scan-progress', data));
 }
 
 module.exports = { attachEventForwarders };

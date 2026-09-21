@@ -91,7 +91,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'audio-track-ended-notify',
       'songs-update-metadata',
       'show-in-finder',
-      'get-file-info'
+      'get-file-info',
+      // Video library
+      'scan-video-library',
+      'get-all-videos',
+      'update-video-progress',
+      'add-videos-to-library'
     ];
     
     if (validChannels.includes(channel)) {
@@ -172,7 +177,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'usb-sync-progress',
       'usb-sync-completed',
       'usb-sync-failed',
-      'device-scan-progress'
+      'device-scan-progress',
+      'video-scan-progress'
     ];
     
     if (validChannels.includes(channel)) {
@@ -238,7 +244,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'usb-sync-progress',
       'usb-sync-completed',
       'usb-sync-failed',
-      'device-scan-progress'
+      'device-scan-progress',
+      'video-scan-progress'
     ];
     
     if (validChannels.includes(channel)) {

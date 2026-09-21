@@ -17,6 +17,8 @@ class RedshiftSyncUI {
     this.playlistManager = new PlaylistManager(this);
     this.dopplerSync = new DopplerSync(this);
     this.deviceManager = new DeviceManager(this);
+    this.videoPlayerModal = new VideoPlayerModal(this);
+    this.videoLibrary = new VideoLibrary(this);
     
     // Initialize IPC event manager (depends on components)
     this.ipcEventManager = new IPCEventManager(this);
@@ -80,7 +82,8 @@ class RedshiftSyncUI {
           'usb-sync': 'USB Sync',
           'doppler-sync': 'Doppler Sync',
           'history': 'Transfer History',
-          'settings': 'Settings'
+          'settings': 'Settings',
+          'videos': 'Videos'
         };
         
         const subtabTitles = {
@@ -100,8 +103,10 @@ class RedshiftSyncUI {
         // Show/hide tab-specific header actions
         const usbSyncActions = document.getElementById('usbSyncActions');
         const musicActions = document.getElementById('musicActions');
+        const videoActions = document.getElementById('videoActions');
         if (usbSyncActions) usbSyncActions.style.display = tabId === 'usb-sync' ? 'flex' : 'none';
         if (musicActions) musicActions.style.display = tabId === 'music' ? 'flex' : 'none';
+        if (videoActions) videoActions.style.display = tabId === 'videos' ? 'flex' : 'none';
         
         // Show/hide tab content
         tabContents.forEach(content => {
@@ -114,6 +119,8 @@ class RedshiftSyncUI {
           this.switchMusicSubtab(subtabId);
         } else if (tabId === 'history') {
           this.syncManager.loadTransferHistory();
+        } else if (tabId === 'videos') {
+          this.videoLibrary.onTabActivated();
         }
       });
     });

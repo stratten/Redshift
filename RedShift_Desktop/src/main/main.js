@@ -16,6 +16,7 @@ const DopplerSyncService = require('./services/DopplerSyncService');
 const DeviceMonitorService = require('./services/DeviceMonitorService');
 const AudioPlayerService = require('./services/AudioPlayerService');
 const MusicLibraryCache = require('./services/MusicLibraryCache');
+const VideoLibraryCache = require('./services/VideoLibraryCache');
 const PlaylistService = require('./services/PlaylistService');
 const WindowManager = require('./services/WindowManager');
 const MediaKeysService = require('./services/MediaKeysService');
@@ -66,6 +67,17 @@ class RedshiftSyncManager extends EventEmitter {
     
     // Audio file extensions
     this.audioExtensions = ['.mp3', '.m4a', '.flac', '.wav', '.aac', '.m4p', '.ogg', '.opus'];
+
+    // Default video library paths by platform
+    const defaultVideoPaths = {
+      darwin: app.getPath('videos'),
+      win32: app.getPath('videos'),
+      linux: path.join(app.getPath('home'), 'Videos')
+    };
+
+    this.defaultVideoLibraryPath = defaultVideoPaths[process.platform] || defaultVideoPaths.linux;
+    this.videoLibraryPath = this.defaultVideoLibraryPath;
+    this.videoExtensions = ['.mp4', '.m4v', '.mov', '.webm', '.mkv', '.avi'];
     
     // Audio player state
     this.currentTrack = null;
@@ -86,6 +98,7 @@ class RedshiftSyncManager extends EventEmitter {
     const defaultSettings = {
       masterLibraryPath: this.defaultMasterLibraryPath,
       musicLibraryPath: null,
+      videoLibraryPath: this.defaultVideoLibraryPath,
       defaultTransferMethod: 'direct_libimobile',
       theme: 'dark',
       volume: 1.0,
@@ -103,6 +116,9 @@ class RedshiftSyncManager extends EventEmitter {
     
     // Ensure music library directory exists
     await fs.ensureDir(this.masterLibraryPath);
+
+    this.videoLibraryPath = this.settings.videoLibraryPath || this.defaultVideoLibraryPath;
+    await fs.ensureDir(this.videoLibraryPath);
     
     // Initialize database (must complete before services are created)
     await this.initializeDatabase();
@@ -135,6 +151,9 @@ class RedshiftSyncManager extends EventEmitter {
     // Initialize music library cache
     this.musicLibraryCache = new MusicLibraryCache(this.appDataPath, this.audioPlayerService);
     await this.musicLibraryCache.initialize();
+
+    // The videos table is initialized before services, so this cache needs no separate setup.
+    this.videoLibraryCache = new VideoLibraryCache(this);
     
     // Initialize Doppler sync service (enhanced sync management)
     const mockDatabaseService = {
@@ -198,6 +217,9 @@ class RedshiftSyncManager extends EventEmitter {
       this.masterLibraryPath = value;
       await fs.ensureDir(this.masterLibraryPath);
       this.startFileWatcher(); // Restart watcher with new path
+    } else if (key === 'videoLibraryPath') {
+      this.videoLibraryPath = value;
+      await fs.ensureDir(this.videoLibraryPath);
     } else if (key === 'volume') {
       this.volume = value;
     }
@@ -211,7 +233,11 @@ class RedshiftSyncManager extends EventEmitter {
   async chooseDirectory(settingKey = 'masterLibraryPath') {
     const result = await dialog.showOpenDialog(this.mainWindow, {
       properties: ['openDirectory'],
-      title: settingKey === 'musicLibraryPath' ? 'Select Music Library Directory' : 'Select Master Library Directory'
+      title: settingKey === 'musicLibraryPath'
+        ? 'Select Music Library Directory'
+        : settingKey === 'videoLibraryPath'
+          ? 'Select Video Library Directory'
+          : 'Select Master Library Directory'
     });
     if (!result.canceled && result.filePaths.length > 0) {
       const selectedPath = result.filePaths[0];

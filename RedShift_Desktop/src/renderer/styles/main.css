@@ -16,6 +16,7 @@
 @import 'doppler-sync.css';
 @import 'modals.css';
 @import 'shared.css';
+@import 'videos-view.css';
 
 /* Shared fixed-column contract for every track table. */
 .music-table th.col-duration,
