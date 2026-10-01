@@ -64,16 +64,13 @@ extension AudioSpectrumAnalyzer {
         let n = samples.count
         guard n > 0, n & (n - 1) == 0 else { return nil }
 
-        var window = [Float](repeating: 0, count: n)
-        vDSP_hann_window(&window, vDSP_Length(n), Int32(vDSP_HANN_NORM))
+        guard let context = FFTContext.context(for: n) else { return nil }
+        defer { withExtendedLifetime(context) {} }
         var windowed = [Float](repeating: 0, count: n)
-        vDSP_vmul(samples, 1, window, 1, &windowed, 1, vDSP_Length(n))
+        vDSP_vmul(samples, 1, context.window, 1, &windowed, 1, vDSP_Length(n))
 
-        let log2n = vDSP_Length(log2(Double(n)))
-        guard let fftSetup = vDSP_create_fftsetup(log2n, FFTRadix(kFFTRadix2)) else {
-            return nil
-        }
-        defer { vDSP_destroy_fftsetup(fftSetup) }
+        let log2n = context.log2n
+        let fftSetup = context.setup
 
         var realp = [Float](repeating: 0, count: n / 2)
         var imagp = [Float](repeating: 0, count: n / 2)
@@ -131,5 +128,39 @@ extension AudioSpectrumAnalyzer {
             return [CGFloat](repeating: 0, count: bandCount)
         }
         return groupMagnitudes(magnitudes, bandCount: bandCount)
+    }
+}
+
+/// Immutable per-size FFT resources. The analyzer's 1024-sample setup and
+/// window are built once rather than on every 30 Hz sample tick.
+final class FFTContext {
+    let size: Int
+    let log2n: vDSP_Length
+    let setup: FFTSetup
+    let window: [Float]
+
+    init?(size: Int) {
+        guard size > 0, size & (size - 1) == 0 else { return nil }
+        let log2n = vDSP_Length(log2(Double(size)))
+        guard let setup = vDSP_create_fftsetup(log2n, FFTRadix(kFFTRadix2)) else { return nil }
+        var window = [Float](repeating: 0, count: size)
+        vDSP_hann_window(&window, vDSP_Length(size), Int32(vDSP_HANN_NORM))
+        self.size = size
+        self.log2n = log2n
+        self.setup = setup
+        self.window = window
+    }
+
+    deinit {
+        vDSP_destroy_fftsetup(setup)
+    }
+
+    private static let analyzerSizeContext = FFTContext(size: 1024)
+
+    static func context(for size: Int) -> FFTContext? {
+        if size == 1024 {
+            return analyzerSizeContext
+        }
+        return FFTContext(size: size)
     }
 }

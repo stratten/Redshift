@@ -13,11 +13,20 @@ enum RepeatMode: String, Codable {
     case one = "one"
 }
 
+/// Publishes only playback position, avoiding 10 Hz invalidation of every
+/// view that observes AudioPlayerService for real playback state changes.
+final class PlaybackProgress: ObservableObject {
+    @Published var currentTime: TimeInterval = 0
+}
+
 class AudioPlayerService: NSObject, ObservableObject {
     // MARK: - Published Properties
     @Published var isPlaying: Bool = false
     @Published var currentTrack: Track?
-    @Published var currentTime: TimeInterval = 0
+    var currentTime: TimeInterval = 0 {
+        didSet { progress.currentTime = currentTime }
+    }
+    let progress = PlaybackProgress()
     @Published var duration: TimeInterval = 0
     @Published var shuffleEnabled: Bool = false
     @Published var repeatMode: RepeatMode = .off
@@ -40,6 +49,7 @@ class AudioPlayerService: NSObject, ObservableObject {
     private var lastDiagnosticHeartbeat = Date.distantPast
     private var lastProgressTime: TimeInterval = 0
     private var lastProgressDate = Date()
+    private var progressTickCount = 0
     private var wasPlayingBeforeInterruption = false
     weak var libraryManager: MusicLibraryManager? // For updating play counts
 
@@ -443,7 +453,12 @@ class AudioPlayerService: NSObject, ObservableObject {
         lastProgressDate = Date()
         timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
             guard let self = self, let player = self.player else { return }
-            self.currentTime = player.currentTime
+            PerformanceDiagnostics.shared.increment(.progressTick)
+            self.progressTickCount &+= 1
+            if UIApplication.shared.applicationState == .active || self.progressTickCount % 10 == 0 {
+                self.currentTime = player.currentTime
+                PerformanceDiagnostics.shared.increment(.progressPublish)
+            }
             let now = Date()
 
             if abs(player.currentTime - self.lastProgressTime) > 0.01 {
@@ -461,7 +476,7 @@ class AudioPlayerService: NSObject, ObservableObject {
             
             // Check if we should start crossfade
             if self.crossfadeDuration > 0 && !self.isCrossfading {
-                let timeRemaining = self.duration - self.currentTime
+                let timeRemaining = self.duration - player.currentTime
                 if timeRemaining <= self.crossfadeDuration && timeRemaining > 0 {
                     self.startCrossfade()
                 }
@@ -491,7 +506,7 @@ class AudioPlayerService: NSObject, ObservableObject {
             MPMediaItemPropertyArtist: track.displayArtist,
             MPMediaItemPropertyAlbumTitle: track.displayAlbum,
             MPMediaItemPropertyPlaybackDuration: duration,
-            MPNowPlayingInfoPropertyElapsedPlaybackTime: currentTime,
+            MPNowPlayingInfoPropertyElapsedPlaybackTime: player?.currentTime ?? currentTime,
             MPNowPlayingInfoPropertyPlaybackRate: isPlaying ? 1.0 : 0.0
         ]
         

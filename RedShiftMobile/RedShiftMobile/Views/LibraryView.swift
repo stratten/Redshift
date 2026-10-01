@@ -280,47 +280,63 @@ struct LibraryView: View {
 // MARK: - Track Row Component
 struct TrackRow: View {
     @EnvironmentObject var libraryManager: MusicLibraryManager
+    @EnvironmentObject var audioPlayer: AudioPlayerService
     let track: Track
-    
+
+    private var isCurrent: Bool {
+        audioPlayer.currentTrack?.filePath == track.filePath
+    }
+
     var body: some View {
         HStack(spacing: 10) {
             // Album art with shadow
-            if let albumArtData = track.albumArtData {
-                if let uiImage = UIImage(data: albumArtData) {
-                    Image(uiImage: uiImage)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 48, height: 48)
-                        .clipped()
-                        .cornerRadius(4)
-                        .shadow(color: .black.opacity(0.15), radius: 3, x: 0, y: 1)
+            Group {
+                if let albumArtData = track.albumArtData {
+                    if let uiImage = UIImage(data: albumArtData) {
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 48, height: 48)
+                            .clipped()
+                            .cornerRadius(4)
+                            .shadow(color: .black.opacity(0.15), radius: 3, x: 0, y: 1)
+                    } else {
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(Color.gray.opacity(0.5))
+                            .frame(width: 48, height: 48)
+                            .overlay {
+                                Image(systemName: "exclamationmark.triangle")
+                                    .font(.caption)
+                                    .foregroundColor(.white)
+                            }
+                            .shadow(color: .black.opacity(0.1), radius: 3, x: 0, y: 1)
+                    }
                 } else {
-                    // Data exists but UIImage can't decode it - show gray with warning
                     RoundedRectangle(cornerRadius: 4)
-                        .fill(Color.gray.opacity(0.5))
+                        .fill(Color.purple.opacity(0.3))
                         .frame(width: 48, height: 48)
                         .overlay {
-                            Image(systemName: "exclamationmark.triangle")
-                                .font(.caption)
-                                .foregroundColor(.white)
+                            Image(systemName: "music.note")
+                                .foregroundColor(.purple)
                         }
                         .shadow(color: .black.opacity(0.1), radius: 3, x: 0, y: 1)
                 }
-            } else {
-                // No album art data
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(Color.purple.opacity(0.3))
-                    .frame(width: 48, height: 48)
-                    .overlay {
-                        Image(systemName: "music.note")
-                            .foregroundColor(.purple)
+            }
+            .overlay {
+                if isCurrent {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(Color.black.opacity(0.6))
+                        NowPlayingIndicator(isPlaying: audioPlayer.isPlaying, size: 18, color: .white)
                     }
-                    .shadow(color: .black.opacity(0.1), radius: 3, x: 0, y: 1)
+                    .frame(width: 48, height: 48)
+                }
             }
             
             // Track info - takes up all available space
             VStack(alignment: .leading, spacing: 3) {
                 MarqueeText(text: track.displayTitle, font: .body)
+                    .foregroundColor(isCurrent ? .purple : .primary)
                     .frame(height: 20)
                 
                 Text(track.displayArtist)
@@ -381,6 +397,20 @@ struct TrackRow: View {
         }
         .padding(.vertical, 3)
         .padding(.horizontal, 4)
+    }
+}
+
+// MARK: - Now Playing Indicator
+struct NowPlayingIndicator: View {
+    let isPlaying: Bool
+    var size: CGFloat = 14
+    var color: Color = .purple
+
+    var body: some View {
+        Image(systemName: isPlaying ? "speaker.wave.2.fill" : "speaker.fill")
+            .font(.system(size: size, weight: .bold))
+            .foregroundColor(color)
+            .accessibilityLabel(isPlaying ? "Now playing" : "Current track, paused")
     }
 }
 

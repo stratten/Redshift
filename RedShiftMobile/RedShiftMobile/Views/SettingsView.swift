@@ -87,19 +87,33 @@ struct SettingsView: View {
                 }
                 
                 Section {
-                    ShareLink(item: PlaybackDiagnostics.shared.logFileURL) {
-                        Label("Export Playback Log", systemImage: "square.and.arrow.up")
+                    ShareLink(items: PlaybackDiagnostics.exportableFileURLs()) {
+                        Label("Export Diagnostics", systemImage: "square.and.arrow.up")
+                    }
+
+                    HStack {
+                        Text("Thermal State")
+                        Spacer()
+                        Text(PerformanceDiagnostics.thermalStateName(ProcessInfo.processInfo.thermalState).capitalized)
+                            .foregroundColor(.gray)
+                    }
+
+                    Button(action: {
+                        PerformanceDiagnostics.shared.writeSnapshot(reason: "manual")
+                    }) {
+                        Label("Record Performance Snapshot", systemImage: "gauge.with.dots.needle.50percent")
                     }
 
                     Button(role: .destructive, action: {
                         PlaybackDiagnostics.shared.clear()
+                        PerformanceDiagnostics.shared.log.clear()
                     }) {
-                        Label("Clear Playback Log", systemImage: "trash")
+                        Label("Clear Diagnostic Logs", systemImage: "trash")
                     }
                 } header: {
-                    Text("Playback Diagnostics")
+                    Text("Diagnostics")
                 } footer: {
-                    Text("Exports the most recent playback, queue, background, audio-session, and error events. Share this file after audio stops unexpectedly.")
+                    Text("Exports the playback event log, the per-minute performance log (CPU, thermal state, battery, visualizer and timer activity), and any MetricKit crash, hang, and energy reports iOS has delivered. Share these after a crash, an unexpected stop, or noticeable battery drain.")
                 }
 
                 // About Section

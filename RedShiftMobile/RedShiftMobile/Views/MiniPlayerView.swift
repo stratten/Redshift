@@ -5,7 +5,6 @@ import SwiftUI
 
 struct MiniPlayerView: View {
     @EnvironmentObject var audioPlayer: AudioPlayerService
-    @EnvironmentObject var spectrumAnalyzer: AudioSpectrumAnalyzer
     
     /// Invoked when the user taps the album art / track info area to open
     /// the full Now Playing screen. Deliberately NOT attached to the whole
@@ -53,8 +52,8 @@ struct MiniPlayerView: View {
                         }
                         .padding(.trailing, 12)
                         
-                        VisualizerBarsView(
-                            levels: spectrumAnalyzer.bandLevels,
+                        LiveVisualizerBars(
+                            resolution: .compact,
                             isActive: audioPlayer.isPlaying,
                             minHeight: 4.5,
                             maxHeight: 21,

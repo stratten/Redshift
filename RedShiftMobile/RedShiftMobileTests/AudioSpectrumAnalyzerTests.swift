@@ -57,3 +57,32 @@ final class AudioSpectrumAnalyzerTests: XCTestCase {
         }
     }
 }
+
+final class SpectrumPublishingTests: XCTestCase {
+    func testSubPixelChangeDoesNotPublish() {
+        XCTAssertFalse(AudioSpectrumAnalyzer.differsVisibly([0.5, 0.2], [0.503, 0.2]))
+    }
+
+    func testVisibleChangePublishes() {
+        XCTAssertTrue(AudioSpectrumAnalyzer.differsVisibly([0.5, 0.2], [0.5, 0.21]))
+    }
+
+    func testBandCountChangePublishes() {
+        XCTAssertTrue(AudioSpectrumAnalyzer.differsVisibly([0.5], [0.5, 0.5]))
+    }
+
+    func testAnalyzerSizeContextIsBuiltOnce() {
+        guard let first = FFTContext.context(for: 1024),
+              let second = FFTContext.context(for: 1024) else {
+            return XCTFail("Expected FFT context")
+        }
+        XCTAssertTrue(first === second)
+        XCTAssertEqual(first.window.count, 1024)
+    }
+
+    func testOtherPowerOfTwoSizesWorkAndInvalidSizesFail() {
+        XCTAssertNotNil(FFTContext.context(for: 512))
+        XCTAssertNil(FFTContext.context(for: 1000))
+        XCTAssertNil(FFTContext.context(for: 0))
+    }
+}

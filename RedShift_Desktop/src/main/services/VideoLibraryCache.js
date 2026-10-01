@@ -11,6 +11,9 @@ class VideoLibraryCache {
   constructor(manager) {
     this.manager = manager;
     this.videoExtensions = VIDEO_EXTENSIONS;
+    this.scanPromise = null;
+    this.metadataPromise = null;
+    this.thumbnailPromise = null;
   }
 
   get db() {
@@ -44,6 +47,17 @@ class VideoLibraryCache {
   }
 
   async scanVideoLibrary(libraryPath) {
+    if (this.scanPromise) return this.scanPromise;
+
+    this.scanPromise = this.performVideoLibraryScan(libraryPath);
+    try {
+      return await this.scanPromise;
+    } finally {
+      this.scanPromise = null;
+    }
+  }
+
+  async performVideoLibraryScan(libraryPath) {
     this.emitLog('info', '🎬 Starting video library scan...');
     const startTime = Date.now();
 
@@ -63,6 +77,17 @@ class VideoLibraryCache {
       await this.updateVideoOrganization(file);
     }
 
+    const videos = await this.getAllVideos();
+    void this.populateMissingDurations(currentFiles).catch((error) => {
+      this.emitLog('warning', `🎬 Duration metadata enrichment failed: ${error.message}`);
+    });
+    void this.populateMissingThumbnails(currentFiles).catch((error) => {
+      this.emitLog('warning', `🎬 Video thumbnail enrichment failed: ${error.message}`);
+    });
+    void this.manager.tvMazeService?.enrichRecognizedSeries().catch((error) => {
+      this.emitLog('warning', `🎬 TVMaze metadata enrichment failed: ${error.message}`);
+    });
+
     const elapsedMs = Date.now() - startTime;
     this.emitLog(
       'success',
@@ -70,7 +95,7 @@ class VideoLibraryCache {
     );
     this.manager.emit('video-scan-progress', { phase: 'complete', total: currentFiles.length });
 
-    return this.getAllVideos();
+    return videos;
   }
 
   async scanFilesystem(libraryPath) {
@@ -95,14 +120,18 @@ class VideoLibraryCache {
             try {
               const stats = await fs.stat(fullPath);
               const relativePath = path.relative(libraryPath, fullPath);
-              const embeddedMetadata = await this.extractEmbeddedMetadata(fullPath);
               videoFiles.push({
                 path: fullPath,
                 name: entry.name,
                 relativePath,
                 size: stats.size,
                 modified: Math.floor(stats.mtime.getTime() / 1000),
-                ...classifyVideo(relativePath, entry.name, embeddedMetadata)
+                ...classifyVideo(relativePath, entry.name)
+              });
+              this.manager.emit('video-scan-progress', {
+                phase: 'filesystem',
+                current: videoFiles.length,
+                message: `Found ${videoFiles.length} video file${videoFiles.length === 1 ? '' : 's'}...`
               });
             } catch (error) {
               this.emitLog('warning', `🎬 Skipping unavailable video ${fullPath}: ${error.message}`);
@@ -124,6 +153,102 @@ class VideoLibraryCache {
       // Embedded tags are optional enrichment. Unreadable or unsupported containers still
       // participate in folder and filename classification.
       return null;
+    }
+  }
+
+  async populateMissingDurations(currentFiles) {
+    if (this.metadataPromise) return this.metadataPromise;
+
+    this.metadataPromise = this.performDurationEnrichment(currentFiles);
+    try {
+      return await this.metadataPromise;
+    } finally {
+      this.metadataPromise = null;
+    }
+  }
+
+  async performDurationEnrichment(currentFiles) {
+    const rows = await this.allSql('SELECT file_path FROM videos WHERE duration IS NULL');
+    const filesByPath = new Map(currentFiles.map((file) => [file.path, file]));
+    const filesNeedingDuration = rows.map((row) => filesByPath.get(row.file_path)).filter(Boolean);
+
+    if (filesNeedingDuration.length === 0) return;
+
+    const total = filesNeedingDuration.length;
+    this.manager.emit('video-scan-progress', {
+      phase: 'metadata',
+      current: 0,
+      total,
+      message: `Reading duration metadata for ${total} video file${total === 1 ? '' : 's'}...`
+    });
+
+    for (let index = 0; index < filesNeedingDuration.length; index += 1) {
+      const file = filesNeedingDuration[index];
+      const duration = await this.extractDuration(file.path);
+      await this.runSql('UPDATE videos SET duration = ? WHERE file_path = ?', [duration, file.path]);
+      this.manager.emit('video-scan-progress', {
+        phase: 'metadata',
+        current: index + 1,
+        total,
+        filePath: file.path,
+        duration,
+        message: `Reading duration metadata: ${index + 1} of ${total}`
+      });
+    }
+  }
+
+  async extractDuration(filePath) {
+    try {
+      const metadata = await mm.parseFile(filePath, { duration: false, skipCovers: true });
+      const duration = metadata.format?.duration;
+      return Number.isFinite(duration) && duration > 0 ? Math.floor(duration) : 0;
+    } catch (_) {
+      // Zero records a completed metadata attempt while preserving the unknown-duration display.
+      return 0;
+    }
+  }
+
+  async populateMissingThumbnails(currentFiles) {
+    if (this.thumbnailPromise) return this.thumbnailPromise;
+
+    this.thumbnailPromise = this.performThumbnailEnrichment(currentFiles);
+    try {
+      return await this.thumbnailPromise;
+    } finally {
+      this.thumbnailPromise = null;
+    }
+  }
+
+  async performThumbnailEnrichment(currentFiles) {
+    if (!this.manager.videoThumbnailService) return;
+
+    const rows = await this.allSql(`
+      SELECT videos.file_path, videos.duration
+      FROM videos
+      LEFT JOIN tvmaze_series_metadata AS series ON series.series_key = videos.series_key
+      LEFT JOIN tvmaze_episode_metadata AS episode
+        ON episode.tvmaze_show_id = series.tvmaze_show_id
+        AND episode.season_number = videos.season_number
+        AND episode.episode_number = videos.episode_start
+      WHERE videos.thumbnail_path IS NULL
+        AND episode.image_path IS NULL
+    `);
+    const filesByPath = new Map(currentFiles.map((file) => [file.path, file]));
+    const filesNeedingThumbnails = rows
+      .map((row) => {
+        const file = filesByPath.get(row.file_path);
+        return file ? { file, duration: row.duration } : null;
+      })
+      .filter(Boolean);
+
+    for (const { file, duration } of filesNeedingThumbnails) {
+      try {
+        const thumbnailPath = await this.manager.videoThumbnailService.createThumbnail(file, duration);
+        await this.runSql('UPDATE videos SET thumbnail_path = ? WHERE file_path = ?', [thumbnailPath, file.path]);
+        this.manager.emit('video-thumbnail-ready', { filePath: file.path, thumbnailPath });
+      } catch (error) {
+        this.emitLog('warning', `🎬 Thumbnail unavailable for ${file.name}: ${error.message}`);
+      }
     }
   }
 
@@ -164,7 +289,7 @@ class VideoLibraryCache {
   async upsertVideoFile(file) {
     const classification = classificationFor(file);
     const update = await this.runSql(
-      `UPDATE videos SET file_name = ?, relative_path = ?, file_size = ?, modified_time = ?, title = ?, content_kind = ?, series_title = ?, series_key = ?, season_number = ?, episode_start = ?, episode_end = ?, group_source = ?, duration = NULL, width = NULL, height = NULL, playback_supported = NULL, last_position_seconds = 0, watched = 0, modified_date = strftime('%s','now') WHERE file_path = ?`,
+      `UPDATE videos SET file_name = ?, relative_path = ?, file_size = ?, modified_time = ?, title = ?, content_kind = ?, series_title = ?, series_key = ?, season_number = ?, episode_start = ?, episode_end = ?, group_source = ?, duration = NULL, width = NULL, height = NULL, playback_supported = NULL, thumbnail_path = NULL, last_position_seconds = 0, watched = 0, modified_date = strftime('%s','now') WHERE file_path = ?`,
       [
         file.name,
         file.relativePath,
@@ -223,7 +348,37 @@ class VideoLibraryCache {
   }
 
   async getAllVideos() {
-    const rows = await this.allSql('SELECT * FROM videos ORDER BY title COLLATE NOCASE ASC');
+    const rows = await this.allSql(
+      `SELECT
+        videos.*,
+        series.match_status AS tvmaze_match_status,
+        series.tvmaze_show_id AS tvmaze_show_id,
+        series.show_name AS tvmaze_show_name,
+        series.show_url AS tvmaze_show_url,
+        series.premiered AS tvmaze_premiered,
+        series.ended AS tvmaze_ended,
+        series.show_status AS tvmaze_show_status,
+        series.show_type AS tvmaze_show_type,
+        series.language AS tvmaze_language,
+        series.genres_json AS tvmaze_genres_json,
+        series.network_name AS tvmaze_network_name,
+        series.summary AS tvmaze_show_summary,
+        series.poster_path AS tvmaze_poster_path,
+        series.last_error AS tvmaze_last_error,
+        episode.tvmaze_episode_id AS tvmaze_episode_id,
+        episode.episode_title AS tvmaze_episode_title,
+        episode.summary AS tvmaze_episode_summary,
+        episode.airdate AS tvmaze_episode_airdate,
+        episode.runtime AS tvmaze_episode_runtime,
+        episode.image_path AS tvmaze_episode_image_path
+       FROM videos
+       LEFT JOIN tvmaze_series_metadata AS series ON series.series_key = videos.series_key
+       LEFT JOIN tvmaze_episode_metadata AS episode
+         ON episode.tvmaze_show_id = series.tvmaze_show_id
+         AND episode.season_number = videos.season_number
+         AND episode.episode_number = videos.episode_start
+       ORDER BY videos.title COLLATE NOCASE ASC`
+    );
     return rows.map((row) => ({
       id: row.id,
       path: row.file_path,
@@ -244,7 +399,30 @@ class VideoLibraryCache {
       height: row.height,
       playbackSupported: row.playback_supported === null ? null : !!row.playback_supported,
       lastPositionSeconds: row.last_position_seconds || 0,
-      watched: !!row.watched
+      lastViewedAt: row.last_viewed_at || null,
+      watched: !!row.watched,
+      addedAt: row.added_date,
+      thumbnailPath: row.thumbnail_path || null,
+      tvMazeMatchStatus: row.tvmaze_match_status || null,
+      tvMazeShowId: row.tvmaze_show_id,
+      tvMazeShowName: row.tvmaze_show_name || null,
+      tvMazeShowUrl: row.tvmaze_show_url || null,
+      tvMazePremiered: row.tvmaze_premiered || null,
+      tvMazeEnded: row.tvmaze_ended || null,
+      tvMazeShowStatus: row.tvmaze_show_status || null,
+      tvMazeShowType: row.tvmaze_show_type || null,
+      tvMazeLanguage: row.tvmaze_language || null,
+      tvMazeGenres: parseJsonArray(row.tvmaze_genres_json),
+      tvMazeNetworkName: row.tvmaze_network_name || null,
+      tvMazeShowSummary: row.tvmaze_show_summary || null,
+      tvMazePosterPath: row.tvmaze_poster_path || null,
+      tvMazeLastError: row.tvmaze_last_error || null,
+      tvMazeEpisodeId: row.tvmaze_episode_id,
+      tvMazeEpisodeTitle: row.tvmaze_episode_title || null,
+      tvMazeEpisodeSummary: row.tvmaze_episode_summary || null,
+      tvMazeEpisodeAirdate: row.tvmaze_episode_airdate || null,
+      tvMazeEpisodeRuntime: row.tvmaze_episode_runtime,
+      tvMazeEpisodeImagePath: row.tvmaze_episode_image_path || null
     }));
   }
 
@@ -271,6 +449,7 @@ class VideoLibraryCache {
     if (updates.positionSeconds !== undefined && updates.positionSeconds !== null) {
       fields.push('last_position_seconds = ?');
       params.push(Math.floor(updates.positionSeconds));
+      fields.push(`last_viewed_at = strftime('%s','now')`);
     }
     if (updates.watched !== undefined && updates.watched !== null) {
       fields.push('watched = ?');
@@ -287,6 +466,29 @@ class VideoLibraryCache {
   async importPaths(paths, libraryPath) {
     let filesAdded = 0;
 
+    const uniqueDestinationPath = async (destinationPath) => {
+      if (!await fs.pathExists(destinationPath)) return destinationPath;
+
+      const extension = path.extname(destinationPath);
+      const baseName = path.basename(destinationPath, extension);
+      const directory = path.dirname(destinationPath);
+      let copyNumber = 1;
+      let candidate;
+      do {
+        candidate = path.join(directory, `${baseName} (${copyNumber})${extension}`);
+        copyNumber += 1;
+      } while (await fs.pathExists(candidate));
+      return candidate;
+    };
+
+    const copyVideoFile = async (srcPath, destinationDirectory) => {
+      const intendedPath = path.join(destinationDirectory, path.basename(srcPath));
+      if (path.resolve(srcPath) === path.resolve(intendedPath)) return false;
+      const destinationPath = await uniqueDestinationPath(intendedPath);
+      await fs.copyFile(srcPath, destinationPath);
+      return true;
+    };
+
     const copyDirectory = async (src, dest) => {
       await fs.mkdir(dest, { recursive: true });
       const entries = await fs.readdir(src, { withFileTypes: true });
@@ -298,8 +500,7 @@ class VideoLibraryCache {
         } else if (entry.isFile()) {
           const ext = path.extname(entry.name).toLowerCase();
           if (this.videoExtensions.includes(ext)) {
-            await fs.copyFile(srcPath, destPath);
-            filesAdded += 1;
+            if (await copyVideoFile(srcPath, path.dirname(destPath))) filesAdded += 1;
           }
         }
       }
@@ -313,8 +514,7 @@ class VideoLibraryCache {
       } else if (stat.isFile()) {
         const ext = path.extname(itemName).toLowerCase();
         if (this.videoExtensions.includes(ext)) {
-          await fs.copyFile(itemPath, path.join(libraryPath, itemName));
-          filesAdded += 1;
+          if (await copyVideoFile(itemPath, libraryPath)) filesAdded += 1;
         }
       }
     }
@@ -335,22 +535,29 @@ function classifyVideo(relativePath, fileName, embeddedMetadata = null) {
   const folderSegments = pathSegments.slice(0, -1);
   const normalizedFolders = folderSegments.map((segment) => segment.trim().toLowerCase());
   const fileStem = fileName.replace(/\.[^/.]+$/, '');
-  const episodeInfo = parseEpisodeInfo([...folderSegments, fileStem]);
+  const folderEpisodeInfo = parseEpisodeInfo(folderSegments);
+  const filenameEpisodeInfo = parseEpisodeInfo([fileStem]);
   const tvRootIndex = normalizedFolders.findIndex((segment) => ['tv', 'tv shows', 'television', 'series', 'shows'].includes(segment));
   const movieRootIndex = normalizedFolders.findIndex((segment) => ['movie', 'movies', 'film', 'films'].includes(segment));
 
-  if (tvRootIndex !== -1 || episodeInfo || embeddedMetadata?.seriesTitle) {
+  if (tvRootIndex !== -1 || folderEpisodeInfo || filenameEpisodeInfo || embeddedMetadata?.seriesTitle) {
     const folderTitle = tvRootIndex !== -1 ? folderSegments[tvRootIndex + 1] : null;
-    const seriesTitle = cleanDisplayTitle(folderTitle || embeddedMetadata?.seriesTitle || episodeInfo?.seriesCandidate || fileStem);
+    const seriesTitle = cleanDisplayTitle(
+      folderTitle || embeddedMetadata?.seriesTitle || folderEpisodeInfo?.seriesCandidate || filenameEpisodeInfo?.seriesCandidate || fileStem
+    );
     return {
       title: embeddedMetadata?.title || cleanDisplayTitle(fileStem),
       contentKind: 'tv',
       seriesTitle,
       seriesKey: normalizeKey(seriesTitle),
-      seasonNumber: episodeInfo?.seasonNumber ?? embeddedMetadata?.seasonNumber ?? null,
-      episodeStart: episodeInfo?.episodeStart ?? embeddedMetadata?.episodeStart ?? null,
-      episodeEnd: episodeInfo?.episodeEnd ?? embeddedMetadata?.episodeEnd ?? null,
-      groupSource: tvRootIndex !== -1 ? 'folder' : embeddedMetadata?.seriesTitle && !episodeInfo ? 'embedded' : 'filename'
+      seasonNumber: folderEpisodeInfo?.seasonNumber ?? embeddedMetadata?.seasonNumber ?? filenameEpisodeInfo?.seasonNumber ?? null,
+      episodeStart: folderEpisodeInfo?.episodeStart ?? embeddedMetadata?.episodeStart ?? filenameEpisodeInfo?.episodeStart ?? null,
+      episodeEnd: folderEpisodeInfo?.episodeEnd ?? embeddedMetadata?.episodeEnd ?? filenameEpisodeInfo?.episodeEnd ?? null,
+      groupSource: tvRootIndex !== -1 || folderEpisodeInfo
+        ? 'folder'
+        : embeddedMetadata?.seriesTitle
+          ? 'embedded'
+          : 'filename'
     };
   }
 
@@ -438,6 +645,15 @@ function normalizeTagIdentifier(value) {
 function positiveInteger(value) {
   const match = String(value ?? '').match(/\d+/);
   return match && Number(match[0]) > 0 ? Number(match[0]) : null;
+}
+
+function parseJsonArray(value) {
+  try {
+    const result = JSON.parse(value || '[]');
+    return Array.isArray(result) ? result : [];
+  } catch (_) {
+    return [];
+  }
 }
 
 module.exports.classifyVideo = classifyVideo;

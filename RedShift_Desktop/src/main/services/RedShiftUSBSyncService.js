@@ -269,7 +269,7 @@ class RedShiftUSBSyncService extends EventEmitter {
         // Step 1: Pull playlists from device
         await this.playlistSync.pullPlaylistsFromDevice(deviceId);
         
-        // Step 2: Merge with local playlists (last modified wins)
+        // Step 2: Three-way merge against last-sync baselines (prompts only when both sides changed)
         await this.playlistSync.mergePlaylistsWithConflictResolution();
         
         // Step 3: Push merged playlists back to device

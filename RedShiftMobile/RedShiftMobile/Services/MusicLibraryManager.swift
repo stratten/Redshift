@@ -150,12 +150,11 @@ class MusicLibraryManager: ObservableObject {
             
             // Step 5: Load fresh data
             let loadedTracks = try await databaseService.loadTracks()
-            let loadedPlaylists = try await databaseService.loadPlaylists()
-            
             await MainActor.run {
                 tracks = loadedTracks
-                playlists = loadedPlaylists
             }
+            // Playlist filenames resolve against the loaded tracks.
+            await importPlaylistsFromSync()
             
             
             
@@ -164,8 +163,10 @@ class MusicLibraryManager: ObservableObject {
         }
         
         await MainActor.run {
-            isScanning = false
-            scanProgress = 1.0
+            if isScanning {
+                isScanning = false
+                scanProgress = 1.0
+            }
         }
     }
     
@@ -195,9 +196,9 @@ class MusicLibraryManager: ObservableObject {
     }
     
     private func performIncrementalReconciliation() async {
+        // The scanning UI replaces the song list, so avoid showing it for a
+        // stat-only foreground reconciliation.
         await MainActor.run {
-            isScanning = true
-            scanProgress = 0
             lastReconciliationError = nil
         }
         
@@ -262,6 +263,12 @@ class MusicLibraryManager: ObservableObject {
             let changedEntries = diskEntries.filter {
                 existingFingerprints[$0.filePath] != $0.fingerprint || backfillFilePaths.contains($0.filePath)
             }
+            if !changedEntries.isEmpty {
+                await MainActor.run {
+                    isScanning = true
+                    scanProgress = 0
+                }
+            }
             
             var upserts: [Track] = []
             var processed = 0
@@ -313,16 +320,21 @@ class MusicLibraryManager: ObservableObject {
                 try await databaseService.applyReconciliation(upserts: upserts, deleteFilePaths: Array(deletedFilePaths))
             }
             
-            let reloadedTracks = try await databaseService.loadTracks()
-            await MainActor.run {
-                tracks = reloadedTracks
+            if !upserts.isEmpty || !deletedFilePaths.isEmpty {
+                let reloadedTracks = try await databaseService.loadTracks()
+                await MainActor.run {
+                    tracks = reloadedTracks
+                }
             }
             
             // Playlists and playback metadata are imported only after the
             // track list reflects the latest files, since both are matched
             // against `tracks` by filename/stableID.
             await importPlaylistsFromSync()
-            await importSyncedPlaybackMetadata()
+            let acceptedManifestRevision = try await databaseService.getSyncStateValue("acceptedManifestRevision")
+            if let manifest = manifest, manifest.revision != acceptedManifestRevision {
+                await importSyncedPlaybackMetadata()
+            }
             
             let reloadedPlaylists = try await databaseService.loadPlaylists()
             await MainActor.run {
@@ -347,8 +359,10 @@ class MusicLibraryManager: ObservableObject {
         }
         
         await MainActor.run {
-            isScanning = false
-            scanProgress = 1.0
+            if isScanning {
+                isScanning = false
+                scanProgress = 1.0
+            }
         }
     }
     
@@ -390,7 +404,7 @@ class MusicLibraryManager: ObservableObject {
         do {
             let data = try Data(contentsOf: fileURL)
             let entries = try JSONDecoder().decode([SyncedPlaybackMetadataEntry].self, from: data)
-            let entriesByFileName = Dictionary(uniqueKeysWithValues: entries.map { ($0.fileName, $0) })
+            let entriesByFileName = Dictionary(entries.map { ($0.fileName, $0) }, uniquingKeysWith: { first, _ in first })
             
             var updatedTracks: [Track] = []
             for var track in tracks {
@@ -700,6 +714,7 @@ class MusicLibraryManager: ObservableObject {
         do {
             print("📋 Saving playlist to database...")
             try await databaseService.savePlaylist(playlist)
+            await exportPlaylistAfterLocalEdit(playlist)
             print("📋 Playlist saved, reloading all playlists...")
             let loadedPlaylists = try await databaseService.loadPlaylists()
             print("📋 Loaded \(loadedPlaylists.count) playlists from database after creation")
@@ -715,7 +730,15 @@ class MusicLibraryManager: ObservableObject {
     
     func updatePlaylist(_ playlist: Playlist) async {
         do {
+            let existingPlaylists = try await databaseService.loadPlaylists()
+            let previousPlaylist = existingPlaylists.first { $0.id == playlist.id }
             try await databaseService.updatePlaylist(playlist)
+            await exportPlaylistAfterLocalEdit(playlist)
+            if let previousPlaylist = previousPlaylist,
+               previousPlaylist.name != playlist.name,
+               let directory = playlistSyncDirectoryURL() {
+                try? FileManager.default.removeItem(at: playlistSyncFileURL(for: previousPlaylist.name, in: directory))
+            }
             let loadedPlaylists = try await databaseService.loadPlaylists()
             await MainActor.run {
                 playlists = loadedPlaylists
@@ -728,6 +751,9 @@ class MusicLibraryManager: ObservableObject {
     func deletePlaylist(_ playlist: Playlist) async {
         do {
             try await databaseService.deletePlaylist(playlist.id)
+            if let directory = playlistSyncDirectoryURL() {
+                try? FileManager.default.removeItem(at: playlistSyncFileURL(for: playlist.name, in: directory))
+            }
             let loadedPlaylists = try await databaseService.loadPlaylists()
             await MainActor.run {
                 playlists = loadedPlaylists
@@ -743,7 +769,7 @@ class MusicLibraryManager: ObservableObject {
         
         if !playlist.trackStableIDs.contains(trackStableID) {
             playlist.trackStableIDs.append(trackStableID)
-            playlist.modifiedDate = Date()
+            playlist.modifiedDate = Playlist.nextModifiedDate(after: latestKnownModifiedDate(for: playlist))
             await updatePlaylist(playlist)
         }
     }
@@ -753,7 +779,7 @@ class MusicLibraryManager: ObservableObject {
         var playlist = playlists[index]
         
         playlist.trackStableIDs.removeAll { $0 == trackStableID }
-        playlist.modifiedDate = Date()
+        playlist.modifiedDate = Playlist.nextModifiedDate(after: latestKnownModifiedDate(for: playlist))
         await updatePlaylist(playlist)
     }
     
@@ -776,6 +802,12 @@ class MusicLibraryManager: ObservableObject {
     
     // MARK: - Playlist Sync Import
     func importPlaylistsFromSync() async {
+        // With no tracks every filename would fail to resolve and be saved as
+        // an empty playlist; scanLibrary retries after loading the library.
+        guard !tracks.isEmpty else {
+            print("📋 Skipping playlist import: library not loaded yet")
+            return
+        }
         print("📋 Starting playlist import from sync...")
         
         guard let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
@@ -860,10 +892,24 @@ class MusicLibraryManager: ObservableObject {
         }
         print("📋 Converted \(trackStableIDs.count) out of \(syncedPlaylist.tracks.count) tracks to stable IDs")
         
-        // Check if playlist already exists (must check database, not in-memory array)
+        // Check the database, not the in-memory array. Names are
+        // case-insensitive because desktop keys and sync files are lowercase.
         let existingPlaylists = try await databaseService.loadPlaylists()
-        if let existingPlaylist = existingPlaylists.first(where: { $0.name == syncedPlaylist.name }) {
-            // Update existing playlist
+        let existingPlaylist = existingPlaylists.first(where: { $0.name.lowercased() == syncedPlaylist.name.lowercased() })
+        let decision = PlaylistSyncImportPolicy.decide(
+            local: existingPlaylist,
+            incomingTrackStableIDs: trackStableIDs,
+            incomingModified: syncedPlaylist.modifiedDate
+        )
+        PlaybackDiagnostics.shared.record(
+            "playlist.sync",
+            "\(syncedPlaylist.name): \(decision) resolved=\(trackStableIDs.count)/\(syncedPlaylist.tracks.count)"
+        )
+        if let existingPlaylist = existingPlaylist {
+            guard decision == .replace else {
+                print("📋 Kept local playlist: \(existingPlaylist.name) (\(decision))")
+                return
+            }
             var updatedPlaylist = existingPlaylist
             updatedPlaylist.trackStableIDs = trackStableIDs
             updatedPlaylist.modifiedDate = syncedPlaylist.modifiedDate
@@ -984,11 +1030,50 @@ class MusicLibraryManager: ObservableObject {
         
         let data = try encoder.encode(exportedPlaylist)
         
-        // Create safe filename
-        let safeFilename = playlist.name.replacingOccurrences(of: "[^a-zA-Z0-9]", with: "_", options: .regularExpression).lowercased()
-        let fileURL = directory.appendingPathComponent("\(safeFilename).json")
+        let fileURL = playlistSyncFileURL(for: playlist.name, in: directory)
+        if let existingModified = exportedModifiedDate(at: fileURL),
+           existingModified.timeIntervalSince1970.rounded(.down) > playlist.modifiedDate.timeIntervalSince1970.rounded(.down) {
+            print("📋 Skipped export of \(playlist.name): newer synced file on disk")
+            return
+        }
         
         try data.write(to: fileURL)
         print("📋 Exported playlist: \(playlist.name) → \(fileURL.lastPathComponent)")
+    }
+
+    // MARK: - Playlist Sync File Helpers
+    private func playlistSyncDirectoryURL() -> URL? {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?
+            .appendingPathComponent("Playlists")
+    }
+
+    private func playlistSyncFileURL(for name: String, in directory: URL) -> URL {
+        let safeFilename = name.replacingOccurrences(of: "[^a-zA-Z0-9]", with: "_", options: .regularExpression).lowercased()
+        return directory.appendingPathComponent("\(safeFilename).json")
+    }
+
+    private func exportedModifiedDate(at fileURL: URL) -> Date? {
+        struct StampOnly: Decodable { let modifiedDate: TimeInterval }
+        guard let data = try? Data(contentsOf: fileURL),
+              let stamp = try? JSONDecoder().decode(StampOnly.self, from: data) else { return nil }
+        return Date(timeIntervalSince1970: stamp.modifiedDate)
+    }
+
+    private func latestKnownModifiedDate(for playlist: Playlist) -> Date {
+        guard let directory = playlistSyncDirectoryURL(),
+              let exported = exportedModifiedDate(at: playlistSyncFileURL(for: playlist.name, in: directory)) else {
+            return playlist.modifiedDate
+        }
+        return max(playlist.modifiedDate, exported)
+    }
+
+    private func exportPlaylistAfterLocalEdit(_ playlist: Playlist) async {
+        guard let directory = playlistSyncDirectoryURL() else { return }
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        do {
+            try await exportPlaylistToJSON(playlist, to: directory)
+        } catch {
+            print("❌ Failed to export playlist \(playlist.name) after edit: \(error)")
+        }
     }
 }

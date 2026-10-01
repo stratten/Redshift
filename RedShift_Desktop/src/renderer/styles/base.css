@@ -158,17 +158,10 @@ body {
     overflow: hidden;
 }
 
-.header {
-    background: var(--rs-bg-surface);
-    border-bottom: 1px solid var(--rs-border-color);
-    padding: 20px 30px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.header h2 {
-    color: var(--rs-text-heading);
-    font-size: 24px;
-}
+/* NOTE: .header/.header h2 layout (background, padding, display, grid columns)
+   is owned entirely by player.css, since the title bar's actual layout needs
+   are specific to the music-player header (grid columns, drag regions,
+   responsive collapse). Keeping a second, more generic .header rule here
+   was dead/conflicting code - it targeted the exact same #titleBar element,
+   just with a different (flex/space-between) layout that's been superseded. */
 

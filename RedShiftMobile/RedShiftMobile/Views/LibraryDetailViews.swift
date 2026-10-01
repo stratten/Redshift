@@ -9,6 +9,7 @@ struct MarqueeText: View {
     let font: Font
     @State private var offset: CGFloat = 0
     @State private var scrollTask: Task<Void, Never>?
+    @Environment(\.scenePhase) private var scenePhase
     
     var body: some View {
         GeometryReader { geometry in
@@ -30,6 +31,15 @@ struct MarqueeText: View {
                     offset = 0
                     startScrolling(containerWidth: geometry.size.width)
                 }
+                .onChange(of: scenePhase) { _, phase in
+                    if phase == .active {
+                        startScrolling(containerWidth: geometry.size.width)
+                    } else {
+                        scrollTask?.cancel()
+                        scrollTask = nil
+                        offset = 0
+                    }
+                }
         }
     }
     
@@ -42,17 +52,26 @@ struct MarqueeText: View {
     // beat before the next pass begins.
     private func startScrolling(containerWidth: CGFloat) {
         scrollTask?.cancel()
+        scrollTask = nil
+        offset = 0
+        guard scenePhase == .active else { return }
         let width = textWidth(text: text, font: font)
-        guard width > containerWidth else { return }
+        // GeometryReader can briefly report zero/NaN/infinite sizes while list
+        // rows are laid out or torn down; UIKit's animation engine traps if a
+        // non-finite offset or duration ever reaches withAnimation.
+        guard containerWidth.isFinite, containerWidth > 0,
+              width.isFinite, width > containerWidth else { return }
         
         // Matches the original target offset exactly (full text width plus a
         // trailing gap) — only the restart timing/pause behavior changed.
         let travelDistance = width + 20
-        let scrollDuration = Double(text.count) * 0.2
+        let scrollDuration = max(1.0, Double(text.count) * 0.2)
+        guard travelDistance.isFinite, scrollDuration.isFinite else { return }
         
         scrollTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: 2_000_000_000)
             while !Task.isCancelled {
+                PerformanceDiagnostics.shared.increment(.marqueePass)
                 withAnimation(.linear(duration: scrollDuration)) {
                     offset = -travelDistance
                 }
@@ -534,7 +553,11 @@ struct AlbumDetailView: View {
                     VStack(spacing: 0) {
                         ForEach(tracks) { track in
                             HStack(alignment: .top, spacing: 12) {
-                                if let trackNum = track.trackNumber {
+                                if audioPlayer.currentTrack?.filePath == track.filePath {
+                                    NowPlayingIndicator(isPlaying: audioPlayer.isPlaying)
+                                        .frame(minWidth: 18, alignment: .trailing)
+                                        .frame(height: 20)
+                                } else if let trackNum = track.trackNumber {
                                     // A narrow number column aligns with the title's first line.
                                     Text("\(trackNum)")
                                         .font(.subheadline)
@@ -545,7 +568,7 @@ struct AlbumDetailView: View {
                                 
                                 VStack(alignment: .leading, spacing: 4) {
                                     MarqueeText(text: track.displayTitle, font: .body)
-                                        .foregroundColor(.primary)
+                                        .foregroundColor(audioPlayer.currentTrack?.filePath == track.filePath ? .purple : .primary)
                                         .frame(height: 20)
                                     
                                     Text(track.formattedDuration)

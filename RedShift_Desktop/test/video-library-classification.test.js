@@ -62,6 +62,29 @@ test('uses embedded TV tags when there is no useful folder or episode filename',
   assert.equal(classification.groupSource, 'embedded');
 });
 
+test('keeps explicit folder organization ahead of conflicting embedded and filename values', () => {
+  const embeddedMetadata = {
+    title: 'Conflicting Episode',
+    seriesTitle: 'Embedded Show',
+    seasonNumber: 8,
+    episodeStart: 12,
+    episodeEnd: null,
+    contentKind: 'tv'
+  };
+  const relativePath = path.join(
+    'TV Shows',
+    'Folder Show',
+    'Folder.Show.S02E03',
+    'Folder.Show.S99E99.mkv'
+  );
+  const classification = classifyVideo(relativePath, path.basename(relativePath), embeddedMetadata);
+
+  assert.equal(classification.seriesTitle, 'Folder Show');
+  assert.equal(classification.seasonNumber, 2);
+  assert.equal(classification.episodeStart, 3);
+  assert.equal(classification.groupSource, 'folder');
+});
+
 test('keeps a movie-folder classification even when no embedded tags exist', () => {
   const classification = classifyVideo(path.join('Movies', 'Arrival.2016.mp4'), 'Arrival.2016.mp4');
 

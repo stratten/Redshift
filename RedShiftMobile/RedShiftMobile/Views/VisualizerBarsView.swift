@@ -49,6 +49,34 @@ struct VisualizerBarsView: View {
     }
 }
 
+/// Owns the spectrum subscription so only the bars re-render for analyzer
+/// frames, not the album art, titles, and controls around them.
+struct LiveVisualizerBars: View {
+    enum Resolution {
+        case compact
+        case full
+    }
+
+    @EnvironmentObject var spectrumAnalyzer: AudioSpectrumAnalyzer
+    let resolution: Resolution
+    let isActive: Bool
+    var minHeight: CGFloat = 3
+    var maxHeight: CGFloat = 14
+    var barWidth: CGFloat = 3
+    var spacing: CGFloat = 2
+
+    var body: some View {
+        VisualizerBarsView(
+            levels: resolution == .compact ? spectrumAnalyzer.bandLevels : spectrumAnalyzer.fullBandLevels,
+            isActive: isActive,
+            minHeight: minHeight,
+            maxHeight: maxHeight,
+            barWidth: barWidth,
+            spacing: spacing
+        )
+    }
+}
+
 #Preview {
     VisualizerBarsView(levels: [0.8, 0.4, 0.6], isActive: true)
         .padding()

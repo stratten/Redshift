@@ -6,10 +6,6 @@ import SwiftUI
 struct NowPlayingView: View {
     @EnvironmentObject var audioPlayer: AudioPlayerService
     @EnvironmentObject var libraryManager: MusicLibraryManager
-    @EnvironmentObject var spectrumAnalyzer: AudioSpectrumAnalyzer
-    
-    @State private var isDraggingSlider = false
-    @State private var tempSliderValue: Double = 0
     
     var body: some View {
         NavigationStack {
@@ -82,8 +78,8 @@ struct NowPlayingView: View {
                         // the full player has the room to show that extra
                         // frequency detail (see AudioSpectrumAnalyzer's
                         // fullBandLevels).
-                        VisualizerBarsView(
-                            levels: spectrumAnalyzer.fullBandLevels,
+                        LiveVisualizerBars(
+                            resolution: .full,
                             isActive: audioPlayer.isPlaying,
                             minHeight: 6,
                             maxHeight: 40,
@@ -93,75 +89,7 @@ struct NowPlayingView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.top, 20)
                         
-                        // Progress slider
-                        VStack(spacing: 8) {
-                            ZStack {
-                                // Slider
-                                Slider(
-                                    value: isDraggingSlider ? $tempSliderValue : Binding(
-                                        get: { audioPlayer.currentTime },
-                                        set: { _ in }
-                                    ),
-                                    in: 0...max(audioPlayer.duration, 1),
-                                    onEditingChanged: { editing in
-                                        if editing {
-                                            isDraggingSlider = true
-                                            tempSliderValue = audioPlayer.currentTime
-                                        } else {
-                                            audioPlayer.seek(to: tempSliderValue)
-                                            isDraggingSlider = false
-                                        }
-                                    }
-                                )
-                                .accentColor(.white)
-                                
-                                // Tap gesture overlay with modest hit area
-                                GeometryReader { geometry in
-                                    Rectangle()
-                                        .fill(Color.clear)
-                                        .contentShape(Rectangle())
-                                        .gesture(
-                                            DragGesture(minimumDistance: 0)
-                                                .onChanged { value in
-                                                    let percent = value.location.x / geometry.size.width
-                                                    let newTime = percent * audioPlayer.duration
-                                                    let clampedTime = max(0, min(newTime, audioPlayer.duration))
-                                                    
-                                                    if !isDraggingSlider {
-                                                        // Direct tap - seek immediately
-                                                        audioPlayer.seek(to: clampedTime)
-                                                    }
-                                                }
-                                        )
-                                }
-                                .frame(height: 30) // Tap target height
-                            }
-                            .frame(height: 30)
-                            // audioPlayer.currentTime only ticks 10x/sec (see
-                            // AudioPlayerService's progress timer), so without
-                            // an explicit animation the thumb sits still for
-                            // 100ms then snaps forward — a visible stair-step.
-                            // A linear animation matching that tick interval
-                            // makes it glide continuously between updates
-                            // instead. Skipped while the user is actively
-                            // dragging so their touch isn't fighting an
-                            // animation curve.
-                            .animation(isDraggingSlider ? nil : .linear(duration: 0.1), value: audioPlayer.currentTime)
-                            
-                            HStack {
-                                Text(formatTime(isDraggingSlider ? tempSliderValue : audioPlayer.currentTime))
-                                    .font(.caption)
-                                    .foregroundColor(.white.opacity(0.6))
-                                    .monospacedDigit()
-                                
-                                Spacer()
-                                
-                                Text(formatTime(audioPlayer.duration))
-                                    .font(.caption)
-                                    .foregroundColor(.white.opacity(0.6))
-                                    .monospacedDigit()
-                            }
-                        }
+                        NowPlayingProgressSection(progress: audioPlayer.progress)
                         .padding(.horizontal, 32)
                         .padding(.top, 16)
                         
@@ -432,7 +360,81 @@ struct NowPlayingView: View {
         }
     }
     
+}
+
+// MARK: - Progress Section
+struct NowPlayingProgressSection: View {
+    @EnvironmentObject var audioPlayer: AudioPlayerService
+    @ObservedObject var progress: PlaybackProgress
+
+    @State private var isDraggingSlider = false
+    @State private var tempSliderValue: Double = 0
+
+    private var sliderUpperBound: Double {
+        audioPlayer.duration.isFinite ? max(audioPlayer.duration, 1) : 1
+    }
+
+    var body: some View {
+        VStack(spacing: 8) {
+            ZStack {
+                Slider(
+                    value: isDraggingSlider ? $tempSliderValue : Binding(
+                        get: { min(max(progress.currentTime, 0), sliderUpperBound) },
+                        set: { _ in }
+                    ),
+                    in: 0...sliderUpperBound,
+                    onEditingChanged: { editing in
+                        if editing {
+                            isDraggingSlider = true
+                            tempSliderValue = min(max(progress.currentTime, 0), sliderUpperBound)
+                        } else {
+                            audioPlayer.seek(to: tempSliderValue)
+                            isDraggingSlider = false
+                        }
+                    }
+                )
+                .accentColor(.white)
+
+                GeometryReader { geometry in
+                    Rectangle()
+                        .fill(Color.clear)
+                        .contentShape(Rectangle())
+                        .gesture(
+                            DragGesture(minimumDistance: 0)
+                                .onChanged { value in
+                                    guard geometry.size.width > 0,
+                                          audioPlayer.duration.isFinite,
+                                          !isDraggingSlider else { return }
+                                    let percent = value.location.x / geometry.size.width
+                                    let clampedTime = max(0, min(percent * audioPlayer.duration, audioPlayer.duration))
+                                    guard clampedTime.isFinite else { return }
+                                    audioPlayer.seek(to: clampedTime)
+                                }
+                        )
+                }
+                .frame(height: 30)
+            }
+            .frame(height: 30)
+            .animation(isDraggingSlider ? nil : .linear(duration: 0.1), value: progress.currentTime)
+
+            HStack {
+                Text(formatTime(isDraggingSlider ? tempSliderValue : progress.currentTime))
+                    .font(.caption)
+                    .foregroundColor(.white.opacity(0.6))
+                    .monospacedDigit()
+
+                Spacer()
+
+                Text(formatTime(audioPlayer.duration))
+                    .font(.caption)
+                    .foregroundColor(.white.opacity(0.6))
+                    .monospacedDigit()
+            }
+        }
+    }
+
     private func formatTime(_ time: TimeInterval) -> String {
+        guard time.isFinite else { return "0:00" }
         let minutes = Int(time) / 60
         let seconds = Int(time) % 60
         return String(format: "%d:%02d", minutes, seconds)

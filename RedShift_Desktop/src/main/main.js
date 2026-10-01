@@ -17,6 +17,9 @@ const DeviceMonitorService = require('./services/DeviceMonitorService');
 const AudioPlayerService = require('./services/AudioPlayerService');
 const MusicLibraryCache = require('./services/MusicLibraryCache');
 const VideoLibraryCache = require('./services/VideoLibraryCache');
+const VideoCompatibilityService = require('./services/VideoCompatibilityService');
+const VideoThumbnailService = require('./services/VideoThumbnailService');
+const TvMazeService = require('./services/TvMazeService');
 const PlaylistService = require('./services/PlaylistService');
 const WindowManager = require('./services/WindowManager');
 const MediaKeysService = require('./services/MediaKeysService');
@@ -45,6 +48,9 @@ class RedshiftSyncManager extends EventEmitter {
     this.deviceMonitorService = null;
     this.audioPlayerService = null;
     this.musicLibraryCache = null;
+    this.videoCompatibilityService = null;
+    this.videoThumbnailService = null;
+    this.tvMazeService = null;
     this.playlistService = null;
     this.mediaKeysService = null;
     this.redshiftUSBSyncService = null;
@@ -154,6 +160,12 @@ class RedshiftSyncManager extends EventEmitter {
 
     // The videos table is initialized before services, so this cache needs no separate setup.
     this.videoLibraryCache = new VideoLibraryCache(this);
+    this.videoCompatibilityService = new VideoCompatibilityService(this);
+    await this.videoCompatibilityService.initialize();
+    this.videoThumbnailService = new VideoThumbnailService(this);
+    await this.videoThumbnailService.initialize();
+    this.tvMazeService = new TvMazeService(this);
+    await this.tvMazeService.initialize();
     
     // Initialize Doppler sync service (enhanced sync management)
     const mockDatabaseService = {

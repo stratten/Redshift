@@ -95,8 +95,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
       // Video library
       'scan-video-library',
       'get-all-videos',
+      'prepare-video-playback',
       'update-video-progress',
-      'add-videos-to-library'
+      'add-videos-to-library',
+      'get-tvmaze-match-candidates',
+      'select-tvmaze-match',
+      'refresh-tvmaze-series',
+      'cache-tvmaze-series-artwork'
     ];
     
     if (validChannels.includes(channel)) {
@@ -178,7 +183,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'usb-sync-completed',
       'usb-sync-failed',
       'device-scan-progress',
-      'video-scan-progress'
+      'video-scan-progress',
+      'video-compatibility-progress',
+      'video-thumbnail-ready',
+      'tvmaze-metadata-updated'
     ];
     
     if (validChannels.includes(channel)) {
@@ -245,7 +253,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'usb-sync-completed',
       'usb-sync-failed',
       'device-scan-progress',
-      'video-scan-progress'
+      'video-scan-progress',
+      'video-compatibility-progress',
+      'video-thumbnail-ready',
+      'tvmaze-metadata-updated'
     ];
     
     if (validChannels.includes(channel)) {

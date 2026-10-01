@@ -13,6 +13,7 @@ Plays music. Manages your library. Syncs to iPhone. Pulls music from iPhone to d
 - Full music player (MP3, WAV, FLAC support)
 - Library management with metadata editing
 - Automatic album art and artist image retrieval from MusicBrainz/Cover Art Archive
+- Optional local TV-series metadata and artwork enrichment from TVMaze
 - Playlist management with queue control
 - Bi-directional sync to iPhone via USB or Wi-Fi
 - Scans and imports music FROM your iPhone's library TO desktop
@@ -107,6 +108,7 @@ Built with Electron. Cross-platform without maintaining three native codebases.
 - USB device monitoring
 - iPhone sync services (libimobiledevice, pymobiledevice3, WebSocket)
 - MusicBrainz integration for automatic artist images and album artwork
+- TVMaze integration for cached local TV-series metadata, posters, and episode details
 
 **Renderer:**
 - Vanilla JavaScript with custom component system
@@ -123,6 +125,11 @@ Built with Electron. Cross-platform without maintaining three native codebases.
 **Database:**
 - Tracks, playlists, sync history, play counts
 - Bi-directional sync merges data from both sides
+- Video metadata remains local; TVMaze enrichment is a cached display layer and never changes source files
+
+### TVMaze Video Metadata
+
+Recognized TV series can be enriched in the background with episode titles, descriptions, posters, and artwork from [TVMaze](https://www.tvmaze.com/). The local video library remains usable while enrichment runs, and fetched data/artwork is cached locally for later offline display. Redshift shows TVMaze attribution and a source link only alongside video information that came from TVMaze. Ambiguous show names require a user-selected match.
 
 ## Development
 

@@ -8,11 +8,15 @@ class VideoPlayerModal {
     this.lastPersistedAt = 0;
     this.persistIntervalMs = 5000;
     this.hasLoadedMetadata = false;
+    this.openRequestId = 0;
 
     this.modal = document.getElementById('videoPlayerModal');
     this.videoEl = document.getElementById('videoPlayerElement');
     this.titleEl = document.getElementById('videoPlayerTitle');
+    this.statusEl = document.getElementById('videoPlayerStatus');
     this.errorEl = document.getElementById('videoPlayerError');
+    this.descriptionEl = document.getElementById('videoPlayerDescription');
+    this.descriptionTextEl = document.getElementById('videoPlayerDescriptionText');
     this.closeBtn = document.getElementById('closeVideoPlayerModal');
 
     if (this.modal && this.videoEl && this.closeBtn) {
@@ -28,6 +32,12 @@ class VideoPlayerModal {
 
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && this.isOpen()) this.close();
+    });
+    window.electronAPI.on('video-compatibility-progress', (progress) => {
+      if (!this.currentVideo || progress.sourcePath !== this.currentVideo.path) return;
+      const completed = this.formatProcessingTime(progress.seconds);
+      const total = this.formatProcessingTime(progress.durationSeconds);
+      this.showStatus(`Preparing compatible audio: ${progress.percent}% (${completed} of ${total})`);
     });
 
     this.videoEl.addEventListener('loadedmetadata', () => {
@@ -83,17 +93,33 @@ class VideoPlayerModal {
     return `file://${encodeURI(filePath).replace(/#/g, '%23').replace(/\?/g, '%3F')}`;
   }
 
-  open(video) {
+  async open(video) {
     if (!this.modal || !this.videoEl) return;
 
+    const requestId = ++this.openRequestId;
     this.currentVideo = video;
     this.lastPersistedAt = 0;
     this.hasLoadedMetadata = false;
     this.hideError();
+    this.showStatus('Checking compatibility and preparing an AAC copy if required…');
     if (this.titleEl) this.titleEl.textContent = this.playerTitle(video);
+    this.setDescription(video.tvMazeEpisodeSummary);
 
     this.modal.style.display = 'flex';
-    this.videoEl.src = this.fileUrl(video.path);
+    try {
+      const prepared = await window.electronAPI.invoke('prepare-video-playback', { filePath: video.path });
+      if (requestId !== this.openRequestId || this.currentVideo?.path !== video.path) return;
+
+      if (prepared.transcoded) {
+        this.showStatus('Using a local AAC-compatible playback copy.');
+      }
+      this.videoEl.src = this.fileUrl(prepared.playbackPath);
+      this.hideStatus();
+    } catch (error) {
+      if (requestId !== this.openRequestId) return;
+      this.hideStatus();
+      this.showError(`Couldn’t prepare this video for playback: ${error.message}`);
+    }
   }
 
   close() {
@@ -110,6 +136,7 @@ class VideoPlayerModal {
     this.videoEl.removeAttribute('src');
     this.videoEl.load();
     this.modal.style.display = 'none';
+    this.openRequestId += 1;
     this.currentVideo = null;
     this.hasLoadedMetadata = false;
   }
@@ -118,6 +145,32 @@ class VideoPlayerModal {
     if (!this.errorEl) return;
     this.errorEl.textContent = message;
     this.errorEl.style.display = 'block';
+  }
+
+  showStatus(message) {
+    if (!this.statusEl) return;
+    this.statusEl.textContent = message;
+    this.statusEl.style.display = 'block';
+  }
+
+  hideStatus() {
+    if (!this.statusEl) return;
+    this.statusEl.style.display = 'none';
+  }
+
+  formatProcessingTime(seconds) {
+    const totalSeconds = Math.max(0, Math.floor(Number(seconds) || 0));
+    const minutes = Math.floor(totalSeconds / 60);
+    const remainingSeconds = totalSeconds % 60;
+    return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
+  }
+
+  setDescription(summary) {
+    if (!this.descriptionEl || !this.descriptionTextEl) return;
+    const text = String(summary || '').trim();
+    this.descriptionEl.open = false;
+    this.descriptionTextEl.textContent = text;
+    this.descriptionEl.style.display = text ? 'block' : 'none';
   }
 
   hideError() {

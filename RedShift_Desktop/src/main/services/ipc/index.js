@@ -28,6 +28,9 @@ function registerAllIpc(ipcMain, manager) {
       ['playlistService', () => !!manager.playlistService],
       ['dopplerSyncService', () => !!manager.dopplerSyncService],
       ['videoLibraryCache', () => !!manager.videoLibraryCache],
+      ['videoCompatibilityService', () => !!manager.videoCompatibilityService],
+      ['videoThumbnailService', () => !!manager.videoThumbnailService],
+      ['tvMazeService', () => !!manager.tvMazeService],
     ];
     const deadline = Date.now() + 10000; // allow up to 10s for cold starts
     let lastLoggedAt = 0;

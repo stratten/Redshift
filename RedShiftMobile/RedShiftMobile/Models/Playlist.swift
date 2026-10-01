@@ -44,4 +44,27 @@ struct Playlist: Identifiable, Codable, Hashable {
             library.first(where: { $0.stableID == stableID })
         }
     }
+
+    static func nextModifiedDate(after previous: Date, now: Date = Date()) -> Date {
+        let nowSeconds = now.timeIntervalSince1970.rounded(.down)
+        let previousSeconds = previous.timeIntervalSince1970.rounded(.down)
+        return Date(timeIntervalSince1970: max(nowSeconds, previousSeconds + 1))
+    }
+}
+
+enum PlaylistSyncImportPolicy {
+    enum Decision: Equatable {
+        case create
+        case replace
+        case keepLocal
+        case unchanged
+    }
+
+    static func decide(local: Playlist?, incomingTrackStableIDs: [String], incomingModified: Date) -> Decision {
+        guard let local = local else { return .create }
+        if local.trackStableIDs == incomingTrackStableIDs { return .unchanged }
+        let incomingSeconds = incomingModified.timeIntervalSince1970.rounded(.down)
+        let localSeconds = local.modifiedDate.timeIntervalSince1970.rounded(.down)
+        return incomingSeconds >= localSeconds ? .replace : .keepLocal
+    }
 }

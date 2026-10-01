@@ -18,6 +18,7 @@ class RedshiftSyncUI {
     this.dopplerSync = new DopplerSync(this);
     this.deviceManager = new DeviceManager(this);
     this.videoPlayerModal = new VideoPlayerModal(this);
+    this.tvMazeMatchModal = new TvMazeMatchModal(this);
     this.videoLibrary = new VideoLibrary(this);
     
     // Initialize IPC event manager (depends on components)

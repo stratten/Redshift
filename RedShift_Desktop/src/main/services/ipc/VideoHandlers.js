@@ -15,6 +15,40 @@ function registerVideoHandlers(ipcMain, manager, waitReady) {
     return manager.videoLibraryCache.getAllVideos();
   }));
 
+  ipcMain.handle('prepare-video-playback', h(async (event, payload) => {
+    const filePath = validFilePath(payload?.filePath);
+    return manager.videoCompatibilityService.preparePlaybackSource(filePath);
+  }));
+
+  ipcMain.handle('get-tvmaze-match-candidates', h(async (event, payload) => {
+    const seriesKey = validSeriesKey(payload?.seriesKey);
+    return manager.tvMazeService.getCandidates(seriesKey);
+  }));
+
+  ipcMain.handle('select-tvmaze-match', h(async (event, payload) => {
+    const seriesKey = validSeriesKey(payload?.seriesKey);
+    const showId = Number(payload?.showId);
+    if (!Number.isInteger(showId) || showId <= 0) {
+      throw new Error('select-tvmaze-match requires a positive integer showId.');
+    }
+    await manager.tvMazeService.selectCandidate(seriesKey, showId);
+    return { success: true };
+  }));
+
+  ipcMain.handle('refresh-tvmaze-series', h(async (event, payload) => {
+    const seriesKey = validSeriesKey(payload?.seriesKey);
+    await manager.tvMazeService.refreshSeries(seriesKey, payload?.forcePicker === true);
+    return { success: true };
+  }));
+
+  ipcMain.handle('cache-tvmaze-series-artwork', h(async (event, payload) => {
+    const seriesKey = validSeriesKey(payload?.seriesKey);
+    void manager.tvMazeService.cacheEpisodeArtwork(seriesKey).catch((error) => {
+      manager.emit('log', { type: 'warning', message: `🎬 TVMaze episode artwork failed: ${error.message}` });
+    });
+    return { success: true };
+  }));
+
   ipcMain.handle('update-video-progress', h(async (event, payload) => {
     if (!payload || !payload.filePath) {
       throw new Error('update-video-progress requires a filePath');
@@ -37,6 +71,20 @@ function registerVideoHandlers(ipcMain, manager, waitReady) {
       return { success: false, error: error.message };
     }
   }));
+}
+
+function validSeriesKey(value) {
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new Error('TVMaze metadata requests require a seriesKey.');
+  }
+  return value.trim();
+}
+
+function validFilePath(value) {
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new Error('Video playback preparation requires a filePath.');
+  }
+  return value;
 }
 
 module.exports = { registerVideoHandlers };

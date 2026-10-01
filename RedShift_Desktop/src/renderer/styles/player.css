@@ -3,7 +3,7 @@
 /* Enhanced Header with Music Player Integration */
 .header {
     display: grid;
-    grid-template-columns: max-content minmax(0, 1fr) 240px;
+    grid-template-columns: minmax(0, max-content) minmax(0, 1fr) minmax(0, 240px);
     gap: 16px;
     align-items: center;
     padding: 10px 20px;
@@ -14,8 +14,16 @@
     min-height: 105px; /* Tall enough for queue preview */
 }
 
-.header-left, .header-center, .header-right, .header-audio-visualization {
-    -webkit-app-region: no-drag; /* Make child elements not draggable */
+/* Only interactive controls opt out of the header's drag region, so any
+   empty/background area of the header remains draggable for moving the window. */
+.header button,
+.header input,
+.header select,
+.header a,
+.header [role="button"],
+.header .up-next-track-item,
+.header .clickable-album-art {
+    -webkit-app-region: no-drag;
 }
 
 .header-left {
@@ -23,17 +31,25 @@
     flex-direction: column;
     gap: 6px;
     align-items: flex-start;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .header-left h2 {
     margin: 0;
     font-size: 18px;
     color: var(--rs-text-primary);
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .header-left-actions {
     display: flex;
     gap: 6px;
+    flex-wrap: wrap;
+    min-width: 0;
 }
 
 .header-center {
@@ -45,10 +61,12 @@
 .header-center-group {
     display: flex;
     align-items: center;
+    flex-wrap: wrap; /* if the mini-player + output selector don't fit on one line, the
+                        selector wraps onto its own line below instead of overlapping */
     gap: 12px;
+    row-gap: 6px;
     justify-content: center;
     min-width: 0;
-    -webkit-app-region: no-drag;
 }
 
 .header-audio-visualization {
@@ -66,7 +84,10 @@
     display: flex;
     justify-content: flex-end;
     align-items: center;
-    min-height: 85px; /* Reserve space for queue preview */
+    min-width: 0;
+    /* No forced min-height here: the queue preview only reserves space
+       when it actually has content to show (see AudioPlayerQueue.js,
+       which toggles display:none on #upNextPreview when the queue is empty). */
 }
 
 /* Music Player Header */
@@ -84,12 +105,21 @@
     justify-content: center; /* Center content vertically */
 }
 
-/* Player Layout Rows */
+/* Player Layout Rows
+   Flexbox (not grid) on purpose: playback-controls-compact and
+   volume-compact hold fixed-size, non-negotiable controls that must never
+   compress below their natural size (flex: 0 0 auto), while
+   track-info-compact is the only column allowed to shrink - its own
+   min-width:0 + the title/artist ellipsis rules absorb all of the squeeze
+   as the window narrows, instead of the controls shrinking/overlapping. */
 .player-top-row {
-    display: grid;
-    grid-template-columns: minmax(180px, 220px) 1fr auto; /* flexible left column, fluid middle, compact right */
+    display: flex;
     align-items: center;
+    flex-wrap: wrap; /* if track info + controls + volume don't fit on one line,
+                        volume (the least essential) wraps to its own line below
+                        instead of compressing/overlapping the transport controls */
     gap: 12px;
+    row-gap: 6px;
 }
 
 .audio-visualization {
@@ -208,13 +238,15 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    min-width: 160px;
-    flex: 0 0 260px; /* fixed left column width */
+    min-width: 0;
+    flex: 1 1 60px; /* the one column allowed to shrink; title/artist ellipsize instead of overlapping siblings */
+    overflow: hidden;
 }
 
 .album-art-mini {
     width: 32px;
     height: 32px;
+    flex-shrink: 0;
     background: var(--rs-bg-surface-sunken);
     border-radius: 6px;
     display: flex;
@@ -245,6 +277,7 @@
     white-space: nowrap;
     overflow: visible;
     display: inline-block; /* enable marquee transform within wrapper */
+    max-width: 100%; /* without this the ellipsis rule below never engages, and long titles overflow onto neighboring controls */
 }
 
 .track-title-mini:not(.marquee-active) {
@@ -258,6 +291,7 @@
     white-space: nowrap;
     overflow: visible;
     display: inline-block;
+    max-width: 100%;
 }
 
 .track-artist-mini:not(.marquee-active) {
@@ -282,13 +316,13 @@
     display: flex;
     align-items: center;
     gap: 0;
-    flex: 0 0 auto;
-    justify-self: center; /* keep controls centered regardless of title width */
+    flex: 0 0 auto; /* never shrinks - these are essential, non-negotiable transport controls */
 }
 
 .control-btn {
     width: 32px;
     height: 32px;
+    flex-shrink: 0;
     border: none;
     border-radius: 6px;
     background: transparent;
@@ -430,17 +464,19 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    flex: 0 0 auto;
-    justify-self: end; /* pin volume to the right edge of the player */
+    flex: 0 0 auto; /* never shrinks; collapses to icon-only via the 1100px media query instead */
+    position: relative;
 }
 
 .volume-btn {
     width: 24px;
     height: 24px;
+    flex-shrink: 0;
 }
 
 .volume-slider-compact {
     width: 70px;
+    flex-shrink: 0;
     height: 4px;
     background: var(--rs-track-bg);
     border-radius: 2px;
@@ -468,11 +504,15 @@
     border: none;
 }
 
-/* Up Next Preview Styles (Right Side) */
+/* Up Next Preview Styles (Right Side)
+   #upNextPreview is toggled between display:none (no queue) and display:block
+   (queue present) in AudioPlayerQueue.js, so it never reserves layout space
+   when there is nothing to show. */
 .up-next-preview {
     width: 100%;
     max-width: 240px;
-    min-height: 85px; /* Always reserve full height */
+    min-width: 0;
+    min-height: 85px; /* Fixed height only while actually shown, for a stable card */
     background: var(--rs-subtle-overlay-weak);
     border-radius: 8px;
     padding: 8px;
@@ -598,4 +638,81 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+/* ==========================================================================
+   Responsive header collapse
+   As the window narrows, lower-priority header items are hidden or shrunk
+   to an icon-only "flyout" form (rather than being allowed to overlap
+   neighboring controls). Priority, highest to lowest:
+   1. Playback transport, track info, page title/actions (never collapsed)
+   2. Output device selector (already icon-sized)
+   3. Header action button labels (icon-only below 1100px)
+   4. Live audio visualization (hidden below 1280px - decorative only)
+   5. Volume slider (collapses to icon + click-to-open flyout below 1100px)
+   6. Up Next queue preview (collapses to icon + existing queue modal below 900px)
+   ========================================================================== */
+
+@media (max-width: 1280px) {
+    .header-audio-visualization {
+        display: none;
+    }
+}
+
+@media (max-width: 1100px) {
+    .header-left .btn-label {
+        display: none;
+    }
+
+    .volume-slider-compact {
+        display: none;
+    }
+
+    .volume-compact.expanded .volume-slider-compact {
+        display: block;
+        position: absolute;
+        top: calc(100% + 8px);
+        right: 0;
+        width: 90px;
+        padding: 10px 10px;
+        background: #15131f;
+        border: 1px solid var(--rs-border-color);
+        border-radius: 8px;
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+        z-index: 20;
+        -webkit-app-region: no-drag;
+    }
+}
+
+@media (max-width: 900px) {
+    .up-next-preview {
+        width: auto;
+        max-width: none;
+        min-height: 0;
+        background: transparent;
+        padding: 0;
+    }
+
+    .up-next-header {
+        margin-bottom: 0;
+    }
+
+    .up-next-label,
+    .up-next-tracks {
+        display: none;
+    }
+
+    .view-queue-btn {
+        padding: 6px;
+        border-radius: 50%;
+    }
+
+    .view-queue-btn .btn-label {
+        display: none;
+    }
+
+    .view-queue-btn svg {
+        width: 14px;
+        height: 14px;
+    }
 }

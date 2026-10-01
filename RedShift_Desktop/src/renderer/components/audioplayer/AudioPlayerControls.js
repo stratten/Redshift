@@ -186,6 +186,25 @@ class AudioPlayerControls {
       this.player.audioElementB.muted = muted;
       this.player.ui.logBoth('info', `Audio ${muted ? 'muted' : 'unmuted'}`);
     });
+
+    // Below the 1100px breakpoint the volume slider collapses to just the
+    // mute icon; clicking it also opens a small flyout with the slider so
+    // volume can still be adjusted without the header needing to reserve
+    // permanent space for it. Above that width the slider is always
+    // visible inline, so the flyout state is simply unused.
+    const volumeCompact = document.querySelector('.volume-compact');
+    if (volumeCompact) {
+      document.getElementById('muteBtn').addEventListener('click', () => {
+        if (window.matchMedia('(max-width: 1100px)').matches) {
+          volumeCompact.classList.toggle('expanded');
+        }
+      });
+      document.addEventListener('click', (event) => {
+        if (!volumeCompact.contains(event.target)) {
+          volumeCompact.classList.remove('expanded');
+        }
+      });
+    }
     
     // Progress slider
     const progressSlider = document.getElementById('progressSlider');

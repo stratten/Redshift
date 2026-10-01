@@ -9,6 +9,7 @@ struct RedShiftMobileApp: App {
     @StateObject private var libraryManager = MusicLibraryManager()
     @StateObject private var spectrumAnalyzer = AudioSpectrumAnalyzer()
     @Environment(\.scenePhase) private var scenePhase
+    @State private var hasEnteredBackground = false
     
     init() {
         // Setup audio session for background playback
@@ -44,6 +45,10 @@ struct RedShiftMobileApp: App {
                 .onAppear {
                     PlaybackDiagnostics.shared.record("app.lifecycle", "Window appeared")
                     PlaybackDiagnostics.shared.startMetricKitMonitoring()
+                    PerformanceDiagnostics.shared.stateProvider = { [weak player = audioPlayer, weak analyzer = spectrumAnalyzer] in
+                        "isPlaying=\(player?.isPlaying ?? false) analyzerRunning=\(analyzer?.isRunning ?? false)"
+                    }
+                    PerformanceDiagnostics.shared.start()
                     // Connect audio player to library manager for play count tracking
                     audioPlayer.libraryManager = libraryManager
                     // Connect the visualizer to the audio player so it knows which
@@ -68,21 +73,22 @@ struct RedShiftMobileApp: App {
                 }
                 .onChange(of: audioPlayer.isPlaying) { _, isPlaying in
                     if isPlaying {
-                        spectrumAnalyzer.start()
+                        spectrumAnalyzer.start(reason: "playback-started")
                     } else {
-                        spectrumAnalyzer.stop()
+                        spectrumAnalyzer.stop(reason: "playback-stopped")
                     }
                 }
                 .onChange(of: audioPlayer.currentTrack?.id) { _, _ in
                     // Track changed (skip/next/previous/crossfade completion) while
                     // still playing: reopen the shadow file handle for the new track.
                     if audioPlayer.isPlaying {
-                        spectrumAnalyzer.start()
+                        spectrumAnalyzer.start(reason: "track-changed")
                     }
                 }
                 .onChange(of: scenePhase) { oldPhase, newPhase in
                     PlaybackDiagnostics.shared.record("app.lifecycle", "Scene phase \(oldPhase) → \(newPhase)")
                     if newPhase == .background {
+                        hasEnteredBackground = true
                         // Export playlists when app goes to background (in case of sync)
                         Task {
                             await libraryManager.exportPlaylistsForSync()
@@ -90,18 +96,20 @@ struct RedShiftMobileApp: App {
                         // Stop reading/analyzing file samples while backgrounded — the
                         // bars aren't visible and playback itself (AVAudioPlayer) is
                         // completely unaffected either way.
-                        spectrumAnalyzer.stop()
-                    } else if newPhase == .active && oldPhase == .background {
-                        // Coming back from background (after a potential desktop sync):
-                        // reconcile incrementally so the library reflects any newly
-                        // synced files/manifest automatically, with no manual "refresh
-                        // from Settings" step required.
-                        Task {
-                            await libraryManager.reconcileLibraryIncrementally()
+                        spectrumAnalyzer.stop(reason: "scene-background")
+                    } else if newPhase == .active {
+                        // iOS returns through .inactive (background → inactive → active),
+                        // so use this flag rather than comparing only oldPhase.
+                        if hasEnteredBackground {
+                            hasEnteredBackground = false
+                            Task {
+                                await libraryManager.reconcileLibraryIncrementally()
+                            }
                         }
                         if audioPlayer.isPlaying {
-                            spectrumAnalyzer.start()
+                            spectrumAnalyzer.start(reason: "scene-active")
                         }
+                        PlaybackDiagnostics.shared.record("visualizer.lifecycle", "Foreground check isPlaying=\(audioPlayer.isPlaying) analyzerRunning=\(spectrumAnalyzer.isRunning)")
                     }
                 }
         }

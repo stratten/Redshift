@@ -89,3 +89,51 @@ final class SyncManifestTests: XCTestCase {
         XCTAssertThrowsError(try JSONDecoder().decode(SyncManifest.self, from: Data(json.utf8)))
     }
 }
+
+final class PlaylistSyncImportPolicyTests: XCTestCase {
+    private func playlist(ids: [String], modified: TimeInterval) -> Playlist {
+        Playlist(name: "Feel", trackStableIDs: ids, modifiedDate: Date(timeIntervalSince1970: modified))
+    }
+
+    func testCreatesWhenNoLocalPlaylist() {
+        XCTAssertEqual(
+            PlaylistSyncImportPolicy.decide(local: nil, incomingTrackStableIDs: ["a"], incomingModified: Date(timeIntervalSince1970: 10)),
+            .create
+        )
+    }
+
+    func testIdenticalTrackListIsUnchangedRegardlessOfStamp() {
+        XCTAssertEqual(
+            PlaylistSyncImportPolicy.decide(local: playlist(ids: ["a", "b"], modified: 500), incomingTrackStableIDs: ["a", "b"], incomingModified: Date(timeIntervalSince1970: 100)),
+            .unchanged
+        )
+    }
+
+    func testNewerOrSameWholeSecondIncomingPlaylistReplaces() {
+        XCTAssertEqual(
+            PlaylistSyncImportPolicy.decide(local: playlist(ids: ["a"], modified: 1000.7), incomingTrackStableIDs: ["a", "b"], incomingModified: Date(timeIntervalSince1970: 1000)),
+            .replace
+        )
+    }
+
+    func testOlderIncomingPlaylistKeepsLocalEdit() {
+        XCTAssertEqual(
+            PlaylistSyncImportPolicy.decide(local: playlist(ids: ["a", "b"], modified: 2000), incomingTrackStableIDs: ["a"], incomingModified: Date(timeIntervalSince1970: 1999)),
+            .keepLocal
+        )
+    }
+
+    func testNextModifiedDateUsesLaterNow() {
+        XCTAssertEqual(
+            Playlist.nextModifiedDate(after: Date(timeIntervalSince1970: 100.9), now: Date(timeIntervalSince1970: 500.4)).timeIntervalSince1970,
+            500
+        )
+    }
+
+    func testNextModifiedDateAdvancesPastFutureStamp() {
+        XCTAssertEqual(
+            Playlist.nextModifiedDate(after: Date(timeIntervalSince1970: 900.2), now: Date(timeIntervalSince1970: 800)).timeIntervalSince1970,
+            901
+        )
+    }
+}

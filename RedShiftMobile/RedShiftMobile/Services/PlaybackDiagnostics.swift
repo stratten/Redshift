@@ -4,10 +4,13 @@
 import AVFoundation
 import Foundation
 import MetricKit
+import os
+import UIKit
 
 final class PlaybackDiagnostics: NSObject, MXMetricManagerSubscriber {
     static let shared = PlaybackDiagnostics()
 
+    private static let timestampFormatter = ISO8601DateFormatter()
     private let maximumEntries = 300
     private let lock = NSLock()
     private var entries: [String]
@@ -23,7 +26,7 @@ final class PlaybackDiagnostics: NSObject, MXMetricManagerSubscriber {
     }
 
     func record(_ category: String, _ message: String) {
-        let timestamp = ISO8601DateFormatter().string(from: Date())
+        let timestamp = Self.timestampFormatter.string(from: Date())
         let sanitizedMessage = message
             .replacingOccurrences(of: "\n", with: " ")
             .replacingOccurrences(of: "\r", with: " ")
@@ -69,20 +72,40 @@ final class PlaybackDiagnostics: NSObject, MXMetricManagerSubscriber {
         guard !isMonitoringMetricKit else { return }
         isMonitoringMetricKit = true
         MXMetricManager.shared.add(self)
-        record("metrickit", "Subscribed to application-exit metrics")
+        record("metrickit", "Subscribed to metric and diagnostic payloads")
     }
 
     func didReceive(_ payloads: [MXMetricPayload]) {
         for payload in payloads {
             let payloadData = payload.jsonRepresentation()
-            guard let payloadObject = try? JSONSerialization.jsonObject(with: payloadData) as? [String: Any],
-                  let exitMetrics = payloadObject["applicationExitMetrics"],
-                  JSONSerialization.isValidJSONObject(exitMetrics),
-                  let exitData = try? JSONSerialization.data(withJSONObject: exitMetrics, options: [.sortedKeys]),
-                  let exitSummary = String(data: exitData, encoding: .utf8) else {
+            let savedURL = Self.saveMetricKitPayload(payloadData, prefix: "metrics")
+            record("metrickit.metrics", "Payload \(payload.timeStampBegin) → \(payload.timeStampEnd) saved=\(savedURL?.lastPathComponent ?? "failed")")
+            guard let payloadObject = try? JSONSerialization.jsonObject(with: payloadData) as? [String: Any] else {
                 continue
             }
-            record("metrickit.application-exit", exitSummary)
+            if let exitSummary = Self.compactJSON(payloadObject["applicationExitMetrics"]) {
+                record("metrickit.application-exit", exitSummary)
+            }
+            for section in Self.performanceMetricSections {
+                if let summary = Self.compactJSON(payloadObject[section]) {
+                    PerformanceDiagnostics.shared.log.record("metrickit.\(section)", summary)
+                }
+            }
+        }
+    }
+
+    func didReceive(_ payloads: [MXDiagnosticPayload]) {
+        for payload in payloads {
+            let savedURL = Self.saveMetricKitPayload(payload.jsonRepresentation(), prefix: "diagnostics")
+            record("metrickit.diagnostics", "crashes=\(payload.crashDiagnostics?.count ?? 0) hangs=\(payload.hangDiagnostics?.count ?? 0) cpuExceptions=\(payload.cpuExceptionDiagnostics?.count ?? 0) diskWriteExceptions=\(payload.diskWriteExceptionDiagnostics?.count ?? 0) saved=\(savedURL?.lastPathComponent ?? "failed")")
+            for crash in payload.crashDiagnostics ?? [] {
+                let exceptionType = crash.exceptionType?.stringValue ?? "nil"
+                let signal = crash.signal?.stringValue ?? "nil"
+                record("metrickit.crash", "build=\(crash.metaData.applicationBuildVersion) exceptionType=\(exceptionType) signal=\(signal) reason=\(crash.terminationReason ?? "nil")")
+            }
+            for hang in payload.hangDiagnostics ?? [] {
+                record("metrickit.hang", "build=\(hang.metaData.applicationBuildVersion) duration=\(hang.hangDuration)")
+            }
         }
     }
 
@@ -114,11 +137,228 @@ final class PlaybackDiagnostics: NSObject, MXMetricManagerSubscriber {
         record("audio-session.media-services", "Reset")
     }
 
-    private static func defaultLogFileURL() -> URL {
+    static let performanceMetricSections = [
+        "cpuMetrics",
+        "gpuMetrics",
+        "applicationTimeMetrics",
+        "memoryMetrics",
+        "diskIOMetrics",
+        "animationMetrics",
+        "applicationResponsivenessMetrics",
+        "displayMetrics",
+        "networkTransferMetrics",
+        "locationActivityMetrics"
+    ]
+
+    static func diagnosticsDirectoryURL() -> URL {
         let fileManager = FileManager.default
         let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
         let diagnosticsURL = documentsURL.appendingPathComponent("Diagnostics", isDirectory: true)
         try? fileManager.createDirectory(at: diagnosticsURL, withIntermediateDirectories: true)
-        return diagnosticsURL.appendingPathComponent("playback-diagnostics.log")
+        return diagnosticsURL
+    }
+
+    static func diagnosticsFileURL(named name: String) -> URL {
+        diagnosticsDirectoryURL().appendingPathComponent(name)
+    }
+
+    private static func defaultLogFileURL() -> URL {
+        diagnosticsFileURL(named: "playback-diagnostics.log")
+    }
+
+    private static func metricKitDirectoryURL() -> URL {
+        diagnosticsDirectoryURL().appendingPathComponent("MetricKit", isDirectory: true)
+    }
+
+    static func exportableFileURLs() -> [URL] {
+        let fileManager = FileManager.default
+        var urls = [PlaybackDiagnostics.shared.logFileURL, PerformanceDiagnostics.shared.log.logFileURL]
+        if let files = try? fileManager.contentsOfDirectory(at: metricKitDirectoryURL(), includingPropertiesForKeys: nil) {
+            urls.append(contentsOf: files.sorted { $0.lastPathComponent < $1.lastPathComponent })
+        }
+        return urls.filter { fileManager.fileExists(atPath: $0.path) }
+    }
+
+    private static func compactJSON(_ value: Any?) -> String? {
+        guard let value,
+              JSONSerialization.isValidJSONObject(value),
+              let data = try? JSONSerialization.data(withJSONObject: value, options: [.sortedKeys]) else {
+            return nil
+        }
+        return String(data: data, encoding: .utf8)
+    }
+
+    @discardableResult
+    static func saveMetricKitPayload(_ data: Data, prefix: String) -> URL? {
+        let directory = metricKitDirectoryURL()
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let fileURL = directory.appendingPathComponent("\(prefix)-\(Int(Date().timeIntervalSince1970))-\(UUID().uuidString.prefix(8)).json")
+        do {
+            try data.write(to: fileURL, options: .atomic)
+            pruneMetricKitDirectory(directory, keeping: 20)
+            return fileURL
+        } catch {
+            return nil
+        }
+    }
+
+    private static func pruneMetricKitDirectory(_ directory: URL, keeping limit: Int) {
+        let fileManager = FileManager.default
+        guard let files = try? fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: [.contentModificationDateKey]) else {
+            return
+        }
+        let newestFirst = files.sorted {
+            let lhs = (try? $0.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+            let rhs = (try? $1.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+            return lhs > rhs
+        }
+        for file in newestFirst.dropFirst(limit) {
+            try? fileManager.removeItem(at: file)
+        }
+    }
+}
+
+/// Low-overhead energy/performance counters plus a once-a-minute snapshot.
+final class PerformanceDiagnostics: NSObject {
+    enum Counter: String, CaseIterable {
+        case analyzerTick
+        case analyzerTickSkippedBusy
+        case analyzerPublish
+        case progressTick
+        case progressPublish
+        case marqueePass
+    }
+
+    static let shared = PerformanceDiagnostics()
+    static let signposter = OSSignposter(subsystem: "com.redshiftplayer.mobile", category: "Performance")
+
+    let log: PlaybackDiagnostics
+    var stateProvider: (@MainActor () -> String)?
+
+    private let lock = NSLock()
+    private var counts: [Counter: Int] = [:]
+    private var analyzerReadTotalNanoseconds: UInt64 = 0
+    private var analyzerReadMaxNanoseconds: UInt64 = 0
+    private var analyzerReadCount = 0
+    private var lastSnapshotUptime = ProcessInfo.processInfo.systemUptime
+    private var lastCPUSeconds = PerformanceDiagnostics.processCPUSeconds()
+    private var snapshotTimer: Timer?
+
+    init(log: PlaybackDiagnostics = PlaybackDiagnostics(logFileURL: PlaybackDiagnostics.diagnosticsFileURL(named: "performance-diagnostics.log"))) {
+        self.log = log
+        super.init()
+    }
+
+    func increment(_ counter: Counter) {
+        lock.lock()
+        counts[counter, default: 0] += 1
+        lock.unlock()
+    }
+
+    func count(of counter: Counter) -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return counts[counter, default: 0]
+    }
+
+    func recordAnalyzerRead(nanoseconds: UInt64) {
+        lock.lock()
+        analyzerReadTotalNanoseconds &+= nanoseconds
+        analyzerReadMaxNanoseconds = max(analyzerReadMaxNanoseconds, nanoseconds)
+        analyzerReadCount += 1
+        lock.unlock()
+    }
+
+    @MainActor
+    func start() {
+        guard snapshotTimer == nil else { return }
+        UIDevice.current.isBatteryMonitoringEnabled = true
+        let center = NotificationCenter.default
+        center.addObserver(self, selector: #selector(thermalStateChanged), name: ProcessInfo.thermalStateDidChangeNotification, object: nil)
+        center.addObserver(self, selector: #selector(powerStateChanged), name: .NSProcessInfoPowerStateDidChange, object: nil)
+        let timer = Timer(timeInterval: 60, target: self, selector: #selector(writeIntervalSnapshot), userInfo: nil, repeats: true)
+        timer.tolerance = 10
+        RunLoop.main.add(timer, forMode: .common)
+        snapshotTimer = timer
+        writeSnapshot(reason: "launch")
+    }
+
+    @objc @MainActor private func writeIntervalSnapshot() {
+        writeSnapshot(reason: "interval")
+    }
+
+    @MainActor
+    func writeSnapshot(reason: String) {
+        let now = ProcessInfo.processInfo.systemUptime
+        let cpuSeconds = Self.processCPUSeconds()
+
+        lock.lock()
+        let intervalSeconds = max(now - lastSnapshotUptime, 0.001)
+        let cpuPercent = max(0, cpuSeconds - lastCPUSeconds) / intervalSeconds * 100
+        let counterSummary = Counter.allCases
+            .map { "\($0.rawValue)=\(counts[$0, default: 0])" }
+            .joined(separator: " ")
+        let averageReadMicroseconds = analyzerReadCount > 0 ? Double(analyzerReadTotalNanoseconds) / Double(analyzerReadCount) / 1_000 : 0
+        let maxReadMicroseconds = Double(analyzerReadMaxNanoseconds) / 1_000
+        counts.removeAll()
+        analyzerReadTotalNanoseconds = 0
+        analyzerReadMaxNanoseconds = 0
+        analyzerReadCount = 0
+        lastSnapshotUptime = now
+        lastCPUSeconds = cpuSeconds
+        lock.unlock()
+
+        let device = UIDevice.current
+        let battery = device.batteryLevel >= 0 ? "\(Int((device.batteryLevel * 100).rounded()))%" : "unknown"
+        let applicationState: String
+        switch UIApplication.shared.applicationState {
+        case .active: applicationState = "active"
+        case .inactive: applicationState = "inactive"
+        case .background: applicationState = "background"
+        @unknown default: applicationState = "unknown"
+        }
+        let appState = stateProvider?() ?? ""
+        let message = "reason=\(reason) interval=\(Int(intervalSeconds))s cpu=\(String(format: "%.1f", cpuPercent))% thermal=\(Self.thermalStateName(ProcessInfo.processInfo.thermalState)) battery=\(battery) batteryState=\(Self.batteryStateName(device.batteryState)) lowPower=\(ProcessInfo.processInfo.isLowPowerModeEnabled) app=\(applicationState) \(appState) analyzerReadAvg=\(Int(averageReadMicroseconds))us analyzerReadMax=\(Int(maxReadMicroseconds))us \(counterSummary)"
+        log.record("perf.snapshot", message)
+    }
+
+    @objc private func thermalStateChanged(_ notification: Notification) {
+        Task { @MainActor [weak self] in
+            self?.writeSnapshot(reason: "thermal-change")
+        }
+    }
+
+    @objc private func powerStateChanged(_ notification: Notification) {
+        Task { @MainActor [weak self] in
+            self?.writeSnapshot(reason: "low-power-change")
+        }
+    }
+
+    static func processCPUSeconds() -> Double {
+        var usage = rusage()
+        guard getrusage(RUSAGE_SELF, &usage) == 0 else { return 0 }
+        let user = Double(usage.ru_utime.tv_sec) + Double(usage.ru_utime.tv_usec) / 1_000_000
+        let system = Double(usage.ru_stime.tv_sec) + Double(usage.ru_stime.tv_usec) / 1_000_000
+        return user + system
+    }
+
+    static func thermalStateName(_ state: ProcessInfo.ThermalState) -> String {
+        switch state {
+        case .nominal: return "nominal"
+        case .fair: return "fair"
+        case .serious: return "serious"
+        case .critical: return "critical"
+        @unknown default: return "unknown"
+        }
+    }
+
+    static func batteryStateName(_ state: UIDevice.BatteryState) -> String {
+        switch state {
+        case .unplugged: return "unplugged"
+        case .charging: return "charging"
+        case .full: return "full"
+        case .unknown: return "unknown"
+        @unknown default: return "unknown"
+        }
     }
 }

@@ -64,6 +64,14 @@ async function initializeDatabase(dbPath) {
   await run(db, `CREATE INDEX IF NOT EXISTS idx_playlist_tracks_position ON playlist_tracks(playlist_id, position)`);
 
   await run(db, `
+    CREATE TABLE IF NOT EXISTS playlist_sync_state (
+      name_key TEXT PRIMARY KEY,
+      last_synced_modified INTEGER NOT NULL,
+      last_synced_at INTEGER NOT NULL
+    )
+  `);
+
+  await run(db, `
     CREATE TABLE IF NOT EXISTS transfer_sessions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       session_date INTEGER NOT NULL,
@@ -162,7 +170,9 @@ async function initializeDatabase(dbPath) {
       width INTEGER,
       height INTEGER,
       playback_supported INTEGER,
+      thumbnail_path TEXT,
       last_position_seconds INTEGER DEFAULT 0,
+      last_viewed_at INTEGER,
       watched INTEGER DEFAULT 0,
       added_date INTEGER DEFAULT (strftime('%s', 'now')),
       modified_date INTEGER DEFAULT (strftime('%s', 'now'))
@@ -180,7 +190,9 @@ async function initializeDatabase(dbPath) {
     `ALTER TABLE videos ADD COLUMN season_number INTEGER`,
     `ALTER TABLE videos ADD COLUMN episode_start INTEGER`,
     `ALTER TABLE videos ADD COLUMN episode_end INTEGER`,
-    `ALTER TABLE videos ADD COLUMN group_source TEXT NOT NULL DEFAULT 'unclassified'`
+    `ALTER TABLE videos ADD COLUMN group_source TEXT NOT NULL DEFAULT 'unclassified'`,
+    `ALTER TABLE videos ADD COLUMN thumbnail_path TEXT`,
+    `ALTER TABLE videos ADD COLUMN last_viewed_at INTEGER`
   ];
 
   for (const sql of videoColumnMigrations) {
@@ -193,6 +205,56 @@ async function initializeDatabase(dbPath) {
 
   await run(db, `CREATE INDEX IF NOT EXISTS idx_videos_content_kind ON videos(content_kind)`);
   await run(db, `CREATE INDEX IF NOT EXISTS idx_videos_series_season_episode ON videos(series_key, season_number, episode_start)`);
+  await run(db, `CREATE INDEX IF NOT EXISTS idx_videos_continue_watching ON videos(last_viewed_at DESC) WHERE watched = 0 AND last_position_seconds > 0`);
+  await run(db, `CREATE INDEX IF NOT EXISTS idx_videos_recently_added ON videos(added_date DESC)`);
+
+  // TVMaze metadata is an optional, cached display enrichment for the local video library.
+  await run(db, `
+    CREATE TABLE IF NOT EXISTS tvmaze_series_metadata (
+      series_key TEXT PRIMARY KEY,
+      local_title TEXT NOT NULL,
+      match_status TEXT NOT NULL DEFAULT 'pending',
+      tvmaze_show_id INTEGER,
+      candidate_json TEXT,
+      show_name TEXT,
+      show_url TEXT,
+      premiered TEXT,
+      ended TEXT,
+      show_status TEXT,
+      show_type TEXT,
+      language TEXT,
+      genres_json TEXT,
+      network_name TEXT,
+      summary TEXT,
+      poster_url TEXT,
+      poster_path TEXT,
+      last_lookup_at INTEGER,
+      last_refreshed_at INTEGER,
+      retry_after INTEGER,
+      last_error TEXT,
+      created_at INTEGER DEFAULT (strftime('%s', 'now')),
+      updated_at INTEGER DEFAULT (strftime('%s', 'now'))
+    )
+  `);
+
+  await run(db, `
+    CREATE TABLE IF NOT EXISTS tvmaze_episode_metadata (
+      tvmaze_episode_id INTEGER PRIMARY KEY,
+      tvmaze_show_id INTEGER NOT NULL,
+      season_number INTEGER,
+      episode_number INTEGER,
+      episode_title TEXT,
+      summary TEXT,
+      airdate TEXT,
+      runtime INTEGER,
+      image_url TEXT,
+      image_path TEXT,
+      fetched_at INTEGER DEFAULT (strftime('%s', 'now'))
+    )
+  `);
+
+  await run(db, `CREATE INDEX IF NOT EXISTS idx_tvmaze_series_match_status ON tvmaze_series_metadata(match_status, retry_after)`);
+  await run(db, `CREATE INDEX IF NOT EXISTS idx_tvmaze_episode_show_season_episode ON tvmaze_episode_metadata(tvmaze_show_id, season_number, episode_number)`);
 
   return db;
 }

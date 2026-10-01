@@ -6,8 +6,13 @@
             <button class="close-button" id="closeVideoPlayerModal" type="button" aria-label="Close video player">&times;</button>
         </div>
         <div class="modal-body video-player-modal-body">
+            <div id="videoPlayerStatus" class="video-player-status" style="display: none;" aria-live="polite"></div>
             <div id="videoPlayerError" class="video-player-error" style="display: none;"></div>
             <video id="videoPlayerElement" class="video-player-element" controls playsinline></video>
+            <details id="videoPlayerDescription" class="video-player-description" style="display: none;">
+                <summary>Episode description</summary>
+                <p id="videoPlayerDescriptionText"></p>
+            </details>
         </div>
     </div>
 </div>

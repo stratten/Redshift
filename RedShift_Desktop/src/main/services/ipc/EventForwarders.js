@@ -133,6 +133,9 @@ function attachEventForwarders(manager) {
 
   // VideoLibraryCache emits scan completion through the shared manager EventEmitter.
   manager.on('video-scan-progress', (data) => manager.sendToRenderer('video-scan-progress', data));
+  manager.on('video-compatibility-progress', (data) => manager.sendToRenderer('video-compatibility-progress', data));
+  manager.on('video-thumbnail-ready', (data) => manager.sendToRenderer('video-thumbnail-ready', data));
+  manager.on('tvmaze-metadata-updated', (data) => manager.sendToRenderer('tvmaze-metadata-updated', data));
 }
 
 module.exports = { attachEventForwarders };

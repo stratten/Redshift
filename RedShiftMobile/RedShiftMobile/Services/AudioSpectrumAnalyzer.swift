@@ -56,8 +56,13 @@ final class AudioSpectrumAnalyzer: ObservableObject {
     private var estimatedPlaybackTime: TimeInterval?
     private var lastEstimateTimestamp: TimeInterval?
 
-    func start() {
-        guard let player = audioPlayer, let track = player.currentTrack else { return }
+    var isRunning: Bool { pollTimer != nil }
+
+    func start(reason: String = "unspecified") {
+        guard let player = audioPlayer, let track = player.currentTrack else {
+            PlaybackDiagnostics.shared.record("visualizer.lifecycle", "Start skipped reason=\(reason): no current track")
+            return
+        }
         if track.id != openTrackID {
             openFile(for: track)
         }
@@ -65,9 +70,13 @@ final class AudioSpectrumAnalyzer: ObservableObject {
         pollTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
             self?.sampleTick()
         }
+        PlaybackDiagnostics.shared.record("visualizer.lifecycle", "Started reason=\(reason) fileOpen=\(audioFile != nil)")
     }
 
-    func stop() {
+    func stop(reason: String = "unspecified") {
+        if pollTimer != nil {
+            PlaybackDiagnostics.shared.record("visualizer.lifecycle", "Stopped reason=\(reason)")
+        }
         pollTimer?.invalidate()
         pollTimer = nil
         lastReportedPlaybackTime = nil
@@ -94,6 +103,7 @@ final class AudioSpectrumAnalyzer: ObservableObject {
         } catch {
             audioFile = nil
             openTrackID = nil
+            PlaybackDiagnostics.shared.record("visualizer.lifecycle", "File open failed track=\(track.stableID) error=\(error.localizedDescription)")
         }
     }
 
@@ -129,14 +139,19 @@ final class AudioSpectrumAnalyzer: ObservableObject {
     }
 
     private func sampleTick() {
+        PerformanceDiagnostics.shared.increment(.analyzerTick)
         guard let player = audioPlayer, let track = player.currentTrack else {
-            stop()
+            stop(reason: "no-current-track")
             return
         }
         if track.id != openTrackID {
             openFile(for: track)
         }
-        guard let file = audioFile, !isReading else { return }
+        if isReading {
+            PerformanceDiagnostics.shared.increment(.analyzerTickSkippedBusy)
+            return
+        }
+        guard let file = audioFile else { return }
 
         let sampleRate = file.processingFormat.sampleRate
         let totalFrames = file.length
@@ -155,6 +170,8 @@ final class AudioSpectrumAnalyzer: ObservableObject {
 
         isReading = true
         sampleQueue.async { [weak self] in
+            let signpostState = PerformanceDiagnostics.signposter.beginInterval("AnalyzerRead")
+            let readStarted = DispatchTime.now().uptimeNanoseconds
             let levelSets = AudioSpectrumAnalyzer.readAndAnalyze(
                 file: file,
                 format: format,
@@ -162,14 +179,31 @@ final class AudioSpectrumAnalyzer: ObservableObject {
                 fftSize: size,
                 bandCounts: counts
             )
+            PerformanceDiagnostics.shared.recordAnalyzerRead(nanoseconds: DispatchTime.now().uptimeNanoseconds - readStarted)
+            PerformanceDiagnostics.signposter.endInterval("AnalyzerRead", signpostState)
             DispatchQueue.main.async {
                 guard let self = self else { return }
                 self.isReading = false
-                if let levelSets = levelSets, levelSets.count == 2 {
-                    self.bandLevels = self.smoothed(previous: self.bandLevels, new: levelSets[0])
-                    self.fullBandLevels = self.smoothed(previous: self.fullBandLevels, new: levelSets[1])
+                guard let levelSets = levelSets, levelSets.count == 2 else { return }
+                let nextBandLevels = self.smoothed(previous: self.bandLevels, new: levelSets[0])
+                let nextFullBandLevels = self.smoothed(previous: self.fullBandLevels, new: levelSets[1])
+                let bandsChanged = AudioSpectrumAnalyzer.differsVisibly(self.bandLevels, nextBandLevels)
+                let fullBandsChanged = AudioSpectrumAnalyzer.differsVisibly(self.fullBandLevels, nextFullBandLevels)
+                if bandsChanged {
+                    self.bandLevels = nextBandLevels
+                }
+                if fullBandsChanged {
+                    self.fullBandLevels = nextFullBandLevels
+                }
+                if bandsChanged || fullBandsChanged {
+                    PerformanceDiagnostics.shared.increment(.analyzerPublish)
                 }
             }
         }
+    }
+
+    nonisolated static func differsVisibly(_ lhs: [CGFloat], _ rhs: [CGFloat]) -> Bool {
+        guard lhs.count == rhs.count else { return true }
+        return zip(lhs, rhs).contains { abs($0 - $1) > 0.004 }
     }
 }

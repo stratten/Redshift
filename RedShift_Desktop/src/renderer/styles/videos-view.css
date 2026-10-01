@@ -63,6 +63,41 @@
     color: var(--rs-text-on-accent);
 }
 
+.video-view-toggle {
+    display: flex;
+    overflow: hidden;
+    flex: 0 0 auto;
+    border: 1px solid var(--rs-border-color-strong);
+    border-radius: 7px;
+    background: var(--rs-bg-surface);
+}
+
+.video-view-toggle button {
+    padding: 7px 10px;
+    border: 0;
+    border-right: 1px solid var(--rs-border-color);
+    background: transparent;
+    color: var(--rs-text-primary);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.video-view-toggle button:last-child {
+    border-right: 0;
+}
+
+.video-view-toggle button:hover,
+.video-view-toggle button:focus-visible {
+    background: var(--rs-accent-soft-strong);
+    outline: none;
+}
+
+.video-view-toggle button.is-active {
+    background: var(--rs-accent);
+    color: var(--rs-text-on-accent);
+}
+
 .video-library-section {
     display: flex;
     flex-direction: column;
@@ -80,6 +115,33 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
     gap: 16px;
+}
+
+.video-home-rails-row {
+    display: flex;
+    gap: 24px;
+}
+
+.video-home-rail {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.video-home-rail-track {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+}
+
+.video-home-rail-track .video-card {
+    flex: 0 0 160px;
+    width: 160px;
+}
+
+.video-home-rail-track .video-card-summary {
+    display: none;
 }
 
 .library-stats-inline {
@@ -114,6 +176,12 @@
     justify-content: center;
     background: linear-gradient(135deg, #111827 0%, #374151 100%);
     color: rgba(255, 255, 255, 0.88);
+}
+
+.video-card-artwork {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 .video-card-progress {
@@ -152,6 +220,22 @@
     font-size: 12px;
 }
 
+.video-card-series {
+    color: var(--rs-text-primary);
+    font-weight: 600;
+}
+
+.video-card-summary {
+    display: -webkit-box;
+    overflow: hidden;
+    margin-top: 8px;
+    color: var(--rs-text-secondary);
+    font-size: 12px;
+    line-height: 1.4;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+}
+
 .video-card-badge {
     padding: 2px 6px;
     border-radius: 4px;
@@ -165,22 +249,29 @@
 }
 
 .video-series-card {
+    overflow: hidden;
+    border: 1px solid var(--rs-border-color);
+    border-radius: 10px;
+    background: var(--rs-bg-surface);
+}
+
+.video-series-card-open {
     display: flex;
+    width: 100%;
     min-height: 112px;
     align-items: center;
     gap: 14px;
     padding: 16px;
-    border: 1px solid var(--rs-border-color);
-    border-radius: 10px;
-    background: var(--rs-bg-surface);
+    border: 0;
+    background: transparent;
     color: var(--rs-text-primary);
     cursor: pointer;
     text-align: left;
     transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.video-series-card:hover,
-.video-series-card:focus-visible {
+.video-series-card-open:hover,
+.video-series-card-open:focus-visible {
     border-color: var(--rs-accent-alt);
     box-shadow: 0 8px 20px var(--rs-accent-soft-strong);
     outline: none;
@@ -202,11 +293,21 @@
     letter-spacing: 0.06em;
 }
 
+.video-series-card-poster {
+    width: 52px;
+    height: 76px;
+    flex: 0 0 auto;
+    border-radius: 8px;
+    object-fit: cover;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
 .video-series-card-info {
     min-width: 0;
 }
 
 .video-series-card-title {
+    display: block;
     overflow: hidden;
     color: var(--rs-text-heading);
     font-size: 15px;
@@ -217,9 +318,123 @@
 
 .video-series-card-meta,
 .video-series-detail-header p {
+    display: block;
     margin-top: 4px;
     color: var(--rs-text-secondary);
     font-size: 12px;
+}
+
+.videos-list,
+.video-series-list {
+    overflow: hidden;
+    border: 1px solid var(--rs-border-color);
+    border-radius: 10px;
+    background: var(--rs-bg-surface);
+}
+
+.video-list-row {
+    display: grid;
+    width: 100%;
+    min-height: 52px;
+    align-items: center;
+    gap: 16px;
+    padding: 10px 14px;
+    border: 0;
+    border-bottom: 1px solid var(--rs-border-color);
+    background: transparent;
+    color: var(--rs-text-primary);
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.video-list-row {
+    grid-template-columns: minmax(180px, 2fr) minmax(130px, 1fr) minmax(52px, auto) minmax(0, 1.5fr);
+}
+
+.video-series-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    border-bottom: 1px solid var(--rs-border-color);
+}
+
+.video-series-row-open {
+    display: grid;
+    min-width: 0;
+    min-height: 52px;
+    grid-template-columns: minmax(180px, 2fr) minmax(130px, 1fr);
+    align-items: center;
+    gap: 16px;
+    padding: 10px 14px;
+    border: 0;
+    background: transparent;
+    color: var(--rs-text-primary);
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.video-list-row:last-child,
+.video-series-row:last-child {
+    border-bottom: 0;
+}
+
+.video-list-row:hover,
+.video-list-row:focus-visible,
+.video-series-row-open:hover,
+.video-series-row-open:focus-visible {
+    background: var(--rs-accent-soft-strong);
+    box-shadow: inset 3px 0 0 var(--rs-accent);
+    outline: none;
+}
+
+.video-list-row-title,
+.video-series-row-title {
+    overflow: hidden;
+    color: var(--rs-text-heading);
+    font-size: 13px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.video-list-row-meta,
+.video-list-row-duration,
+.video-list-row-status,
+.video-series-row-meta {
+    overflow: hidden;
+    color: var(--rs-text-secondary);
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.video-list-row-duration {
+    color: var(--rs-text-primary);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+.video-list-row-status {
+    color: var(--rs-warning-text);
+}
+
+.tvmaze-card-attribution {
+    padding: 6px 12px;
+    border: 0;
+    border-top: 1px solid var(--rs-border-color);
+    background: var(--rs-bg-surface-alt);
+    color: var(--rs-accent-alt);
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: left;
+}
+
+.tvmaze-card-attribution:hover,
+.tvmaze-card-attribution:focus-visible {
+    background: var(--rs-accent-soft-strong);
+    outline: none;
 }
 
 .video-series-detail-header {
@@ -228,6 +443,110 @@
     gap: 12px;
     padding-bottom: 4px;
     border-bottom: 1px solid var(--rs-border-color);
+}
+
+.tvmaze-show-details,
+.tvmaze-show-summary {
+    max-width: 760px;
+    margin-top: 8px;
+    color: var(--rs-text-secondary);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.tvmaze-show-summary {
+    color: var(--rs-text-primary);
+}
+
+.tvmaze-series-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.tvmaze-match-modal-content {
+    width: min(90vw, 560px);
+}
+
+.tvmaze-match-modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 16px;
+}
+
+.tvmaze-match-candidates {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--rs-border-color);
+    border-radius: 10px;
+    background: var(--rs-bg-surface);
+}
+
+.tvmaze-match-candidate {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 0;
+    border-bottom: 1px solid var(--rs-border-color);
+    background: transparent;
+    color: var(--rs-text-primary);
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.tvmaze-match-candidate:last-child {
+    border-bottom: 0;
+}
+
+.tvmaze-match-candidate:hover,
+.tvmaze-match-candidate:focus-visible {
+    background: var(--rs-accent-soft-strong);
+    box-shadow: inset 3px 0 0 var(--rs-accent);
+    outline: none;
+}
+
+.tvmaze-match-poster {
+    display: flex;
+    width: 38px;
+    height: 54px;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+}
+
+.tvmaze-match-candidate-info {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.tvmaze-match-candidate-info strong,
+.tvmaze-match-candidate-info span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tvmaze-match-candidate-info span,
+.tvmaze-match-error {
+    color: var(--rs-text-secondary);
+    font-size: 12px;
+}
+
+.tvmaze-match-error {
+    color: var(--rs-warning-text);
 }
 
 .videos-empty-state {
@@ -249,8 +568,19 @@
 }
 
 .video-player-modal-content {
+    position: relative;
     width: min(90vw, 1100px);
     max-width: 1100px;
+}
+
+.video-player-modal-content .modal-header {
+    padding-right: 48px;
+}
+
+.video-player-modal-content .close-button {
+    position: absolute;
+    top: 18px;
+    right: 18px;
 }
 
 .video-player-modal-body {
@@ -276,6 +606,39 @@
     font-size: 13px;
 }
 
+.video-player-status {
+    padding: 10px 14px;
+    border: 1px solid var(--rs-accent-alt);
+    border-radius: 6px;
+    background: var(--rs-accent-soft-strong);
+    color: var(--rs-text-primary);
+    font-size: 13px;
+}
+
+.video-player-description {
+    border: 1px solid var(--rs-border-color);
+    border-radius: 8px;
+    background: var(--rs-bg-surface);
+    color: var(--rs-text-primary);
+}
+
+.video-player-description summary {
+    padding: 12px 14px;
+    color: var(--rs-text-heading);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.video-player-description p {
+    margin: 0;
+    padding: 0 14px 14px;
+    color: var(--rs-text-primary);
+    font-size: 13px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+}
+
 @media (max-width: 760px) {
     .video-library-toolbar {
         align-items: stretch;
@@ -288,5 +651,27 @@
 
     .video-library-filters button {
         flex: 1;
+    }
+
+    .video-view-toggle {
+        width: 100%;
+    }
+
+    .video-view-toggle button {
+        flex: 1;
+    }
+
+    .video-list-row,
+    .video-series-row-open {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .video-list-row-meta,
+    .video-list-row-status {
+        display: none;
+    }
+
+    .tvmaze-series-actions .btn {
+        flex: 1 1 150px;
     }
 }
